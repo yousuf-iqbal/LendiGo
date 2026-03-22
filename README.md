@@ -12,7 +12,7 @@ A full stack web application built with React, Node.js, and SQL Server.
 
 ### 1. Clone the repo
 
-git clone https://github.com/yousuf-iqbal/Udhaari-An-Asset-Lending-Platform.git
+git clone https://github.com/duasarfraz3114/Udhaari-fse.git
 
 ### 2. Setup Database
 
