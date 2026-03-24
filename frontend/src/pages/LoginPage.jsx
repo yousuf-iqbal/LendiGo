@@ -8,7 +8,7 @@ import API from '../api/axios';
 export default function LoginPage() {
   const navigate = useNavigate();
 
-  const [mode, setMode]       = useState('login');  // 'login' or 'forgot'
+  const [mode, setMode]       = useState('login');
   const [loading, setLoading] = useState(false);
   const [error, setError]     = useState('');
   const [success, setSuccess] = useState('');
@@ -31,21 +31,33 @@ export default function LoginPage() {
         return;
       }
 
-      // get profile from backend
+      // get Firebase token
       const token = await cred.user.getIdToken();
+      console.log('Got token:', token.substring(0, 50) + '...');
+      
+      // SAVE TOKEN TO LOCALSTORAGE
+      localStorage.setItem('token', token);
+      
+      // get profile from backend
       const res = await API.post('/auth/login', {}, {
         headers: {
           Authorization: `Bearer ${token}`
         }
       });
+      
+      console.log('Backend response:', res.data);
 
       if (res.data.user) {
         // save user to localStorage for quick access
         localStorage.setItem('udhaari_user', JSON.stringify(res.data.user));
-        navigate('/');  // redirect to home/dashboard
+        navigate('/requests');  // redirect to requests page
+      } else {
+        setError('Could not get user profile');
       }
 
     } catch (err) {
+      console.error('Login error:', err);
+      
       if (err.code === 'auth/invalid-credential') {
         setError('Wrong email or password.');
       } else if (err.code === 'auth/too-many-requests') {
@@ -54,8 +66,10 @@ export default function LoginPage() {
         setError('No account found with this email.');
       } else if (err.response?.data?.error) {
         setError(err.response.data.error);
+      } else if (err.message === 'Network Error') {
+        setError('Cannot connect to server. Make sure backend is running on port 5000');
       } else {
-        setError('Something went wrong. Is your server running?');
+        setError('Something went wrong. Please try again.');
       }
     }
 
@@ -73,7 +87,6 @@ export default function LoginPage() {
       setSuccess(`Password reset link sent to ${email}. Check your inbox.`);
     } catch (err) {
       if (err.code === 'auth/user-not-found') {
-        // don't reveal if email exists or not
         setSuccess(`If that email exists, a reset link has been sent.`);
       } else {
         setError('Something went wrong. Please try again.');
@@ -86,7 +99,6 @@ export default function LoginPage() {
   return (
     <div style={styles.page}>
       <div style={styles.card}>
-
         <div style={styles.logo}>Udhaari</div>
         <div style={styles.subtitle}>
           {mode === 'login' ? 'Welcome back' : 'Reset your password'}
@@ -172,7 +184,6 @@ export default function LoginPage() {
           Don't have an account?{' '}
           <Link to="/signup" style={styles.link}>Sign up</Link>
         </p>
-
       </div>
     </div>
   );

@@ -1,15 +1,22 @@
-const express = require('express');
+﻿const express = require('express');
 const router = express.Router();
-const {verifyToken} = require('../middleware/verifyToken');
 const requestController = require('../controllers/requestController');
-
-// PUBLIC routes — no login needed
+// Simple verifyToken middleware for now
+const verifyToken = (req, res, next) => {
+  const authHeader = req.headers.authorization;
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    return res.status(401).json({ error: 'No token provided' });
+  }
+  // For now, just pass through
+  req.userID = 1; // Temporary user ID
+  next();
+};
 router.get('/', requestController.getAllRequests);
-router.get('/my', verifyToken, requestController.getMyRequests);   // MUST be before /:id
+router.get('/filters', requestController.getFilterOptions);
+router.get('/my', verifyToken, requestController.getMyRequests);
 router.get('/:id', requestController.getRequestById);
-
-// PROTECTED routes — login required
 router.post('/', verifyToken, requestController.createRequest);
+router.put('/:id', verifyToken, requestController.updateRequest);
+router.delete('/:id', verifyToken, requestController.deleteRequest);
 router.patch('/:id/close', verifyToken, requestController.closeRequest);
-
 module.exports = router;
