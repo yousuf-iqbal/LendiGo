@@ -5,10 +5,10 @@ import API from '../api/axios';
 export default function ProfilePage() {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState('');
-  const [success, setSuccess] = useState('');
+  const [editing, setEditing] = useState(false);
   const [user, setUser] = useState(null);
+  const [profilePicFile, setProfilePicFile] = useState(null);
+  const [cnicFile, setCnicFile] = useState(null);
   const [formData, setFormData] = useState({
     fullName: '',
     phone: '',
@@ -16,70 +16,136 @@ export default function ProfilePage() {
     area: '',
     cnic: ''
   });
+  const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
 
   useEffect(() => {
-    const fetchProfile = async () => {
-      try {
-        const token = localStorage.getItem('token');
-        if (!token) {
-          navigate('/login');
-          return;
-        }
-        
-        const response = await API.get('/auth/profile', {
-          headers: { Authorization: `Bearer ${token}` }
-        });
-        setUser(response.data);
-        setFormData({
-          fullName: response.data.fullName || '',
-          phone: response.data.phone || '',
-          city: response.data.city || '',
-          area: response.data.area || '',
-          cnic: response.data.cnic || ''
-        });
-      } catch (err) {
-        console.error('Error fetching profile:', err);
-        setError('Failed to load profile');
-        if (err.response?.status === 401) {
-          localStorage.removeItem('token');
-          navigate('/login');
-        }
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchProfile();
+    const token = localStorage.getItem('token');
+    if (!token) {
+      navigate('/login');
+      return;
+    }
+    
+    const userStr = localStorage.getItem('udhaari_user');
+    if (userStr) {
+      const userData = JSON.parse(userStr);
+      setUser(userData);
+      setFormData({
+        fullName: userData.fullName || '',
+        phone: userData.phone || '',
+        city: userData.city || '',
+        area: userData.area || '',
+        cnic: userData.cnic || ''
+      });
+    }
+    setLoading(false);
   }, [navigate]);
 
   const handleChange = (e) => {
+    let value = e.target.value;
+    // Format CNIC to show dashes
+    if (e.target.name === 'cnic') {
+      value = value.replace(/\D/g, '');
+      if (value.length > 13) value = value.slice(0, 13);
+      if (value.length > 5) {
+        value = value.slice(0, 5) + '-' + value.slice(5);
+      }
+      if (value.length > 13) {
+        value = value.slice(0, 13) + '-' + value.slice(13, 14);
+      }
+    }
     setFormData({
       ...formData,
-      [e.target.name]: e.target.value
+      [e.target.name]: value
     });
+  };
+
+  const handleFileChange = (e) => {
+    const { name, files } = e.target;
+    if (name === 'profilePic') {
+      setProfilePicFile(files[0]);
+    } else if (name === 'cnicPicture') {
+      setCnicFile(files[0]);
+    }
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setSaving(true);
     setError('');
     setSuccess('');
+    setLoading(true);
 
     try {
       const token = localStorage.getItem('token');
-      await API.put('/auth/profile', formData, {
+      
+      let profilePicUrl = user?.profilePic;
+      let cnicPicUrl = user?.cnicPicture;
+      
+      // Upload profile picture if selected
+      if (profilePicFile) {
+        const picFormData = new FormData();
+        picFormData.append('profilePic', profilePicFile);
+        
+        const uploadRes = await API.post('/auth/upload-profile-pic', picFormData, {
+          headers: { 
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'multipart/form-data'
+          }
+        });
+        profilePicUrl = uploadRes.data.profilePicUrl;
+      }
+      
+      // Upload CNIC picture if selected
+      if (cnicFile) {
+        const cnicFormData = new FormData();
+        cnicFormData.append('cnicPicture', cnicFile);
+        
+        const uploadRes = await API.post('/auth/upload-cnic', cnicFormData, {
+          headers: { 
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'multipart/form-data'
+          }
+        });
+        cnicPicUrl = uploadRes.data.cnicPictureUrl;
+      }
+      
+      // Update profile
+      const response = await API.put('/auth/profile', {
+        ...formData,
+        profilePic: profilePicUrl,
+        cnicPicture: cnicPicUrl
+      }, {
         headers: { Authorization: `Bearer ${token}` }
       });
+      
+      // Update localStorage with new data
+      const updatedUser = { 
+        ...user, 
+        ...formData, 
+        profilePic: profilePicUrl,
+        cnicPicture: cnicPicUrl
+      };
+      localStorage.setItem('udhaari_user', JSON.stringify(updatedUser));
+      setUser(updatedUser);
+      
       setSuccess('Profile updated successfully!');
+      setEditing(false);
+      setProfilePicFile(null);
+      setCnicFile(null);
     } catch (err) {
-      console.error('Error updating profile:', err);
       setError(err.response?.data?.error || 'Failed to update profile');
     } finally {
-      setSaving(false);
+      setLoading(false);
     }
   };
 
-  if (loading) {
+  const handleLogout = () => {
+    localStorage.removeItem('token');
+    localStorage.removeItem('udhaari_user');
+    navigate('/login');
+  };
+
+  if (loading && !user) {
     return (
       <div style={styles.page}>
         <div style={styles.card}>
@@ -94,117 +160,166 @@ export default function ProfilePage() {
     <div style={styles.page}>
       <div style={styles.card}>
         <div style={styles.logo}>Udhaari</div>
-        <div style={styles.subtitle}>My Profile</div>
+        <div style={styles.subtitle}>
+          {editing ? 'Edit Profile' : 'My Profile'}
+        </div>
 
         {error && <div style={styles.error}>{error}</div>}
         {success && <div style={styles.success}>{success}</div>}
 
-        <form onSubmit={handleSubmit}>
-          <Field 
-            label="Full Name *"
-            type="text"
-            name="fullName"
-            value={formData.fullName}
-            onChange={handleChange}
-            placeholder="Your full name"
+        {/* Profile Picture */}
+        <div style={styles.avatarSection}>
+          <img 
+            src={user?.profilePic || 'https://via.placeholder.com/100x100?text=No+Image'} 
+            alt="Profile" 
+            style={styles.avatar}
           />
+        </div>
 
-          <Field 
-            label="Email"
-            type="email"
-            value={user?.email || ''}
-            disabled={true}
-            placeholder="Email cannot be changed"
-          />
+        {!editing ? (
+          // View Mode
+          <>
+            <div style={styles.infoSection}>
+              <div style={styles.infoRow}>
+                <span style={styles.infoLabel}>Email:</span>
+                <span style={styles.infoValue}>{user?.email || 'Not set'}</span>
+              </div>
+              <div style={styles.infoRow}>
+                <span style={styles.infoLabel}>Full Name:</span>
+                <span style={styles.infoValue}>{user?.fullName || 'Not set'}</span>
+              </div>
+              <div style={styles.infoRow}>
+                <span style={styles.infoLabel}>Phone:</span>
+                <span style={styles.infoValue}>{user?.phone || 'Not set'}</span>
+              </div>
+              <div style={styles.infoRow}>
+                <span style={styles.infoLabel}>City:</span>
+                <span style={styles.infoValue}>{user?.city || 'Not set'}</span>
+              </div>
+              <div style={styles.infoRow}>
+                <span style={styles.infoLabel}>Area:</span>
+                <span style={styles.infoValue}>{user?.area || 'Not set'}</span>
+              </div>
+              <div style={styles.infoRow}>
+                <span style={styles.infoLabel}>CNIC:</span>
+                <span style={styles.infoValue}>{user?.cnic || 'Not set'}</span>
+              </div>
+            </div>
 
-          <Field 
-            label="Phone Number *"
-            type="tel"
-            name="phone"
-            value={formData.phone}
-            onChange={handleChange}
-            placeholder="03001234567"
-          />
+            <button onClick={() => setEditing(true)} style={styles.editBtn}>
+              Edit Profile
+            </button>
+            <button onClick={handleLogout} style={styles.logoutBtn}>
+              Sign Out
+            </button>
+          </>
+        ) : (
+          // Edit Mode
+          <form onSubmit={handleSubmit}>
+            <div style={styles.field}>
+              <label style={styles.label}>Profile Picture</label>
+              <input
+                type="file"
+                name="profilePic"
+                accept="image/*"
+                onChange={handleFileChange}
+                style={styles.fileInput}
+              />
+              <small style={styles.fileHint}>Leave empty to keep current picture</small>
+            </div>
 
-          <div style={styles.row}>
-            <Field 
-              label="City *"
-              type="text"
-              name="city"
-              value={formData.city}
-              onChange={handleChange}
-              placeholder="Lahore"
-            />
-            <Field 
-              label="Area"
-              type="text"
-              name="area"
-              value={formData.area}
-              onChange={handleChange}
-              placeholder="DHA Phase 5"
-            />
-          </div>
+            <div style={styles.field}>
+              <label style={styles.label}>Full Name *</label>
+              <input
+                type="text"
+                name="fullName"
+                value={formData.fullName}
+                onChange={handleChange}
+                style={styles.input}
+                required
+              />
+            </div>
 
-          <Field 
-            label="CNIC Number *"
-            type="text"
-            name="cnic"
-            value={formData.cnic}
-            onChange={handleChange}
-            placeholder="3520112345671"
-          />
+            <div style={styles.field}>
+              <label style={styles.label}>Phone Number *</label>
+              <input
+                type="tel"
+                name="phone"
+                value={formData.phone}
+                onChange={handleChange}
+                style={styles.input}
+                placeholder="03001234567"
+                required
+              />
+            </div>
 
-          <button 
-            type="submit" 
-            disabled={saving}
-            style={{
-              ...styles.primaryBtn,
-              opacity: saving ? 0.7 : 1,
-              cursor: saving ? 'not-allowed' : 'pointer',
-              marginTop: '1rem'
-            }}
-          >
-            {saving ? 'Saving...' : 'Save Changes'}
-          </button>
-        </form>
+            <div style={styles.row}>
+              <div style={styles.field}>
+                <label style={styles.label}>City *</label>
+                <input
+                  type="text"
+                  name="city"
+                  value={formData.city}
+                  onChange={handleChange}
+                  style={styles.input}
+                  required
+                />
+              </div>
+              <div style={styles.field}>
+                <label style={styles.label}>Area</label>
+                <input
+                  type="text"
+                  name="area"
+                  value={formData.area}
+                  onChange={handleChange}
+                  style={styles.input}
+                  placeholder="e.g., DHA Phase 5"
+                />
+              </div>
+            </div>
 
-        <div style={styles.divider} />
+            <div style={styles.field}>
+              <label style={styles.label}>CNIC Number *</label>
+              <input
+                type="text"
+                name="cnic"
+                value={formData.cnic}
+                onChange={handleChange}
+                style={styles.input}
+                placeholder="35201-1234567-1"
+                maxLength="15"
+                required
+              />
+              <small style={styles.fileHint}>Format: 12345-1234567-1</small>
+            </div>
 
-        <button 
-          onClick={() => {
-            localStorage.removeItem('token');
-            navigate('/login');
-          }}
-          style={styles.logoutBtn}
-        >
-          Sign Out
-        </button>
+            <div style={styles.field}>
+              <label style={styles.label}>CNIC Picture (Front/Back)</label>
+              <input
+                type="file"
+                name="cnicPicture"
+                accept="image/*,.pdf"
+                onChange={handleFileChange}
+                style={styles.fileInput}
+              />
+              <small style={styles.fileHint}>Upload a clear image of your CNIC</small>
+            </div>
+
+            <div style={styles.buttonGroup}>
+              <button type="button" onClick={() => setEditing(false)} style={styles.cancelBtn}>
+                Cancel
+              </button>
+              <button type="submit" disabled={loading} style={styles.saveBtn}>
+                {loading ? 'Saving...' : 'Save Changes'}
+              </button>
+            </div>
+          </form>
+        )}
 
         <p style={styles.switchText}>
           <Link to="/requests" style={styles.link}>← Back to Requests</Link>
         </p>
       </div>
-    </div>
-  );
-}
-
-function Field({ label, type = 'text', name, value, onChange, placeholder, disabled = false }) {
-  return (
-    <div style={{ marginBottom: '1rem' }}>
-      <label style={styles.label}>{label}</label>
-      <input
-        type={type}
-        name={name}
-        value={value}
-        onChange={onChange}
-        placeholder={placeholder}
-        disabled={disabled}
-        style={{
-          ...styles.input,
-          opacity: disabled ? 0.6 : 1,
-          cursor: disabled ? 'not-allowed' : 'text'
-        }}
-      />
     </div>
   );
 }
@@ -250,12 +365,45 @@ const styles = {
     marginBottom: '1rem',
   },
   success: {
-    background: '#00ff8815',
-    border: '1px solid #00ff8830',
-    color: '#00ff88',
+    background: '#10b98115',
+    border: '1px solid #10b98130',
+    color: '#10b981',
     padding: '0.75rem 1rem',
     borderRadius: '10px',
     fontSize: '0.875rem',
+    marginBottom: '1rem',
+  },
+  avatarSection: {
+    textAlign: 'center',
+    marginBottom: '24px',
+  },
+  avatar: {
+    width: '100px',
+    height: '100px',
+    borderRadius: '50%',
+    objectFit: 'cover',
+    border: '3px solid #7c5cfc',
+  },
+  infoSection: {
+    marginBottom: '2rem',
+  },
+  infoRow: {
+    display: 'flex',
+    padding: '12px 0',
+    borderBottom: '1px solid rgba(139, 92, 246, 0.1)',
+  },
+  infoLabel: {
+    width: '100px',
+    color: '#888',
+    fontSize: '14px',
+    fontWeight: 500,
+  },
+  infoValue: {
+    color: '#fff',
+    fontSize: '14px',
+    flex: 1,
+  },
+  field: {
     marginBottom: '1rem',
   },
   label: {
@@ -279,12 +427,34 @@ const styles = {
     fontFamily: "'DM Sans', sans-serif",
     boxSizing: 'border-box',
   },
+  fileInput: {
+    width: '100%',
+    padding: '0.5rem',
+    background: '#0a0a0f',
+    border: '1px solid #ffffff12',
+    borderRadius: '10px',
+    color: '#f0f0f5',
+    fontSize: '0.9rem',
+    fontFamily: "'DM Sans', sans-serif",
+  },
+  fileHint: {
+    display: 'block',
+    color: '#666',
+    fontSize: '0.7rem',
+    marginTop: '0.25rem',
+  },
   row: {
     display: 'grid',
     gridTemplateColumns: '1fr 1fr',
     gap: '0.75rem',
   },
-  primaryBtn: {
+  buttonGroup: {
+    display: 'grid',
+    gridTemplateColumns: '1fr 1fr',
+    gap: '0.75rem',
+    marginTop: '1rem',
+  },
+  editBtn: {
     width: '100%',
     padding: '0.85rem',
     background: '#7c5cfc',
@@ -292,10 +462,29 @@ const styles = {
     borderRadius: '10px',
     color: '#fff',
     fontSize: '0.95rem',
-    fontWeight: 700,
-    fontFamily: "'Syne', sans-serif",
+    fontWeight: 600,
     cursor: 'pointer',
-    letterSpacing: '0.02em',
+    marginBottom: '1rem',
+  },
+  saveBtn: {
+    padding: '0.85rem',
+    background: '#7c5cfc',
+    border: 'none',
+    borderRadius: '10px',
+    color: '#fff',
+    fontSize: '0.95rem',
+    fontWeight: 600,
+    cursor: 'pointer',
+  },
+  cancelBtn: {
+    padding: '0.85rem',
+    background: 'transparent',
+    border: '1px solid #ffffff12',
+    borderRadius: '10px',
+    color: '#888',
+    fontSize: '0.95rem',
+    fontWeight: 600,
+    cursor: 'pointer',
   },
   logoutBtn: {
     width: '100%',
@@ -306,14 +495,7 @@ const styles = {
     color: '#ff5e78',
     fontSize: '0.95rem',
     fontWeight: 600,
-    fontFamily: "'DM Sans', sans-serif",
     cursor: 'pointer',
-    marginTop: '1rem',
-  },
-  divider: {
-    height: '1px',
-    background: '#ffffff12',
-    margin: '1.5rem 0',
   },
   switchText: {
     textAlign: 'center',
@@ -322,7 +504,7 @@ const styles = {
     marginTop: '1.5rem',
   },
   link: {
-    color: '#7c5cfc',
+    color: '#5cfc91',
     textDecoration: 'none',
     fontWeight: 500,
   },

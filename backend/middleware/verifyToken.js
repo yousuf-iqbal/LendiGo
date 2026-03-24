@@ -1,61 +1,39 @@
-// middleware/verifyToken.js
-// verifies firebase token on every protected route
-// replaces the old jwt verifyToken
+const admin = require('firebase-admin');
 
-const { admin } = require('../config/firebase');
-const { findUserByEmail } = require('../models/authModel');
+// Initialize Firebase Admin
+if (!admin.apps.length) {
+  try {
+    const serviceAccount = require('../config/serviceAccountKey.json');
+    admin.initializeApp({
+      credential: admin.credential.cert(serviceAccount)
+    });
+    console.log('Firebase Admin initialized');
+  } catch (err) {
+    console.error('Firebase Admin init error:', err.message);
+  }
+}
 
 const verifyToken = async (req, res, next) => {
-  const authHeader = req.headers['authorization'];
-  const token      = authHeader && authHeader.split(' ')[1];
-
-  if (!token) {
-    return res.status(401).json({ error: 'access denied. please log in.' });
+  const authHeader = req.headers.authorization;
+  
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    console.log('No token provided');
+    return res.status(401).json({ error: 'No token provided' });
   }
-    try {
-    // verify the token with firebase — returns decoded user info
-    const decoded = await admin.auth().verifyIdToken(token);
-
-    // check if email is verified in firebase
-    if (!decoded.email_verified) {
-      return res.status(403).json({ 
-        error: 'please verify your email. check your inbox for the verification link.' 
-      });
-    }
-
-    // get the user from your own database to get role, isBanned etc
-    const user = await findUserByEmail(decoded.email);
-
-    if (!user) {
-      return res.status(404).json({ error: 'user not found in database.' });
-    }
-    if (user.IsBanned) {
-      return res.status(403).json({ error: 'your account has been suspended.' });
-    }
-
-    // attach user info to req — available in all controllers
-    req.user = {
-      id:       user.UserID,
-      email:    user.Email,
-      role:     user.Role,
-      fullName: user.FullName,
-    };
-
+  
+  const token = authHeader.split(' ')[1];
+  console.log('Token received, verifying...');
+  
+  try {
+    const decodedToken = await admin.auth().verifyIdToken(token);
+    console.log('Token verified for user:', decodedToken.uid);
+    req.userID = decodedToken.uid; // Set user ID
+    req.userEmail = decodedToken.email;
     next();
   } catch (err) {
-    console.error('token verification error:', err.message);
-    return res.status(403).json({ error: 'invalid or expired token. please log in again.' });
+    console.error('Token verification error:', err.message);
+    return res.status(403).json({ error: 'Invalid or expired token' });
   }
 };
 
-// use this for admin-only routes
-const verifyAdmin = async (req, res, next) => {
-  await verifyToken(req, res, () => {
-    if (req.user.role !== 'admin') {
-      return res.status(403).json({ error: 'admin access required.' });
-    }
-    next();
-  });
-};
-
-module.exports = { verifyToken, verifyAdmin };
+module.exports = verifyToken;

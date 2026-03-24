@@ -7,6 +7,7 @@ export default function RequestDetailPage() {
   const { id } = useParams();
   const { currentUser, userProfile } = useContext(AuthContext);
   const navigate = useNavigate();
+  const [expanded, setExpanded] = useState(false);
 
   const [request, setRequest]   = useState(null);
   const [offers, setOffers]     = useState([]);
@@ -29,7 +30,18 @@ export default function RequestDetailPage() {
         API.get(`/requests/${id}`),
         API.get(`/offers/request/${id}`),
       ]);
-      setRequest(reqRes.data);
+      
+      // Calculate duration days if not provided
+      const requestData = reqRes.data;
+      if (requestData.StartDate && requestData.EndDate && !requestData.DurationDays) {
+        const start = new Date(requestData.StartDate);
+        const end = new Date(requestData.EndDate);
+        const diffTime = Math.abs(end - start);
+        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
+        requestData.DurationDays = diffDays;
+      }
+      
+      setRequest(requestData);
       setOffers(offersRes.data);
     } catch {
       setError('Could not load this request.');
@@ -47,23 +59,37 @@ export default function RequestDetailPage() {
     setOfferError('');
     setOfferSuccess('');
 
-    if (!currentUser) { navigate('/login'); return; }
-    if (!offerPrice)  { setOfferError('Price is required.'); return; }
+    const requestID = Number(id);
+    const token = localStorage.getItem('token');
+    
+    if (!token) { 
+      setOfferError('Please login to make an offer');
+      setTimeout(() => navigate('/login'), 2000);
+      return; 
+    }
+    
+    if (!offerPrice) { 
+      setOfferError('Price is required.'); 
+      return; 
+    }
 
     try {
       setSubmitting(true);
-      const token = await currentUser.getIdToken();
+      
       await API.post('/offers', {
-        requestID: Number(id),
+        requestID: requestID,
         offeredPrice: Number(offerPrice),
-        message: offerMessage || undefined,
-      }, { headers: { Authorization: `Bearer ${token}` } });
+        message: offerMessage || null,
+      }, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
 
       setOfferSuccess('Offer submitted successfully!');
       setOfferPrice('');
       setOfferMessage('');
-      fetchData(); // refresh offer count
+      fetchData();
     } catch (err) {
+      console.error('Offer error:', err.response?.data);
       setOfferError(err.response?.data?.error || 'Could not submit offer.');
     } finally {
       setSubmitting(false);
@@ -71,10 +97,15 @@ export default function RequestDetailPage() {
   };
 
   const handleAccept = async (offerID) => {
-    if (!currentUser) return;
+    const token = localStorage.getItem('token');
+    if (!token) {
+      navigate('/login');
+      return;
+    }
     try {
-      const token = await currentUser.getIdToken();
-      await API.patch(`/offers/${offerID}/accept`, {}, { headers: { Authorization: `Bearer ${token}` } });
+      await API.patch(`/offers/${offerID}/accept`, {}, { 
+        headers: { Authorization: `Bearer ${token}` } 
+      });
       setActionMsg('Offer accepted! Request is now closed.');
       fetchData();
     } catch (err) {
@@ -83,10 +114,15 @@ export default function RequestDetailPage() {
   };
 
   const handleReject = async (offerID) => {
-    if (!currentUser) return;
+    const token = localStorage.getItem('token');
+    if (!token) {
+      navigate('/login');
+      return;
+    }
     try {
-      const token = await currentUser.getIdToken();
-      await API.patch(`/offers/${offerID}/reject`, {}, { headers: { Authorization: `Bearer ${token}` } });
+      await API.patch(`/offers/${offerID}/reject`, {}, { 
+        headers: { Authorization: `Bearer ${token}` } 
+      });
       setActionMsg('Offer rejected.');
       fetchData();
     } catch (err) {
@@ -95,10 +131,15 @@ export default function RequestDetailPage() {
   };
 
   const handleClose = async () => {
-    if (!currentUser) return;
+    const token = localStorage.getItem('token');
+    if (!token) {
+      navigate('/login');
+      return;
+    }
     try {
-      const token = await currentUser.getIdToken();
-      await API.patch(`/requests/${id}/close`, {}, { headers: { Authorization: `Bearer ${token}` } });
+      await API.patch(`/requests/${id}/close`, {}, { 
+        headers: { Authorization: `Bearer ${token}` } 
+      });
       setActionMsg('Request closed.');
       fetchData();
     } catch (err) {
@@ -116,7 +157,7 @@ export default function RequestDetailPage() {
     <div style={styles.page}>
       <button style={styles.back} onClick={() => navigate('/requests')}>← Back to Board</button>
 
-      {/* Request details */}
+      {/* Request details card */}
       <div style={styles.card}>
         <div style={styles.cardTop}>
           <span style={styles.category}>{request.Category}</span>
@@ -124,13 +165,43 @@ export default function RequestDetailPage() {
             {isClosed ? 'Closed' : 'Open'}
           </span>
         </div>
+        
         <h1 style={styles.title}>{request.Title}</h1>
-        <p style={styles.desc}>{request.Description}</p>
+        
+        {/* Description with show more/less */}
+        <p style={styles.descPreview}>
+          {request.Description?.length > 150 && !expanded 
+            ? request.Description.substring(0, 150) + '...' 
+            : request.Description}
+        </p>
+        
+        {request.Description?.length > 150 && (
+          <button style={styles.expandBtn} onClick={() => setExpanded(!expanded)}>
+            {expanded ? 'Show less ▲' : 'Show more ▼'}
+          </button>
+        )}
+        
+        {expanded && request.Description?.length > 150 && (
+          <div style={styles.fullDetails}>
+            <p style={styles.descFull}>{request.Description}</p>
+          </div>
+        )}
+        
+        {/* Meta information row */}
         <div style={styles.metaRow}>
           <span style={styles.meta}>📍 {request.City}{request.Area ? `, ${request.Area}` : ''}</span>
-          <span style={styles.meta}>⏱ {request.DurationDays} day{request.DurationDays !== 1 ? 's' : ''}</span>
-          <span style={styles.meta}>👤 {request.RequesterName}</span>
-          <span style={styles.meta}>💬 {request.OfferCount} offer{request.OfferCount !== 1 ? 's' : ''}</span>
+          <span style={styles.meta}>
+            📅 {request.StartDate ? new Date(request.StartDate).toLocaleDateString() : 'Not set'} 
+            → {request.EndDate ? new Date(request.EndDate).toLocaleDateString() : 'Not set'}
+          </span>
+          <span style={styles.meta}>
+            ⏱ {request.DurationDays ? `${request.DurationDays} day${request.DurationDays !== 1 ? 's' : ''}` : 'Not specified'}
+          </span>
+          <span style={styles.meta}>
+            💰 Max: {request.MaxBudget ? `Rs. ${request.MaxBudget.toLocaleString()}` : 'Negotiable'}
+          </span>
+          <span style={styles.meta}>👤 {request.RequesterName || 'Anonymous'}</span>
+          <span style={styles.meta}>💬 {request.OfferCount || 0} offer{(request.OfferCount || 0) !== 1 ? 's' : ''}</span>
         </div>
 
         {isOwner && !isClosed && (
@@ -150,8 +221,8 @@ export default function RequestDetailPage() {
               <div key={o.OfferID} style={styles.offerCard}>
                 <div style={styles.offerTop}>
                   <div>
-                    <span style={styles.lenderName}>{o.LenderName}</span>
-                    <span style={styles.lenderLocation}> · {o.LenderCity}{o.LenderArea ? `, ${o.LenderArea}` : ''}</span>
+                    <span style={styles.lenderName}>{o.LenderName || 'Anonymous'}</span>
+                    <span style={styles.lenderLocation}> · {o.LenderCity || 'Unknown'}{o.LenderArea ? `, ${o.LenderArea}` : ''}</span>
                   </div>
                   <span style={styles.price}>Rs. {o.OfferedPrice}</span>
                 </div>
@@ -162,7 +233,7 @@ export default function RequestDetailPage() {
                     background: o.Status === 'accepted' ? '#dcfce7' : o.Status === 'rejected' ? '#fee2e2' : '#fef9c3',
                     color: o.Status === 'accepted' ? '#16a34a' : o.Status === 'rejected' ? '#dc2626' : '#92400e',
                   }}>
-                    {o.Status}
+                    {o.Status || 'pending'}
                   </span>
                   {!isClosed && o.Status === 'pending' && (
                     <div style={styles.offerActions}>
@@ -181,12 +252,12 @@ export default function RequestDetailPage() {
       {!isOwner && !isClosed && (
         <div style={styles.section}>
           <h2 style={styles.sectionTitle}>Make an Offer</h2>
-          {!currentUser && (
+          {!localStorage.getItem('token') && (
             <p style={styles.loginPrompt}>
               <button style={styles.loginLink} onClick={() => navigate('/login')}>Log in</button> to make an offer.
             </p>
           )}
-          {currentUser && (
+          {localStorage.getItem('token') && (
             <form onSubmit={handleOffer} style={styles.offerForm}>
               {offerError   && <div style={styles.error}>{offerError}</div>}
               {offerSuccess && <div style={styles.success}>{offerSuccess}</div>}
@@ -228,10 +299,13 @@ const styles = {
   cardTop: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
   category: { background: '#ede9fe', color: '#4f46e5', borderRadius: 6, padding: '3px 10px', fontSize: 12, fontWeight: 600 },
   statusBadge: { borderRadius: 6, padding: '3px 10px', fontSize: 12, fontWeight: 600 },
-  title: { fontSize: 24, fontWeight: 700, margin: '0 0 10px', color: '#1a1a2e' },
-  desc: { fontSize: 15, color: '#555', lineHeight: 1.6, margin: '0 0 16px' },
-  metaRow: { display: 'flex', flexWrap: 'wrap', gap: 14, marginBottom: 16 },
-  meta: { fontSize: 13, color: '#888' },
+  title: { fontSize: 24, fontWeight: 700, margin: '0 0 12px', color: '#1a1a2e' },
+  descPreview: { fontSize: 14, color: '#555', lineHeight: 1.5, margin: '0 0 8px' },
+  expandBtn: { background: 'none', border: 'none', color: '#4f46e5', fontSize: 12, cursor: 'pointer', padding: '4px 0', marginBottom: 12, fontWeight: 500 },
+  fullDetails: { marginBottom: 16 },
+  descFull: { fontSize: 14, color: '#555', lineHeight: 1.6, margin: 0 },
+  metaRow: { display: 'flex', flexWrap: 'wrap', gap: 14, marginBottom: 16, paddingTop: 12, borderTop: '1px solid #e5e7eb' },
+  meta: { fontSize: 13, color: '#666', display: 'flex', alignItems: 'center', gap: 4 },
   closeBtn: { background: '#fee2e2', color: '#dc2626', border: 'none', borderRadius: 8, padding: '9px 18px', fontSize: 13, fontWeight: 600, cursor: 'pointer', marginTop: 8 },
   actionMsg: { marginTop: 12, fontSize: 14, color: '#4f46e5', fontWeight: 500 },
   section: { background: '#fff', border: '1px solid #e5e7eb', borderRadius: 14, padding: '28px', marginBottom: 24, boxShadow: '0 2px 8px rgba(0,0,0,0.06)' },

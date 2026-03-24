@@ -1,5 +1,4 @@
-const requestModel = require('../models/requestModel');
-
+﻿const requestModel = require('../models/requestModel');
 // GET /api/requests
 async function getAllRequests(req, res) {
   try {
@@ -11,7 +10,6 @@ async function getAllRequests(req, res) {
     res.status(500).json({ error: 'server error' });
   }
 }
-
 // GET /api/requests/filters
 async function getFilterOptions(req, res) {
   try {
@@ -22,7 +20,6 @@ async function getFilterOptions(req, res) {
     res.status(500).json({ error: 'could not fetch filters' });
   }
 }
-
 // GET /api/requests/my
 async function getMyRequests(req, res) {
   try {
@@ -33,7 +30,6 @@ async function getMyRequests(req, res) {
     res.status(500).json({ error: 'server error' });
   }
 }
-
 // GET /api/requests/:id
 async function getRequestById(req, res) {
   try {
@@ -45,28 +41,32 @@ async function getRequestById(req, res) {
     res.status(500).json({ error: 'server error' });
   }
 }
-
 // POST /api/requests
 async function createRequest(req, res) {
   try {
+    console.log('=== CREATE REQUEST ===');
+    console.log('User ID from token:', req.userID);
+    console.log('Request body:', req.body);
     const { categoryID, title, description, city, area, startDate, endDate, maxBudget } = req.body;
-    if (!title) return res.status(400).json({ error: 'title is required' });
-    if (!description || description.length < 5)
+    if (!title) {
+      return res.status(400).json({ error: 'title is required' });
+    }
+    if (!description || description.length < 5) {
       return res.status(400).json({ error: 'description must be at least 5 characters' });
-    if (!startDate || !endDate)
+    }
+    if (!startDate || !endDate) {
       return res.status(400).json({ error: 'startDate and endDate are required' });
-
+    }
     const request = await requestModel.createRequest({
       requesterID: req.userID,
       categoryID, title, description, city, area, startDate, endDate, maxBudget
     });
-    res.status(201).json(request);
+    res.status(201).json({ request });
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: 'server error' });
+    console.error('ERROR in createRequest:', err);
+    res.status(500).json({ error: 'server error: ' + err.message });
   }
 }
-
 // PUT /api/requests/:id
 async function updateRequest(req, res) {
   try {
@@ -82,7 +82,6 @@ async function updateRequest(req, res) {
     res.status(500).json({ error: 'server error' });
   }
 }
-
 // DELETE /api/requests/:id
 async function deleteRequest(req, res) {
   try {
@@ -94,7 +93,6 @@ async function deleteRequest(req, res) {
     res.status(500).json({ error: 'server error' });
   }
 }
-
 // PATCH /api/requests/:id/close
 async function closeRequest(req, res) {
   try {
@@ -106,9 +104,13 @@ async function closeRequest(req, res) {
     res.status(500).json({ error: 'server error' });
   }
 }
-
 module.exports = {
-  getAllRequests, getFilterOptions, getMyRequests,
-  getRequestById, createRequest, updateRequest,
-  deleteRequest, closeRequest
+  getAllRequests,
+  getFilterOptions,
+  getMyRequests,
+  getRequestById,
+  createRequest,
+  updateRequest,
+  deleteRequest,
+  closeRequest
 };
