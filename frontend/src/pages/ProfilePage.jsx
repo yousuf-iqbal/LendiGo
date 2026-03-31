@@ -78,61 +78,25 @@ export default function ProfilePage() {
     try {
       const token = localStorage.getItem('token');
       
-      let profilePicUrl = user?.profilePic;
-      let cnicPicUrl = user?.cnicPicture;
-      
-      // Upload profile picture if selected
-      if (profilePicFile) {
-        const picFormData = new FormData();
-        picFormData.append('profilePic', profilePicFile);
-        
-        const uploadRes = await API.post('/auth/upload-profile-pic', picFormData, {
-          headers: { 
-            Authorization: `Bearer ${token}`,
-            'Content-Type': 'multipart/form-data'
-          }
-        });
-        profilePicUrl = uploadRes.data.profilePicUrl;
-      }
-      
-      // Upload CNIC picture if selected
-      if (cnicFile) {
-        const cnicFormData = new FormData();
-        cnicFormData.append('cnicPicture', cnicFile);
-        
-        const uploadRes = await API.post('/auth/upload-cnic', cnicFormData, {
-          headers: { 
-            Authorization: `Bearer ${token}`,
-            'Content-Type': 'multipart/form-data'
-          }
-        });
-        cnicPicUrl = uploadRes.data.cnicPictureUrl;
-      }
-      
-      // Update profile
-      const response = await API.put('/auth/profile', {
-        ...formData,
-        profilePic: profilePicUrl,
-        cnicPicture: cnicPicUrl
-      }, {
+      const response = await API.put('/auth/profile', formData, {
         headers: { Authorization: `Bearer ${token}` }
       });
       
       // Update localStorage with new data
-      const updatedUser = { 
-        ...user, 
-        ...formData, 
-        profilePic: profilePicUrl,
-        cnicPicture: cnicPicUrl
-      };
+      const updatedUser = { ...user, ...formData };
       localStorage.setItem('udhaari_user', JSON.stringify(updatedUser));
       setUser(updatedUser);
       
       setSuccess('Profile updated successfully!');
       setEditing(false);
-      setProfilePicFile(null);
-      setCnicFile(null);
+      
+      // Refresh the page to show updated data
+      setTimeout(() => {
+        window.location.reload();
+      }, 1000);
+      
     } catch (err) {
+      console.error('Error:', err);
       setError(err.response?.data?.error || 'Failed to update profile');
     } finally {
       setLoading(false);
@@ -170,20 +134,16 @@ export default function ProfilePage() {
         {/* Profile Picture */}
         <div style={styles.avatarSection}>
           <img 
-            src={user?.profilePic || 'https://via.placeholder.com/100x100?text=No+Image'} 
+            src={user?.profilePic || 'https://ui-avatars.com/api/?background=7c5cfc&color=fff&bold=true&size=100&name=' + (user?.fullName?.charAt(0) || 'U')} 
             alt="Profile" 
             style={styles.avatar}
           />
         </div>
 
         {!editing ? (
-          // View Mode
+          // View Mode - Email removed
           <>
             <div style={styles.infoSection}>
-              <div style={styles.infoRow}>
-                <span style={styles.infoLabel}>Email:</span>
-                <span style={styles.infoValue}>{user?.email || 'Not set'}</span>
-              </div>
               <div style={styles.infoRow}>
                 <span style={styles.infoLabel}>Full Name:</span>
                 <span style={styles.infoValue}>{user?.fullName || 'Not set'}</span>

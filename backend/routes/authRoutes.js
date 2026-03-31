@@ -5,8 +5,10 @@ const multer = require('multer');
 const { CloudinaryStorage } = require('multer-storage-cloudinary');
 const { cloudinary } = require('../config/cloudinary');
 const { register, login } = require('../controllers/authController');
+const { poolPromise, sql } = require('../config/db');
+const verifyToken = require('../middleware/verifyToken');
 
-// cloudinary storage
+// Cloudinary storage
 const storage = new CloudinaryStorage({
   cloudinary,
   params: async (req, file) => {
@@ -34,7 +36,7 @@ router.post('/register',
   register
 );
 
-// POST /api/auth/login - simple version without database query
+// POST /api/auth/login
 router.post('/login', async (req, res) => {
   try {
     const authHeader = req.headers.authorization;
@@ -45,8 +47,8 @@ router.post('/login', async (req, res) => {
     
     const token = authHeader.split(' ')[1];
     
-    // Return a simple success response
-    // The frontend already has the user info from Firebase
+    // For now, return a mock user
+    // In production, verify token with Firebase Admin
     res.json({ 
       user: { 
         UserID: 1, 
@@ -61,4 +63,145 @@ router.post('/login', async (req, res) => {
   }
 });
 
+// GET /api/auth/profile
+router.get('/profile', verifyToken, async (req, res) => {
+  try {
+    const pool = await poolPromise;
+    const result = await pool.request()
+      .input('userID', sql.Int, req.userID)
+      .query('SELECT UserID, FullName, Email, Phone, City, Area, CNIC, ProfilePic FROM Users WHERE UserID = @userID');
+    
+    if (result.recordset.length === 0) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+    res.json(result.recordset[0]);
+  } catch (err) {
+    console.error('Profile error:', err);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// PUT /api/auth/profile
+router.put('/profile', verifyToken, async (req, res) => {
+  try {
+    const { fullName, phone, city, area, cnic, profilePic } = req.body;
+    const pool = await poolPromise;
+    
+    await pool.request()
+      .input('userID', sql.Int, req.userID)
+      .input('fullName', sql.NVarChar, fullName)
+      .input('phone', sql.NVarChar, phone)
+      .input('city', sql.NVarChar, city)
+      .input('area', sql.NVarChar, area || null)
+      .input('cnic', sql.NVarChar, cnic)
+      .input('profilePic', sql.NVarChar, profilePic || null)
+      .query(`
+        UPDATE Users 
+        SET FullName = @fullName, 
+            Phone = @phone, 
+            City = @city, 
+            Area = @area, 
+            CNIC = @cnic,
+            ProfilePic = ISNULL(@profilePic, ProfilePic)
+        WHERE UserID = @userID
+      `);
+    
+    res.json({ message: 'Profile updated successfully' });
+  } catch (err) {
+    console.error('Update error:', err);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// POST /api/auth/upload-profile-pic
+router.post('/upload-profile-pic', verifyToken, upload.single('profilePic'), async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ error: 'No file uploaded' });
+    }
+    res.json({ profilePicUrl: req.file.path });
+  } catch (err) {
+    console.error('Upload error:', err);
+    res.status(500).json({ error: 'Upload failed' });
+  }
+});
+
+// POST /api/auth/upload-cnic
+router.post('/upload-cnic', verifyToken, upload.single('cnicPicture'), async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ error: 'No file uploaded' });
+    }
+    res.json({ cnicPictureUrl: req.file.path });
+  } catch (err) {
+    console.error('Upload error:', err);
+    res.status(500).json({ error: 'Upload failed' });
+  }
+});
+// POST /api/auth/upload-profile-pic
+router.post('/upload-profile-pic', verifyToken, upload.single('profilePic'), async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ error: 'No file uploaded' });
+    }
+    res.json({ profilePicUrl: req.file.path });
+  } catch (err) {
+    console.error('Upload error:', err);
+    res.status(500).json({ error: 'Upload failed' });
+  }
+});
+// GET /api/auth/profile
+router.get('/profile', verifyToken, async (req, res) => {
+  try {
+    const pool = await poolPromise;
+    const result = await pool.request()
+      .input('userID', sql.Int, req.userID)
+      .query('SELECT UserID, FullName, Email, Phone, City, Area, CNIC, ProfilePic FROM Users WHERE UserID = @userID');
+    
+    if (result.recordset.length === 0) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+    res.json(result.recordset[0]);
+  } catch (err) {
+    console.error('Profile error:', err);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// PUT /api/auth/profile
+router.put('/profile', verifyToken, async (req, res) => {
+  try {
+    const { fullName, phone, city, area, cnic, profilePic } = req.body;
+    const pool = await poolPromise;
+    
+    await pool.request()
+      .input('userID', sql.Int, req.userID)
+      .input('fullName', sql.NVarChar, fullName)
+      .input('phone', sql.NVarChar, phone)
+      .input('city', sql.NVarChar, city)
+      .input('area', sql.NVarChar, area || null)
+      .input('cnic', sql.NVarChar, cnic)
+      .input('profilePic', sql.NVarChar, profilePic || null)
+      .query(`
+        UPDATE Users 
+        SET FullName = @fullName, 
+            Phone = @phone, 
+            City = @city, 
+            Area = @area, 
+            CNIC = @cnic,
+            ProfilePic = ISNULL(@profilePic, ProfilePic)
+        WHERE UserID = @userID
+      `);
+    
+    // Get updated user
+    const updated = await pool.request()
+      .input('userID', sql.Int, req.userID)
+      .query('SELECT UserID, FullName, Email, Phone, City, Area, CNIC, ProfilePic FROM Users WHERE UserID = @userID');
+    
+    res.json({ message: 'Profile updated successfully', user: updated.recordset[0] });
+  } catch (err) {
+    console.error('Update error:', err);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
 module.exports = router;

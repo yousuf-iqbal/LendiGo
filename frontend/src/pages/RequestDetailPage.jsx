@@ -49,52 +49,60 @@ export default function RequestDetailPage() {
       setLoading(false);
     }
   };
-
-  useEffect(() => { fetchData(); }, [id]);
+useEffect(() => { 
+  fetchData(); 
+}, [id]);  // This is correct - it only runs when id changes
 
   const isOwner = userProfile && request && userProfile.UserID === request.RequesterID;
+const handleOffer = async e => {
+  e.preventDefault();
+  setOfferError('');
+  setOfferSuccess('');
 
-  const handleOffer = async e => {
-    e.preventDefault();
-    setOfferError('');
-    setOfferSuccess('');
+  // Get the request ID from the URL params
+  const requestID = Number(id);  // 'id' comes from useParams()
+  
+  console.log('Making offer for request ID:', requestID);
+  
+  const token = localStorage.getItem('token');
+  if (!token) { 
+    setOfferError('Please login to make an offer');
+    setTimeout(() => navigate('/login'), 2000);
+    return; 
+  }
+  
+  if (!offerPrice) { 
+    setOfferError('Price is required.'); 
+    return; 
+  }
 
-    const requestID = Number(id);
-    const token = localStorage.getItem('token');
+  if (isNaN(requestID) || requestID <= 0) {
+    setOfferError('Invalid request ID');
+    return;
+  }
+
+  try {
+    setSubmitting(true);
     
-    if (!token) { 
-      setOfferError('Please login to make an offer');
-      setTimeout(() => navigate('/login'), 2000);
-      return; 
-    }
-    
-    if (!offerPrice) { 
-      setOfferError('Price is required.'); 
-      return; 
-    }
+    const response = await API.post('/offers', {
+      requestID: requestID,  // Make sure this is a number
+      offeredPrice: Number(offerPrice),
+      message: offerMessage || null,
+    }, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
 
-    try {
-      setSubmitting(true);
-      
-      await API.post('/offers', {
-        requestID: requestID,
-        offeredPrice: Number(offerPrice),
-        message: offerMessage || null,
-      }, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-
-      setOfferSuccess('Offer submitted successfully!');
-      setOfferPrice('');
-      setOfferMessage('');
-      fetchData();
-    } catch (err) {
-      console.error('Offer error:', err.response?.data);
-      setOfferError(err.response?.data?.error || 'Could not submit offer.');
-    } finally {
-      setSubmitting(false);
-    }
-  };
+    setOfferSuccess('Offer submitted successfully!');
+    setOfferPrice('');
+    setOfferMessage('');
+    fetchData();
+  } catch (err) {
+    console.error('Offer error:', err.response?.data);
+    setOfferError(err.response?.data?.error || 'Could not submit offer.');
+  } finally {
+    setSubmitting(false);
+  }
+};
 
   const handleAccept = async (offerID) => {
     const token = localStorage.getItem('token');

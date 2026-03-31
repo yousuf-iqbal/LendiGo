@@ -47,11 +47,18 @@ export default function LoginPage() {
       
       console.log('Backend response:', res.data);
 
-      if (res.data.user) {
-        // save user to localStorage for quick access
-        localStorage.setItem('udhaari_user', JSON.stringify(res.data.user));
-        navigate('/requests');  // redirect to requests page
-      } else {
+      
+if (res.data.user) {
+  // Add email from Firebase to the user object
+  const userWithEmail = {
+    ...res.data.user,
+    email: cred.user.email  // Add the email from Firebase
+  };
+  // save user to localStorage
+  localStorage.setItem('udhaari_user', JSON.stringify(userWithEmail));
+  navigate('/requests');
+}
+else {
         setError('Could not get user profile');
       }
 
