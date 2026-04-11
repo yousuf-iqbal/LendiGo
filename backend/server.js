@@ -9,9 +9,9 @@ const authRoutes = require('./routes/authRoutes');
 
 // future routes — uncomment as each feature is built:
  const requestRoutes = require('./routes/requestRoutes');
-
+ const assetRoutes   = require('./routes/assetRoutes');
  const offerRoutes   = require('./routes/offerRoutes');
-// const bookingRoutes = require('./routes/bookingRoutes');
+ const bookingRoutes = require('./routes/bookingRoutes');
 // const adminRoutes   = require('./routes/adminRoutes');
 
 const app = express();
@@ -21,7 +21,8 @@ app.use('/api/auth', authRoutes);
 
  app.use('/api/requests', requestRoutes);
  app.use('/api/offers',   offerRoutes);
-// app.use('/api/bookings', bookingRoutes);
+ app.use('/api/assets',   assetRoutes);
+ app.use('/api/bookings', bookingRoutes);
 // app.use('/api/admin',    adminRoutes);
 
 app.get('/', (req, res) => {

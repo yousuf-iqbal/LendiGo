@@ -1,0 +1,45 @@
+[33m085e2c2[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mkhushbakht/feat/browse-items[m[33m, [m[1;31morigin/khushbakht/feat/browse-items[m[33m)[m chore: add serviceaccountkey to gitignore and remove from tracking
+ .gitignore | 1 [32m+[m
+ 1 file changed, 1 insertion(+)
+[33m2f3efb1[m chore: add serviceaccountkey to gitignore
+ .gitignore                               |   2 [32m+[m
+ backend/controllers/requestController.js |  37 [32m+++[m[31m---[m
+ backend/middleware/verifyToken.js        |  44 [32m++++++[m[31m-[m
+ backend/routes/authRoutes.js             | 151 [32m+++++++++++++++++++++[m[31m-[m
+ backend/routes/offerRoutes.js            | 212 [32m++++++++++++++++++++[m[31m-----------[m
+ frontend/src/pages/LoginPage.jsx         |  17 [32m++[m[31m-[m
+ frontend/src/pages/ProfilePage.jsx       |  62 [32m++[m[31m-------[m
+ frontend/src/pages/RequestDetailPage.jsx |  88 [32m+++++++[m[31m------[m
+ 8 files changed, 415 insertions(+), 198 deletions(-)
+[33ma93ea60[m[33m ([m[1;31morigin/main[m[33m, [m[1;31morigin/HEAD[m[33m)[m add: remaining backend and frontend files from feature branch
+ backend/controllers/requestController.js | 137 [32m+++++[m[31m---[m
+ backend/models/requestModel.js           | 281 [32m++++++++++[m[31m-----[m
+ backend/package-lock.json                | 587 [32m++++++++++++++++[m[31m---------------[m
+ backend/package.json                     |   2 [32m+[m[31m-[m
+ backend/routes/requestRoutes.js          |  23 [32m+[m[31m-[m
+ frontend/src/App.jsx                     |  56 [32m+[m[31m--[m
+ frontend/src/index.css                   | 386 [32m+++++++++++++++[m[31m-----[m
+ frontend/src/main.jsx                    |   5 [32m+[m[31m-[m
+ frontend/src/pages/LoginPage.jsx         |  27 [32m+[m[31m-[m
+ 9 files changed, 927 insertions(+), 577 deletions(-)
+[33m4aa297e[m feat: implement browse and search functionality with offers and profile management
+ backend/middleware/verifyToken.js        |  84 [32m++++[m[31m-----[m
+ backend/routes/authRoutes.js             |  43 [32m+++[m[31m--[m
+ backend/routes/offerRoutes.js            | 138 [32m++++++++++++++[m[31m-[m
+ frontend/src/api/axios.js                |  23 [32m+[m[31m--[m
+ frontend/src/pages/PostRequestPage.jsx   | 281 [32m+++++++++++++++++++++++++++[m[31m----[m
+ frontend/src/pages/RequestDetailPage.jsx | 138 [32m+++++++++++[m[31m----[m
+ 6 files changed, 551 insertions(+), 156 deletions(-)
+[33m6619aaa[m merge: add browse and search feature with all enhancements
+[33me37b343[m feat: implement browse and search functionality with offers and profile management
+ backend/controllers/requestController.js |  42 [32m+[m[31m--[m
+ backend/middleware/verifyToken.js        |  84 [32m++[m[31m----[m
+ backend/routes/authRoutes.js             |  45 [32m++[m[31m-[m
+ backend/routes/offerRoutes.js            | 138 [32m++++++++[m[31m-[m
+ backend/routes/requestRoutes.js          |  18 [32m+[m[31m-[m
+ frontend/src/api/axios.js                |  23 [32m+[m[31m-[m
+ frontend/src/pages/LoginPage.jsx         |  37 [32m++[m[31m-[m
+ frontend/src/pages/PostRequestPage.jsx   | 281 [32m+++++++++++++++[m[31m---[m
+ frontend/src/pages/ProfilePage.jsx       | 482 [32m+++++++++++++++++++++[m[31m----------[m
+ frontend/src/pages/RequestDetailPage.jsx | 138 [32m+++++++[m[31m--[m
+ 10 files changed, 942 insertions(+), 346 deletions(-)

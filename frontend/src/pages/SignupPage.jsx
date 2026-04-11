@@ -76,8 +76,10 @@ export default function SignupPage() {
       form.append('cnic', cnic);
       if (profilePic)  form.append('profilePic', profilePic);
       if (cnicPicture) form.append('cnicPicture', cnicPicture);
-
-      await API.post('/auth/register', form);
+      const token = await auth.currentUser.getIdToken();
+      await API.post('/auth/register', form, {
+       headers: { Authorization: `Bearer ${token}` }
+      });
 
       // send verification email after profile is saved
       await sendEmailVerification(auth.currentUser);
