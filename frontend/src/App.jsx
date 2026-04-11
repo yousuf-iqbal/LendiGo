@@ -10,6 +10,7 @@ import EditRequestPage from './pages/EditRequestPage';
 import ProfilePage from './pages/ProfilePage';
 import HomePage from './pages/HomePage';
 import PostRequestPage from './pages/PostRequestPage';
+import RatingPage from './pages/RatingPage';
 import './App.css';
 function App() {
   return (
@@ -28,6 +29,7 @@ function App() {
           <Route path="/profile" element={<ProfilePage />} />
           <Route path="/create-request" element={<PostRequestPage />} />
           <Route path="/requests/new" element={<PostRequestPage />} />
+          <Route path="/rate/:bookingID/:revieweeID" element={<RatingPage />} />
         </Routes>
       </div>
     </Router>
