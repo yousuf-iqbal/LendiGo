@@ -1,0 +1,464 @@
+{
+  "info": {
+    "_postman_id": "d6589a56-037c-40ca-9b3a-dee05b2d89fc",
+    "name": "udhaari",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "_exporter_id": "53187169",
+    "_collection_link": "https://go.postman.co/collection/53187169-d6589a56-037c-40ca-9b3a-dee05b2d89fc?source=collection_link"
+  },
+  "item": [
+    {
+      "name": "New Folder",
+      "item": []
+    },
+    {
+      "name": "New Request",
+      "request": {
+        "method": "GET",
+        "header": []
+      },
+      "response": []
+    },
+    {
+      "name": "http://localhost:5000/api/dashboard/borrower",
+      "request": {
+        "auth": {
+          "type": "noauth"
+        },
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer eyJhbGciOiJSUzI1NiIsImtpZCI6IjcwZmM5YzU0YjhiMjQyMWZmMTgyOTgxNTQyZmQ0NjRlOWJlYzM1NDUiLCJ0eXAiOiJKV1QifQ.eyJpc3MiOiJodHRwczovL3NlY3VyZXRva2VuLmdvb2dsZS5jb20vdWRoYWFyaWkiLCJhdWQiOiJ1ZGhhYXJpaSIsImF1dGhfdGltZSI6MTc3NjAxMjkwMSwidXNlcl9pZCI6IkpXMkdLbWtlenhYQ0tCTVdGR2hPSm1SbGZYYzIiLCJzdWIiOiJKVzJHS21rZXp4WENLQk1XRkdoT0ptUmxmWGMyIiwiaWF0IjoxNzc2MDEyOTAxLCJleHAiOjE3NzYwMTY1MDEsImVtYWlsIjoia2h1c2hiYWtodHNvaGFpbDEwMUBnbWFpbC5jb20iLCJlbWFpbF92ZXJpZmllZCI6dHJ1ZSwiZmlyZWJhc2UiOnsiaWRlbnRpdGllcyI6eyJlbWFpbCI6WyJraHVzaGJha2h0c29oYWlsMTAxQGdtYWlsLmNvbSJdfSwic2lnbl9pbl9wcm92aWRlciI6InBhc3N3b3JkIn19.DCpLpGeUwtJbDY5N6IMKvdtVOyukp7B17XQ9P6G3D3D9o9K-OpiPF75ZniL1fpR1D5IIQEuB_v7JU3MZUbL7YWD4j-o04SvAhI1sLsAE460qEF8L0T-Gk9eo2L2Vi21WYaXIbkKqwrTtzC0tkGQihwihuZd3JM9rMOqHJCq1P8XQ-RBIxOW-nB66a9KfCtwRVg1Mi0T2y1kA2uYKT-3C57mkEsIHC7azeu2W4I9LnMNz0MdyZkvdril3rL7zR7YY4HnO2KUTbLjR-kTigKQJXjxKbvAU-KYxJevQguc9GDteoQZSDqaVb5KRGkVnV60M5ITlaYeNjomO5dfGuTGLlA",
+            "type": "text"
+          }
+        ],
+        "url": {
+          "raw": "http://localhost:5000/api/dashboard/borrower",
+          "protocol": "http",
+          "host": [
+            "localhost"
+          ],
+          "port": "5000",
+          "path": [
+            "api",
+            "dashboard",
+            "borrower"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "http://localhost:5000/api/dashboard/lender",
+      "request": {
+        "auth": {
+          "type": "noauth"
+        },
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer eyJhbGciOiJSUzI1NiIsImtpZCI6IjcwZmM5YzU0YjhiMjQyMWZmMTgyOTgxNTQyZmQ0NjRlOWJlYzM1NDUiLCJ0eXAiOiJKV1QifQ.eyJpc3MiOiJodHRwczovL3NlY3VyZXRva2VuLmdvb2dsZS5jb20vdWRoYWFyaWkiLCJhdWQiOiJ1ZGhhYXJpaSIsImF1dGhfdGltZSI6MTc3NjAxMjkwMSwidXNlcl9pZCI6IkpXMkdLbWtlenhYQ0tCTVdGR2hPSm1SbGZYYzIiLCJzdWIiOiJKVzJHS21rZXp4WENLQk1XRkdoT0ptUmxmWGMyIiwiaWF0IjoxNzc2MDEyOTAxLCJleHAiOjE3NzYwMTY1MDEsImVtYWlsIjoia2h1c2hiYWtodHNvaGFpbDEwMUBnbWFpbC5jb20iLCJlbWFpbF92ZXJpZmllZCI6dHJ1ZSwiZmlyZWJhc2UiOnsiaWRlbnRpdGllcyI6eyJlbWFpbCI6WyJraHVzaGJha2h0c29oYWlsMTAxQGdtYWlsLmNvbSJdfSwic2lnbl9pbl9wcm92aWRlciI6InBhc3N3b3JkIn19.DCpLpGeUwtJbDY5N6IMKvdtVOyukp7B17XQ9P6G3D3D9o9K-OpiPF75ZniL1fpR1D5IIQEuB_v7JU3MZUbL7YWD4j-o04SvAhI1sLsAE460qEF8L0T-Gk9eo2L2Vi21WYaXIbkKqwrTtzC0tkGQihwihuZd3JM9rMOqHJCq1P8XQ-RBIxOW-nB66a9KfCtwRVg1Mi0T2y1kA2uYKT-3C57mkEsIHC7azeu2W4I9LnMNz0MdyZkvdril3rL7zR7YY4HnO2KUTbLjR-kTigKQJXjxKbvAU-KYxJevQguc9GDteoQZSDqaVb5KRGkVnV60M5ITlaYeNjomO5dfGuTGLlA",
+            "type": "text"
+          }
+        ],
+        "url": {
+          "raw": "http://localhost:5000/api/dashboard/lender",
+          "protocol": "http",
+          "host": [
+            "localhost"
+          ],
+          "port": "5000",
+          "path": [
+            "api",
+            "dashboard",
+            "lender"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "http://localhost:5000/api/profile/me",
+      "request": {
+        "auth": {
+          "type": "noauth"
+        },
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer eyJhbGciOiJSUzI1NiIsImtpZCI6IjcwZmM5YzU0YjhiMjQyMWZmMTgyOTgxNTQyZmQ0NjRlOWJlYzM1NDUiLCJ0eXAiOiJKV1QifQ.eyJpc3MiOiJodHRwczovL3NlY3VyZXRva2VuLmdvb2dsZS5jb20vdWRoYWFyaWkiLCJhdWQiOiJ1ZGhhYXJpaSIsImF1dGhfdGltZSI6MTc3NjAxMjkwMSwidXNlcl9pZCI6IkpXMkdLbWtlenhYQ0tCTVdGR2hPSm1SbGZYYzIiLCJzdWIiOiJKVzJHS21rZXp4WENLQk1XRkdoT0ptUmxmWGMyIiwiaWF0IjoxNzc2MDEyOTAxLCJleHAiOjE3NzYwMTY1MDEsImVtYWlsIjoia2h1c2hiYWtodHNvaGFpbDEwMUBnbWFpbC5jb20iLCJlbWFpbF92ZXJpZmllZCI6dHJ1ZSwiZmlyZWJhc2UiOnsiaWRlbnRpdGllcyI6eyJlbWFpbCI6WyJraHVzaGJha2h0c29oYWlsMTAxQGdtYWlsLmNvbSJdfSwic2lnbl9pbl9wcm92aWRlciI6InBhc3N3b3JkIn19.DCpLpGeUwtJbDY5N6IMKvdtVOyukp7B17XQ9P6G3D3D9o9K-OpiPF75ZniL1fpR1D5IIQEuB_v7JU3MZUbL7YWD4j-o04SvAhI1sLsAE460qEF8L0T-Gk9eo2L2Vi21WYaXIbkKqwrTtzC0tkGQihwihuZd3JM9rMOqHJCq1P8XQ-RBIxOW-nB66a9KfCtwRVg1Mi0T2y1kA2uYKT-3C57mkEsIHC7azeu2W4I9LnMNz0MdyZkvdril3rL7zR7YY4HnO2KUTbLjR-kTigKQJXjxKbvAU-KYxJevQguc9GDteoQZSDqaVb5KRGkVnV60M5ITlaYeNjomO5dfGuTGLlA",
+            "type": "text"
+          }
+        ],
+        "url": {
+          "raw": "http://localhost:5000/api/profile/me",
+          "protocol": "http",
+          "host": [
+            "localhost"
+          ],
+          "port": "5000",
+          "path": [
+            "api",
+            "profile",
+            "me"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "http://localhost:5000/api/profile/1",
+      "request": {
+        "auth": {
+          "type": "noauth"
+        },
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "http://localhost:5000/api/profile/1",
+          "protocol": "http",
+          "host": [
+            "localhost"
+          ],
+          "port": "5000",
+          "path": [
+            "api",
+            "profile",
+            "1"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": " http://localhost:5000/api/profile",
+      "request": {
+        "auth": {
+          "type": "noauth"
+        },
+        "method": "PUT",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer eyJhbGciOiJSUzI1NiIsImtpZCI6IjcwZmM5YzU0YjhiMjQyMWZmMTgyOTgxNTQyZmQ0NjRlOWJlYzM1NDUiLCJ0eXAiOiJKV1QifQ.eyJpc3MiOiJodHRwczovL3NlY3VyZXRva2VuLmdvb2dsZS5jb20vdWRoYWFyaWkiLCJhdWQiOiJ1ZGhhYXJpaSIsImF1dGhfdGltZSI6MTc3NjAxMjkwMSwidXNlcl9pZCI6IkpXMkdLbWtlenhYQ0tCTVdGR2hPSm1SbGZYYzIiLCJzdWIiOiJKVzJHS21rZXp4WENLQk1XRkdoT0ptUmxmWGMyIiwiaWF0IjoxNzc2MDEyOTAxLCJleHAiOjE3NzYwMTY1MDEsImVtYWlsIjoia2h1c2hiYWtodHNvaGFpbDEwMUBnbWFpbC5jb20iLCJlbWFpbF92ZXJpZmllZCI6dHJ1ZSwiZmlyZWJhc2UiOnsiaWRlbnRpdGllcyI6eyJlbWFpbCI6WyJraHVzaGJha2h0c29oYWlsMTAxQGdtYWlsLmNvbSJdfSwic2lnbl9pbl9wcm92aWRlciI6InBhc3N3b3JkIn19.DCpLpGeUwtJbDY5N6IMKvdtVOyukp7B17XQ9P6G3D3D9o9K-OpiPF75ZniL1fpR1D5IIQEuB_v7JU3MZUbL7YWD4j-o04SvAhI1sLsAE460qEF8L0T-Gk9eo2L2Vi21WYaXIbkKqwrTtzC0tkGQihwihuZd3JM9rMOqHJCq1P8XQ-RBIxOW-nB66a9KfCtwRVg1Mi0T2y1kA2uYKT-3C57mkEsIHC7azeu2W4I9LnMNz0MdyZkvdril3rL7zR7YY4HnO2KUTbLjR-kTigKQJXjxKbvAU-KYxJevQguc9GDteoQZSDqaVb5KRGkVnV60M5ITlaYeNjomO5dfGuTGLlA",
+            "type": "text"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "http://localhost:5000/api/profile",
+          "protocol": "http",
+          "host": [
+            "localhost"
+          ],
+          "port": "5000",
+          "path": [
+            "api",
+            "profile"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "http://localhost:5000/api/bookings",
+      "request": {
+        "auth": {
+          "type": "noauth"
+        },
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer eyJhbGciOiJSUzI1NiIsImtpZCI6IjcwZmM5YzU0YjhiMjQyMWZmMTgyOTgxNTQyZmQ0NjRlOWJlYzM1NDUiLCJ0eXAiOiJKV1QifQ.eyJpc3MiOiJodHRwczovL3NlY3VyZXRva2VuLmdvb2dsZS5jb20vdWRoYWFyaWkiLCJhdWQiOiJ1ZGhhYXJpaSIsImF1dGhfdGltZSI6MTc3NjAxMjkwMSwidXNlcl9pZCI6IkpXMkdLbWtlenhYQ0tCTVdGR2hPSm1SbGZYYzIiLCJzdWIiOiJKVzJHS21rZXp4WENLQk1XRkdoT0ptUmxmWGMyIiwiaWF0IjoxNzc2MDEyOTAxLCJleHAiOjE3NzYwMTY1MDEsImVtYWlsIjoia2h1c2hiYWtodHNvaGFpbDEwMUBnbWFpbC5jb20iLCJlbWFpbF92ZXJpZmllZCI6dHJ1ZSwiZmlyZWJhc2UiOnsiaWRlbnRpdGllcyI6eyJlbWFpbCI6WyJraHVzaGJha2h0c29oYWlsMTAxQGdtYWlsLmNvbSJdfSwic2lnbl9pbl9wcm92aWRlciI6InBhc3N3b3JkIn19.DCpLpGeUwtJbDY5N6IMKvdtVOyukp7B17XQ9P6G3D3D9o9K-OpiPF75ZniL1fpR1D5IIQEuB_v7JU3MZUbL7YWD4j-o04SvAhI1sLsAE460qEF8L0T-Gk9eo2L2Vi21WYaXIbkKqwrTtzC0tkGQihwihuZd3JM9rMOqHJCq1P8XQ-RBIxOW-nB66a9KfCtwRVg1Mi0T2y1kA2uYKT-3C57mkEsIHC7azeu2W4I9LnMNz0MdyZkvdril3rL7zR7YY4HnO2KUTbLjR-kTigKQJXjxKbvAU-KYxJevQguc9GDteoQZSDqaVb5KRGkVnV60M5ITlaYeNjomO5dfGuTGLlA",
+            "type": "text"
+          }
+        ],
+        "url": {
+          "raw": "http://localhost:5000/api/bookings?role=borrower",
+          "protocol": "http",
+          "host": [
+            "localhost"
+          ],
+          "port": "5000",
+          "path": [
+            "api",
+            "bookings"
+          ],
+          "query": [
+            {
+              "key": "role",
+              "value": "borrower"
+            }
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "http://localhost:5000/api/bookings",
+      "request": {
+        "auth": {
+          "type": "noauth"
+        },
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer eyJhbGciOiJSUzI1NiIsImtpZCI6IjcwZmM5YzU0YjhiMjQyMWZmMTgyOTgxNTQyZmQ0NjRlOWJlYzM1NDUiLCJ0eXAiOiJKV1QifQ.eyJpc3MiOiJodHRwczovL3NlY3VyZXRva2VuLmdvb2dsZS5jb20vdWRoYWFyaWkiLCJhdWQiOiJ1ZGhhYXJpaSIsImF1dGhfdGltZSI6MTc3NjAxMjkwMSwidXNlcl9pZCI6IkpXMkdLbWtlenhYQ0tCTVdGR2hPSm1SbGZYYzIiLCJzdWIiOiJKVzJHS21rZXp4WENLQk1XRkdoT0ptUmxmWGMyIiwiaWF0IjoxNzc2MDEyOTAxLCJleHAiOjE3NzYwMTY1MDEsImVtYWlsIjoia2h1c2hiYWtodHNvaGFpbDEwMUBnbWFpbC5jb20iLCJlbWFpbF92ZXJpZmllZCI6dHJ1ZSwiZmlyZWJhc2UiOnsiaWRlbnRpdGllcyI6eyJlbWFpbCI6WyJraHVzaGJha2h0c29oYWlsMTAxQGdtYWlsLmNvbSJdfSwic2lnbl9pbl9wcm92aWRlciI6InBhc3N3b3JkIn19.DCpLpGeUwtJbDY5N6IMKvdtVOyukp7B17XQ9P6G3D3D9o9K-OpiPF75ZniL1fpR1D5IIQEuB_v7JU3MZUbL7YWD4j-o04SvAhI1sLsAE460qEF8L0T-Gk9eo2L2Vi21WYaXIbkKqwrTtzC0tkGQihwihuZd3JM9rMOqHJCq1P8XQ-RBIxOW-nB66a9KfCtwRVg1Mi0T2y1kA2uYKT-3C57mkEsIHC7azeu2W4I9LnMNz0MdyZkvdril3rL7zR7YY4HnO2KUTbLjR-kTigKQJXjxKbvAU-KYxJevQguc9GDteoQZSDqaVb5KRGkVnV60M5ITlaYeNjomO5dfGuTGLlA",
+            "type": "text"
+          }
+        ],
+        "url": {
+          "raw": "http://localhost:5000/api/bookings?role=lender",
+          "protocol": "http",
+          "host": [
+            "localhost"
+          ],
+          "port": "5000",
+          "path": [
+            "api",
+            "bookings"
+          ],
+          "query": [
+            {
+              "key": "role",
+              "value": "lender"
+            }
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "http://localhost:5000/api/bookings/1",
+      "request": {
+        "auth": {
+          "type": "noauth"
+        },
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer eyJhbGciOiJSUzI1NiIsImtpZCI6IjcwZmM5YzU0YjhiMjQyMWZmMTgyOTgxNTQyZmQ0NjRlOWJlYzM1NDUiLCJ0eXAiOiJKV1QifQ.eyJpc3MiOiJodHRwczovL3NlY3VyZXRva2VuLmdvb2dsZS5jb20vdWRoYWFyaWkiLCJhdWQiOiJ1ZGhhYXJpaSIsImF1dGhfdGltZSI6MTc3NjAxMjkwMSwidXNlcl9pZCI6IkpXMkdLbWtlenhYQ0tCTVdGR2hPSm1SbGZYYzIiLCJzdWIiOiJKVzJHS21rZXp4WENLQk1XRkdoT0ptUmxmWGMyIiwiaWF0IjoxNzc2MDEyOTAxLCJleHAiOjE3NzYwMTY1MDEsImVtYWlsIjoia2h1c2hiYWtodHNvaGFpbDEwMUBnbWFpbC5jb20iLCJlbWFpbF92ZXJpZmllZCI6dHJ1ZSwiZmlyZWJhc2UiOnsiaWRlbnRpdGllcyI6eyJlbWFpbCI6WyJraHVzaGJha2h0c29oYWlsMTAxQGdtYWlsLmNvbSJdfSwic2lnbl9pbl9wcm92aWRlciI6InBhc3N3b3JkIn19.DCpLpGeUwtJbDY5N6IMKvdtVOyukp7B17XQ9P6G3D3D9o9K-OpiPF75ZniL1fpR1D5IIQEuB_v7JU3MZUbL7YWD4j-o04SvAhI1sLsAE460qEF8L0T-Gk9eo2L2Vi21WYaXIbkKqwrTtzC0tkGQihwihuZd3JM9rMOqHJCq1P8XQ-RBIxOW-nB66a9KfCtwRVg1Mi0T2y1kA2uYKT-3C57mkEsIHC7azeu2W4I9LnMNz0MdyZkvdril3rL7zR7YY4HnO2KUTbLjR-kTigKQJXjxKbvAU-KYxJevQguc9GDteoQZSDqaVb5KRGkVnV60M5ITlaYeNjomO5dfGuTGLlA",
+            "type": "text"
+          }
+        ],
+        "url": {
+          "raw": "http://localhost:5000/api/bookings/1?",
+          "protocol": "http",
+          "host": [
+            "localhost"
+          ],
+          "port": "5000",
+          "path": [
+            "api",
+            "bookings",
+            "1"
+          ],
+          "query": [
+            {
+              "key": "",
+              "value": null,
+              "type": "text"
+            }
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "http://localhost:5000/api/bookings/7/paid",
+      "request": {
+        "auth": {
+          "type": "noauth"
+        },
+        "method": "PATCH",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer eyJhbGciOiJSUzI1NiIsImtpZCI6IjcwZmM5YzU0YjhiMjQyMWZmMTgyOTgxNTQyZmQ0NjRlOWJlYzM1NDUiLCJ0eXAiOiJKV1QifQ.eyJpc3MiOiJodHRwczovL3NlY3VyZXRva2VuLmdvb2dsZS5jb20vdWRoYWFyaWkiLCJhdWQiOiJ1ZGhhYXJpaSIsImF1dGhfdGltZSI6MTc3NjAxMjkwMSwidXNlcl9pZCI6IkpXMkdLbWtlenhYQ0tCTVdGR2hPSm1SbGZYYzIiLCJzdWIiOiJKVzJHS21rZXp4WENLQk1XRkdoT0ptUmxmWGMyIiwiaWF0IjoxNzc2MDEyOTAxLCJleHAiOjE3NzYwMTY1MDEsImVtYWlsIjoia2h1c2hiYWtodHNvaGFpbDEwMUBnbWFpbC5jb20iLCJlbWFpbF92ZXJpZmllZCI6dHJ1ZSwiZmlyZWJhc2UiOnsiaWRlbnRpdGllcyI6eyJlbWFpbCI6WyJraHVzaGJha2h0c29oYWlsMTAxQGdtYWlsLmNvbSJdfSwic2lnbl9pbl9wcm92aWRlciI6InBhc3N3b3JkIn19.DCpLpGeUwtJbDY5N6IMKvdtVOyukp7B17XQ9P6G3D3D9o9K-OpiPF75ZniL1fpR1D5IIQEuB_v7JU3MZUbL7YWD4j-o04SvAhI1sLsAE460qEF8L0T-Gk9eo2L2Vi21WYaXIbkKqwrTtzC0tkGQihwihuZd3JM9rMOqHJCq1P8XQ-RBIxOW-nB66a9KfCtwRVg1Mi0T2y1kA2uYKT-3C57mkEsIHC7azeu2W4I9LnMNz0MdyZkvdril3rL7zR7YY4HnO2KUTbLjR-kTigKQJXjxKbvAU-KYxJevQguc9GDteoQZSDqaVb5KRGkVnV60M5ITlaYeNjomO5dfGuTGLlABearer eyJhbGciOiJSUzI1NiIsImtpZCI6IjcwZmM5YzU0YjhiMjQyMWZmMTgyOTgxNTQyZmQ0NjRlOWJlYzM1NDUiLCJ0eXAiOiJKV1QifQ.eyJpc3MiOiJodHRwczovL3NlY3VyZXRva2VuLmdvb2dsZS5jb20vdWRoYWFyaWkiLCJhdWQiOiJ1ZGhhYXJpaSIsImF1dGhfdGltZSI6MTc3NjAxMjkwMSwidXNlcl9pZCI6IkpXMkdLbWtlenhYQ0tCTVdGR2hPSm1SbGZYYzIiLCJzdWIiOiJKVzJHS21rZXp4WENLQk1XRkdoT0ptUmxmWGMyIiwiaWF0IjoxNzc2MDEyOTAxLCJleHAiOjE3NzYwMTY1MDEsImVtYWlsIjoia2h1c2hiYWtodHNvaGFpbDEwMUBnbWFpbC5jb20iLCJlbWFpbF92ZXJpZmllZCI6dHJ1ZSwiZmlyZWJhc2UiOnsiaWRlbnRpdGllcyI6eyJlbWFpbCI6WyJraHVzaGJha2h0c29oYWlsMTAxQGdtYWlsLmNvbSJdfSwic2lnbl9pbl9wcm92aWRlciI6InBhc3N3b3JkIn19.DCpLpGeUwtJbDY5N6IMKvdtVOyukp7B17XQ9P6G3D3D9o9K-OpiPF75ZniL1fpR1D5IIQEuB_v7JU3MZUbL7YWD4j-o04SvAhI1sLsAE460qEF8L0T-Gk9eo2L2Vi21WYaXIbkKqwrTtzC0tkGQihwihuZd3JM9rMOqHJCq1P8XQ-RBIxOW-nB66a9KfCtwRVg1Mi0T2y1kA2uYKT-3C57mkEsIHC7azeu2W4I9LnMNz0MdyZkvdril3rL7zR7YY4HnO2KUTbLjR-kTigKQJXjxKbvAU-KYxJevQguc9GDteoQZSDqaVb5KRGkVnV60M5ITlaYeNjomO5dfGuTGLlA",
+            "type": "text"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json",
+            "type": "text"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "http://localhost:5000/api/bookings/7/paid",
+          "protocol": "http",
+          "host": [
+            "localhost"
+          ],
+          "port": "5000",
+          "path": [
+            "api",
+            "bookings",
+            "7",
+            "paid"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "http://localhost:5000/api/assets",
+      "request": {
+        "auth": {
+          "type": "noauth"
+        },
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer eyJhbGciOiJSUzI1NiIsImtpZCI6IjcwZmM5YzU0YjhiMjQyMWZmMTgyOTgxNTQyZmQ0NjRlOWJlYzM1NDUiLCJ0eXAiOiJKV1QifQ.eyJpc3MiOiJodHRwczovL3NlY3VyZXRva2VuLmdvb2dsZS5jb20vdWRoYWFyaWkiLCJhdWQiOiJ1ZGhhYXJpaSIsImF1dGhfdGltZSI6MTc3NjAxMjkwMSwidXNlcl9pZCI6IkpXMkdLbWtlenhYQ0tCTVdGR2hPSm1SbGZYYzIiLCJzdWIiOiJKVzJHS21rZXp4WENLQk1XRkdoT0ptUmxmWGMyIiwiaWF0IjoxNzc2MDEyOTAxLCJleHAiOjE3NzYwMTY1MDEsImVtYWlsIjoia2h1c2hiYWtodHNvaGFpbDEwMUBnbWFpbC5jb20iLCJlbWFpbF92ZXJpZmllZCI6dHJ1ZSwiZmlyZWJhc2UiOnsiaWRlbnRpdGllcyI6eyJlbWFpbCI6WyJraHVzaGJha2h0c29oYWlsMTAxQGdtYWlsLmNvbSJdfSwic2lnbl9pbl9wcm92aWRlciI6InBhc3N3b3JkIn19.DCpLpGeUwtJbDY5N6IMKvdtVOyukp7B17XQ9P6G3D3D9o9K-OpiPF75ZniL1fpR1D5IIQEuB_v7JU3MZUbL7YWD4j-o04SvAhI1sLsAE460qEF8L0T-Gk9eo2L2Vi21WYaXIbkKqwrTtzC0tkGQihwihuZd3JM9rMOqHJCq1P8XQ-RBIxOW-nB66a9KfCtwRVg1Mi0T2y1kA2uYKT-3C57mkEsIHC7azeu2W4I9LnMNz0MdyZkvdril3rL7zR7YY4HnO2KUTbLjR-kTigKQJXjxKbvAU-KYxJevQguc9GDteoQZSDqaVb5KRGkVnV60M5ITlaYeNjomO5dfGuTGLlA",
+            "type": "text"
+          }
+        ],
+        "url": {
+          "raw": "http://localhost:5000/api/assets",
+          "protocol": "http",
+          "host": [
+            "localhost"
+          ],
+          "port": "5000",
+          "path": [
+            "api",
+            "assets"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "http://localhost:5000/api/assets/1",
+      "request": {
+        "auth": {
+          "type": "noauth"
+        },
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer eyJhbGciOiJSUzI1NiIsImtpZCI6IjcwZmM5YzU0YjhiMjQyMWZmMTgyOTgxNTQyZmQ0NjRlOWJlYzM1NDUiLCJ0eXAiOiJKV1QifQ.eyJpc3MiOiJodHRwczovL3NlY3VyZXRva2VuLmdvb2dsZS5jb20vdWRoYWFyaWkiLCJhdWQiOiJ1ZGhhYXJpaSIsImF1dGhfdGltZSI6MTc3NjAxMjkwMSwidXNlcl9pZCI6IkpXMkdLbWtlenhYQ0tCTVdGR2hPSm1SbGZYYzIiLCJzdWIiOiJKVzJHS21rZXp4WENLQk1XRkdoT0ptUmxmWGMyIiwiaWF0IjoxNzc2MDEyOTAxLCJleHAiOjE3NzYwMTY1MDEsImVtYWlsIjoia2h1c2hiYWtodHNvaGFpbDEwMUBnbWFpbC5jb20iLCJlbWFpbF92ZXJpZmllZCI6dHJ1ZSwiZmlyZWJhc2UiOnsiaWRlbnRpdGllcyI6eyJlbWFpbCI6WyJraHVzaGJha2h0c29oYWlsMTAxQGdtYWlsLmNvbSJdfSwic2lnbl9pbl9wcm92aWRlciI6InBhc3N3b3JkIn19.DCpLpGeUwtJbDY5N6IMKvdtVOyukp7B17XQ9P6G3D3D9o9K-OpiPF75ZniL1fpR1D5IIQEuB_v7JU3MZUbL7YWD4j-o04SvAhI1sLsAE460qEF8L0T-Gk9eo2L2Vi21WYaXIbkKqwrTtzC0tkGQihwihuZd3JM9rMOqHJCq1P8XQ-RBIxOW-nB66a9KfCtwRVg1Mi0T2y1kA2uYKT-3C57mkEsIHC7azeu2W4I9LnMNz0MdyZkvdril3rL7zR7YY4HnO2KUTbLjR-kTigKQJXjxKbvAU-KYxJevQguc9GDteoQZSDqaVb5KRGkVnV60M5ITlaYeNjomO5dfGuTGLlA",
+            "type": "text"
+          }
+        ],
+        "url": {
+          "raw": "http://localhost:5000/api/assets/1",
+          "protocol": "http",
+          "host": [
+            "localhost"
+          ],
+          "port": "5000",
+          "path": [
+            "api",
+            "assets",
+            "1"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "http://localhost:5000/api/assets/category/1",
+      "request": {
+        "auth": {
+          "type": "noauth"
+        },
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "http://localhost:5000/api/assets/category/1",
+          "protocol": "http",
+          "host": [
+            "localhost"
+          ],
+          "port": "5000",
+          "path": [
+            "api",
+            "assets",
+            "category",
+            "1"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "http://localhost:5000/api/assets/search",
+      "request": {
+        "auth": {
+          "type": "noauth"
+        },
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "http://localhost:5000/api/assets/search?q=camera",
+          "protocol": "http",
+          "host": [
+            "localhost"
+          ],
+          "port": "5000",
+          "path": [
+            "api",
+            "assets",
+            "search"
+          ],
+          "query": [
+            {
+              "key": "q",
+              "value": "camera"
+            }
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "http://localhost:5000/api/assets",
+      "request": {
+        "auth": {
+          "type": "noauth"
+        },
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "http://localhost:5000/api/assets",
+          "protocol": "http",
+          "host": [
+            "localhost"
+          ],
+          "port": "5000",
+          "path": [
+            "api",
+            "assets"
+          ]
+        }
+      },
+      "response": []
+    }
+  ]
+}
