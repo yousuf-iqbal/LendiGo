@@ -1,4 +1,4 @@
-<<<<<<< HEAD
+
 const admin = require('firebase-admin');
 const { poolPromise, sql } = require('../config/db');
 
@@ -65,11 +65,10 @@ const verifyToken = async (req, res, next) => {
     console.error('Token verification error:', err.message);
     return res.status(403).json({ error: 'Invalid or expired token. Please login again.' });
   }
-=======
+
 const verifyToken = async (req, res, next) => {
   req.userID = 5;
   next();
->>>>>>> aa91ecc43f0171b902d86da49a74b35da65679aa
 };
 
 module.exports = verifyToken;
