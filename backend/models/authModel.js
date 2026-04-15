@@ -11,7 +11,7 @@ const findUserByEmail = async (email) => {
     .input('email', sql.NVarChar, email)
     .query(`select UserID, FullName, Email, Phone, City, Area,
                    CNIC, CNICPicture, ProfilePic,
-                   IsVerified, IsBanned, Role, CreatedAt
+                   IsVerified, IsBanned, Role, CreatedAt, SignupMethod
             from Users
             where Email = @email`);
   return result.recordset[0];
@@ -28,7 +28,7 @@ const findUserByPhone = async (phone) => {
 
 // save user profile after firebase registration
 // firebase handles auth — we store everything else
-const createUser = async ({ fullName, email, phone, city, area, cnic }) => {
+const createUser = async ({ fullName, email, phone, city, area, cnic, signupMethod = 'email' }) => {
   const pool = await poolPromise;
   const result = await pool.request()
     .input('fullName', sql.NVarChar, fullName)
@@ -37,9 +37,10 @@ const createUser = async ({ fullName, email, phone, city, area, cnic }) => {
     .input('city',     sql.NVarChar, city)
     .input('area',     sql.NVarChar, area || null)
     .input('cnic',     sql.NVarChar, cnic)
-    .query(`insert into Users (FullName, Email, Phone, City, Area, CNIC)
+    .input('signupMethod', sql.NVarChar, signupMethod)
+    .query(`insert into Users (FullName, Email, Phone, City, Area, CNIC, SignupMethod)
             output inserted.UserID
-            values (@fullName, @email, @phone, @city, @area, @cnic)`);
+            values (@fullName, @email, @phone, @city, @area, @cnic, @signupMethod)`);
   return result.recordset[0].UserID;
 };
 

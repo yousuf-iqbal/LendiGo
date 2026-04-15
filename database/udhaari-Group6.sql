@@ -1,275 +1,206 @@
 -- ==========================================================
--- udhaari database - group 6
--- deliverable 1 | database systems lab  
--- members: yousuf 24L-2539 | dua L24-2587 | khushbakht 24L-2604
--- ============================================================
+-- UdhaariDB - Full Schema with Wallet + Views + Stored Procedures
+-- Group 6 - Deliverable 2
+-- ==========================================================
 
+USE master;
+GO
 
---- database setup ---
+IF EXISTS (SELECT name FROM sys.databases WHERE name = 'UdhaariDB')
+    DROP DATABASE UdhaariDB;
+GO
 
-use master;
-go
+CREATE DATABASE UdhaariDB;
+GO
 
-if exists (select name from sys.databases where name = 'UdhaariDB')
-    drop database UdhaariDB;
-go
+USE UdhaariDB;
+GO
 
-create database UdhaariDB;
-go
+-- =============================================
+-- TABLES
+-- =============================================
 
-use UdhaariDB;
-go
-
--- create tables
-
--- table 1: users
--- every person on the platform | renter, lender, or admin
--- table 1: users
-create table Users 
+CREATE TABLE Users 
 (
-    UserID      int           primary key identity(1,1),
-    FullName    nvarchar(100) not null,
-    Email       nvarchar(100) not null unique,
-    Phone       nvarchar(20),
-    City        nvarchar(50),
-    Area        nvarchar(100),
-    CNIC        nvarchar(15),
-    CNICPicture nvarchar(255),
-    ProfilePic  nvarchar(255),
-    IsVerified  bit           default 0,
-    IsBanned    bit           default 0,
-    Role        nvarchar(10)  default 'user'
-                check (Role in ('user', 'admin')),
-    CreatedAt   datetime      default getdate()
+    UserID      INT PRIMARY KEY IDENTITY(1,1),
+    FullName    NVARCHAR(100) NOT NULL,
+    Email       NVARCHAR(100) NOT NULL UNIQUE,
+    Phone       NVARCHAR(20),
+    City        NVARCHAR(50),
+    Area        NVARCHAR(100),
+    CNIC        NVARCHAR(15),
+    CNICPicture NVARCHAR(255),
+    ProfilePic  NVARCHAR(255),
+    IsVerified  BIT DEFAULT 0,
+    IsBanned    BIT DEFAULT 0,
+    Role        NVARCHAR(10) DEFAULT 'user' CHECK (Role IN ('user', 'admin')),
+    CreatedAt   DATETIME DEFAULT GETDATE()
 );
-go
+GO
 
-
--- table 2: categories
-create table Categories 
+CREATE TABLE Categories 
 (
-    CategoryID  int           primary key identity(1,1),
-    Name        nvarchar(50)  not null unique,    -- category names must be distinct
-    Description nvarchar(200),
-    IconURL     nvarchar(255)
+    CategoryID  INT PRIMARY KEY IDENTITY(1,1),
+    Name        NVARCHAR(50) NOT NULL UNIQUE,
+    Description NVARCHAR(200),
+    IconURL     NVARCHAR(255)
 );
-go
+GO
 
-
--- table 3: assets
--- items listed by owners for rent
--- depends on: users, categories
-create table Assets 
+CREATE TABLE Assets 
 (
-    AssetID     int            primary key identity(1,1),
-    OwnerID     int            not null foreign key references Users(UserID),
-    CategoryID  int            not null foreign key references Categories(CategoryID),
-    Title       nvarchar(150)  not null,
-    Description nvarchar(1000),
-    PricePerDay decimal(10,2)  not null check (PricePerDay >= 0),
-    Deposit     decimal(10,2)  default 0 check (Deposit >= 0),
-    City        nvarchar(50),
-    Area        nvarchar(100),
-    IsActive    bit            default 1,          -- 1 = visible on bazaar, 0 = hidden
-    CreatedAt   datetime       default getdate()
+    AssetID     INT PRIMARY KEY IDENTITY(1,1),
+    OwnerID     INT NOT NULL FOREIGN KEY REFERENCES Users(UserID),
+    CategoryID  INT NOT NULL FOREIGN KEY REFERENCES Categories(CategoryID),
+    Title       NVARCHAR(150) NOT NULL,
+    Description NVARCHAR(1000),
+    PricePerDay DECIMAL(10,2) NOT NULL CHECK (PricePerDay >= 0),
+    Deposit     DECIMAL(10,2) DEFAULT 0,
+    City        NVARCHAR(50),
+    Area        NVARCHAR(100),
+    IsActive    BIT DEFAULT 1,
+    CreatedAt   DATETIME DEFAULT GETDATE()
 );
-go
+GO
 
-
--- table 4: assetimages
--- multiple photos per asset
--- cascade: deleting an asset removes all its photos automatically
--- depends on: assets
-create table AssetImages 
+CREATE TABLE AssetImages 
 (
-    ImageID   int           primary key identity(1,1),
-    AssetID   int           not null
-              foreign key references Assets(AssetID) on delete cascade,
-    ImageURL  nvarchar(255) not null,
-    IsPrimary bit           default 0    -- only one image per asset should be 1
+    ImageID   INT PRIMARY KEY IDENTITY(1,1),
+    AssetID   INT NOT NULL FOREIGN KEY REFERENCES Assets(AssetID) ON DELETE CASCADE,
+    ImageURL  NVARCHAR(255) NOT NULL,
+    IsPrimary BIT DEFAULT 0
 );
-go
+GO
 
-
--- table 5: requests
--- items users need to rent and are shown on the landing page
--- depends on: users, categories
-create table Requests 
+CREATE TABLE Requests 
 (
-    RequestID   int           primary key identity(1,1),
-    RequesterID int           not null foreign key references Users(UserID),
-    CategoryID  int           foreign key references Categories(CategoryID),
-    Title       nvarchar(150) not null,
-    Description nvarchar(1000),
-    Area        nvarchar(100),
-    City        nvarchar(50),
-    StartDate   date          not null,
-    EndDate     date          not null,
-    MaxBudget   decimal(10,2),
-    Status      nvarchar(20)  default 'open'
-                check (Status in ('open','fulfilled','closed','expired')),
-    CreatedAt   datetime      default getdate(),
-    check (EndDate >= StartDate)    -- end date cannot be before start date
+    RequestID   INT PRIMARY KEY IDENTITY(1,1),
+    RequesterID INT NOT NULL FOREIGN KEY REFERENCES Users(UserID),
+    CategoryID  INT FOREIGN KEY REFERENCES Categories(CategoryID),
+    Title       NVARCHAR(150) NOT NULL,
+    Description NVARCHAR(1000),
+    Area        NVARCHAR(100),
+    City        NVARCHAR(50),
+    StartDate   DATE NOT NULL,
+    EndDate     DATE NOT NULL,
+    MaxBudget   DECIMAL(10,2),
+    Status      NVARCHAR(20) DEFAULT 'open' CHECK (Status IN ('open','fulfilled','closed','expired')),
+    CreatedAt   DATETIME DEFAULT GETDATE(),
+    CHECK (EndDate >= StartDate)
 );
-go
+GO
 
-
--- table 6: offers
--- lender responses to requests
--- one lender can only make one offer per request
--- depends on: requests, users, assets
-create table Offers 
+CREATE TABLE Offers 
 (
-    OfferID      int           primary key identity(1,1),
-    RequestID    int           not null foreign key references Requests(RequestID),
-    LenderID     int           not null foreign key references Users(UserID),
-    AssetID      int           foreign key references Assets(AssetID),  -- lender may have no listing/offering
-    OfferedPrice decimal(10,2) not null check (OfferedPrice >= 0),
-    Message      nvarchar(500),
-    Status       nvarchar(20)  default 'pending'
-                 check (Status in ('pending','accepted','declined')),
-    CreatedAt    datetime      default getdate(),
-    unique (RequestID, LenderID)    -- prevents duplicate offers from the same lender
+    OfferID      INT PRIMARY KEY IDENTITY(1,1),
+    RequestID    INT NOT NULL FOREIGN KEY REFERENCES Requests(RequestID),
+    LenderID     INT NOT NULL FOREIGN KEY REFERENCES Users(UserID),
+    AssetID      INT FOREIGN KEY REFERENCES Assets(AssetID),
+    OfferedPrice DECIMAL(10,2) NOT NULL CHECK (OfferedPrice >= 0),
+    Message      NVARCHAR(500),
+    Status       NVARCHAR(20) DEFAULT 'pending' CHECK (Status IN ('pending','accepted','declined')),
+    CreatedAt    DATETIME DEFAULT GETDATE(),
+    UNIQUE (RequestID, LenderID)
 );
-go
+GO
 
-
--- table 7: bookings
--- confirmed rental bookings
--- depends on: assets, offers, users
-create table Bookings 
+CREATE TABLE Bookings 
 (
-    BookingID         int           primary key identity(1,1),
-    AssetID           int           foreign key references Assets(AssetID),
-    OfferID           int           foreign key references Offers(OfferID),
-    RenterID          int           not null foreign key references Users(UserID),
-    LenderID          int           not null foreign key references Users(UserID),
-    StartDate         date          not null,
-    EndDate           date          not null,
-    TotalPrice        decimal(10,2) not null check (TotalPrice >= 0),
-    Status            nvarchar(20)  default 'pending'
-                      check (Status in ('pending','confirmed','ongoing',
-                             'returned','completed','cancelled')),
-    PaymentScreenshot nvarchar(255),
-    IsPaid            bit           default 0,
-    CreatedAt         datetime      default getdate(),
-    check (EndDate >= StartDate)
+    BookingID         INT PRIMARY KEY IDENTITY(1,1),
+    AssetID           INT FOREIGN KEY REFERENCES Assets(AssetID),
+    OfferID           INT FOREIGN KEY REFERENCES Offers(OfferID),
+    RenterID          INT NOT NULL FOREIGN KEY REFERENCES Users(UserID),
+    LenderID          INT NOT NULL FOREIGN KEY REFERENCES Users(UserID),
+    StartDate         DATE NOT NULL,
+    EndDate           DATE NOT NULL,
+    TotalPrice        DECIMAL(10,2) NOT NULL CHECK (TotalPrice >= 0),
+    Status            NVARCHAR(20) DEFAULT 'pending' CHECK (Status IN ('pending','confirmed','ongoing','returned','completed','cancelled')),
+    PaymentScreenshot NVARCHAR(255),
+    IsPaid            BIT DEFAULT 0,
+    CreatedAt         DATETIME DEFAULT GETDATE(),
+    CHECK (EndDate >= StartDate)
 );
-go
+GO
 
-
--- table 8: availability
--- blocked dates per asset to prevent double booking
--- cascade: deleting an asset clears its blocked dates too
--- depends on: assets
-create table Availability 
+CREATE TABLE Availability 
 (
-    AvailabilityID int  primary key identity(1,1),
-    AssetID        int  not null
-                   foreign key references Assets(AssetID) on delete cascade,
-    BlockedDate    date not null,
-    unique (AssetID, BlockedDate)   -- same date cannot be blocked twice for one asset
+    AvailabilityID INT PRIMARY KEY IDENTITY(1,1),
+    AssetID        INT NOT NULL FOREIGN KEY REFERENCES Assets(AssetID) ON DELETE CASCADE,
+    BlockedDate    DATE NOT NULL,
+    UNIQUE (AssetID, BlockedDate)
 );
-go
+GO
 
-
--- table 9: wallets
--- one wallet per user for dummy in-app payments
--- depends on: users
-create table Wallets
+CREATE TABLE Wallets
 (
-    WalletID  int           primary key identity(1,1),
-    UserID    int           not null unique foreign key references Users(UserID),
-    Balance   decimal(10,2) default 0 check (Balance >= 0),   -- balance cannot go negative
-    UpdatedAt datetime      default getdate()
+    WalletID  INT PRIMARY KEY IDENTITY(1,1),
+    UserID    INT NOT NULL UNIQUE FOREIGN KEY REFERENCES Users(UserID),
+    Balance   DECIMAL(10,2) DEFAULT 0 CHECK (Balance >= 0),
+    UpdatedAt DATETIME DEFAULT GETDATE()
 );
-go
+GO
 
-
--- table 10: transactions
--- every wallet movement: payments, holds, refunds, releases
--- depends on: bookings, wallets
-create table Transactions 
+CREATE TABLE Transactions 
 (
-    TransactionID int           primary key identity(1,1),
-    BookingID     int           not null foreign key references Bookings(BookingID),
-    FromWalletID  int           foreign key references Wallets(WalletID),
-    ToWalletID    int           foreign key references Wallets(WalletID),
-    Amount        decimal(10,2) not null check (Amount > 0),   -- amount must be positive
-    Type          nvarchar(20)  not null
-                  check (Type in ('payment','deposit','refund','hold','release')),
-    CreatedAt     datetime      default getdate()
+    TransactionID INT PRIMARY KEY IDENTITY(1,1),
+    BookingID     INT NOT NULL FOREIGN KEY REFERENCES Bookings(BookingID),
+    FromWalletID  INT FOREIGN KEY REFERENCES Wallets(WalletID),
+    ToWalletID    INT FOREIGN KEY REFERENCES Wallets(WalletID),
+    Amount        DECIMAL(10,2) NOT NULL CHECK (Amount > 0),
+    Type          NVARCHAR(20) NOT NULL CHECK (Type IN ('payment','deposit','refund','hold','release')),
+    CreatedAt     DATETIME DEFAULT GETDATE()
 );
-go
+GO
 
-
--- table 11: messages
--- chat between users tied to a booking
--- a user cannot message themselves
--- depends on: users, bookings
-create table Messages 
+CREATE TABLE Messages 
 (
-    MessageID  int            primary key identity(1,1),
-    SenderID   int            not null foreign key references Users(UserID),
-    ReceiverID int            not null foreign key references Users(UserID),
-    BookingID  int            foreign key references Bookings(BookingID),  
-    Body       nvarchar(2000) not null,
-    IsRead     bit            default 0,
-    SentAt     datetime       default getdate(),
-    check (SenderID <> ReceiverID)   -- cannot send a message to yourself
+    MessageID  INT PRIMARY KEY IDENTITY(1,1),
+    SenderID   INT NOT NULL FOREIGN KEY REFERENCES Users(UserID),
+    ReceiverID INT NOT NULL FOREIGN KEY REFERENCES Users(UserID),
+    BookingID  INT FOREIGN KEY REFERENCES Bookings(BookingID),
+    Body       NVARCHAR(2000) NOT NULL,
+    IsRead     BIT DEFAULT 0,
+    SentAt     DATETIME DEFAULT GETDATE(),
+    CHECK (SenderID <> ReceiverID)
 );
-go
+GO
 
-
--- table 12: reviews
--- star ratings after a completed booking
--- depends on: bookings, users, assets
-create table Reviews 
+CREATE TABLE Reviews 
 (
-    ReviewID   int          primary key identity(1,1),
-    BookingID  int          not null foreign key references Bookings(BookingID),
-    ReviewerID int          not null foreign key references Users(UserID),
-    RevieweeID int          not null foreign key references Users(UserID),
-    AssetID    int          foreign key references Assets(AssetID),
-    Rating     tinyint      not null check (Rating between 1 and 5),
-    Comment    nvarchar(500),
-    CreatedAt  datetime     default getdate(),
-    unique (BookingID, ReviewerID),         -- one review per booking per person
-    check (ReviewerID <> RevieweeID)        -- cant review yourself
+    ReviewID   INT PRIMARY KEY IDENTITY(1,1),
+    BookingID  INT NOT NULL FOREIGN KEY REFERENCES Bookings(BookingID),
+    ReviewerID INT NOT NULL FOREIGN KEY REFERENCES Users(UserID),
+    RevieweeID INT NOT NULL FOREIGN KEY REFERENCES Users(UserID),
+    AssetID    INT FOREIGN KEY REFERENCES Assets(AssetID),
+    Rating     TINYINT NOT NULL CHECK (Rating BETWEEN 1 AND 5),
+    Comment    NVARCHAR(500),
+    CreatedAt  DATETIME DEFAULT GETDATE(),
+    UNIQUE (BookingID, ReviewerID),
+    CHECK (ReviewerID <> RevieweeID)
 );
-go
+GO
 
-
--- table 13: notifications
--- email alerts for all key events
--- depends on: users
-create table Notifications
+CREATE TABLE Notifications
 (
-    NotificationID int           primary key identity(1,1),
-    UserID         int           not null foreign key references Users(UserID),
-    Title          nvarchar(100) not null,
-    Message        nvarchar(300) not null,
-    Type           nvarchar(20)  not null
-                   check (Type in ('offer','booking','message',
-                          'review','payment','admin','system')),
-    IsRead         bit           default 0,
-    CreatedAt      datetime      default getdate()
+    NotificationID INT PRIMARY KEY IDENTITY(1,1),
+    UserID         INT NOT NULL FOREIGN KEY REFERENCES Users(UserID),
+    Title          NVARCHAR(100) NOT NULL,
+    Message        NVARCHAR(300) NOT NULL,
+    Type           NVARCHAR(20) NOT NULL CHECK (Type IN ('offer','booking','message','review','payment','admin','system')),
+    IsRead         BIT DEFAULT 0,
+    CreatedAt      DATETIME DEFAULT GETDATE()
 );
-go
+GO
 
-
--- table 14: wishlist
--- assets saved by renters for later
--- depends on: users, assets
-create table Wishlist 
+CREATE TABLE Wishlist 
 (
-    WishlistID int      primary key identity(1,1),
-    UserID     int      not null foreign key references Users(UserID),
-    AssetID    int      not null foreign key references Assets(AssetID),
-    AddedAt    datetime default getdate(),
-    unique (UserID, AssetID)    -- cannot save the same asset twice
+    WishlistID INT PRIMARY KEY IDENTITY(1,1),
+    UserID     INT NOT NULL FOREIGN KEY REFERENCES Users(UserID),
+    AssetID    INT NOT NULL FOREIGN KEY REFERENCES Assets(AssetID),
+    AddedAt    DATETIME DEFAULT GETDATE(),
+    UNIQUE (UserID, AssetID)
 );
-go
+GO
 
 
 -- dummy data
@@ -404,419 +335,72 @@ insert into Wishlist (UserID, AssetID) values
 (3, 5);
 go
 
--- -----------------------------------------------------------
--- -- select queries
-
--- -- all open requests for the landing page request board
--- -- includes requester name, category, and offer count per request
-
--- select
---     r.RequestID,
---     r.Title,
---     r.Description,
---     r.Area,
---     r.City,
---     r.StartDate,
---     r.EndDate,
---     r.MaxBudget,
---     r.CreatedAt,
---     u.FullName   as RequesterName,
---     u.IsVerified,
---     c.Name       as Category,
---     (select count(*) from Offers o where o.RequestID = r.RequestID) as OfferCount
--- from Requests r
--- join Users      u on r.RequesterID = u.UserID
--- join Categories c on r.CategoryID  = c.CategoryID
--- where r.Status = 'open'
--- order by r.CreatedAt desc;
--- go
-
-
--- -- ------------------------------------------------------------
--- -- all active asset listings for the bazaar page
--- -- coalesce returns 0 if the owner has no reviews yet
--- -- ------------------------------------------------------------
--- select
---     a.AssetID,
---     a.Title,
---     a.PricePerDay,
---     a.City,
---     a.Area,
---     c.Name       as Category,
---     u.FullName   as OwnerName,
---     u.IsVerified,
---     img.ImageURL as PrimaryImage,
---     coalesce(avg(cast(rv.Rating as float)), 0) as OwnerRating
--- from Assets a
--- join Users           u   on a.OwnerID    = u.UserID
--- join Categories      c   on a.CategoryID = c.CategoryID
--- left join AssetImages img on img.AssetID  = a.AssetID and img.IsPrimary = 1
--- left join Reviews    rv  on rv.RevieweeID = u.UserID
--- where a.IsActive = 1
--- group by
---     a.AssetID, a.Title, a.PricePerDay, a.City, a.Area,
---     c.Name, u.FullName, u.IsVerified, img.ImageURL
--- order by a.CreatedAt desc;
--- go
-
-
--- -- ------------------------------------------------------------
--- -- keyword search on requests
--- -- searches both title and description
--- select
---     r.RequestID,
---     r.Title,
---     r.Description,
---     r.MaxBudget,
---     r.StartDate,
---     r.EndDate,
---     u.FullName as RequesterName
--- from Requests r
--- join Users u on r.RequesterID = u.UserID
--- where r.Status = 'open'
---   and (r.Title like '%camera%' or r.Description like '%camera%');
--- go
-
-
--- -- ------------------------------------------------------------
--- -- q4: filter bazaar by category, city, and price range
--- select
---     a.AssetID,
---     a.Title,
---     a.PricePerDay,
---     a.City,
---     c.Name     as Category,
---     u.FullName as OwnerName
--- from Assets a
--- join Users      u on a.OwnerID    = u.UserID
--- join Categories c on a.CategoryID = c.CategoryID
--- where a.IsActive    = 1
---   and a.CategoryID  = 1
---   and a.City        = 'Lahore'
---   and a.PricePerDay between 500 and 2000;
--- go
-
-
--- -- ------------------------------------------------------------
--- -- q5: all offers for a request, sorted by lender rating
--- select
---     o.OfferID,
---     o.OfferedPrice,
---     o.Message,
---     o.Status,
---     u.FullName  as LenderName,
---     u.IsVerified,
---     coalesce(avg(cast(rv.Rating as float)), 0) as LenderRating
--- from Offers o
--- join Users        u  on o.LenderID    = u.UserID
--- left join Reviews rv on rv.RevieweeID = u.UserID
--- where o.RequestID = 1
--- group by
---     o.OfferID, o.OfferedPrice, o.Message, o.Status,
---     u.FullName, u.IsVerified
--- order by LenderRating desc;
--- go
-
-
--- -- ------------------------------------------------------------
--- -- q6: booking history for a renter
--- select
---     b.BookingID,
---     a.Title    as AssetTitle,
---     b.StartDate,
---     b.EndDate,
---     b.TotalPrice,
---     b.Status,
---     b.IsPaid,
---     u.FullName as LenderName
--- from Bookings b
--- join Assets a on b.AssetID  = a.AssetID
--- join Users  u on b.LenderID = u.UserID
--- where b.RenterID = 3
--- order by b.CreatedAt desc;
--- go
-
-
--- -- ------------------------------------------------------------
--- -- q7: earnings per asset for an owner | completed bookings only
--- select
---     a.Title            as AssetTitle,
---     count(b.BookingID) as TotalBookings,
---     sum(b.TotalPrice)  as TotalEarnings
--- from Bookings b
--- join Assets a on b.AssetID = a.AssetID
--- where b.LenderID = 1
---   and b.Status   = 'completed'
--- group by a.AssetID, a.Title
--- order by TotalEarnings desc;
--- go
-
-
--- -- ------------------------------------------------------------
--- -- q8: all messages in a booking conversation (oldest first)
--- select
---     m.MessageID,
---     m.Body,
---     m.SentAt,
---     m.IsRead,
---     s.FullName as SenderName
--- from Messages m
--- join Users s on m.SenderID = s.UserID
--- where m.BookingID = 1
--- order by m.SentAt asc;
--- go
-
-
--- -- ------------------------------------------------------------
--- -- q9: all reviews received by a user---
--- select
---     rv.Rating,
---     rv.Comment,
---     rv.CreatedAt,
---     u.FullName as ReviewerName,
---     a.Title    as AssetName
--- from Reviews rv
--- join Users       u on rv.ReviewerID = u.UserID
--- left join Assets a on rv.AssetID    = a.AssetID
--- where rv.RevieweeID = 1
--- order by rv.CreatedAt desc;
--- go
-
-
--- -- ------------------------------------------------------------
--- -- q10: average star rating for a user
--- select
---     avg(cast(Rating as float)) as AverageRating,
---     count(*)                   as TotalReviews
--- from Reviews
--- where RevieweeID = 1;
--- go
-
-
--- -- ------------------------------------------------------------
--- -- q11: wallet balance for a user
--- select
---     u.FullName,
---     w.Balance
--- from Wallets w
--- join Users u on w.UserID = u.UserID
--- where w.UserID = 3;
--- go
-
-
--- -- ------------------------------------------------------------
--- -- q12: availability check before booking
--- -- if this returns any rows the asset is not free on those dates
--- -- if it returns no rows the asset is available
--- select BlockedDate
--- from Availability
--- where AssetID     = 1
---   and BlockedDate between '2026-03-15' and '2026-03-16';
--- go
-
-
--- -- ------------------------------------------------------------
--- -- q13: admin dashboard summary , all stats in one row
--- select
---     (select count(*)        from Users    where Role     = 'user')      as TotalUsers,
---     (select count(*)        from Assets   where IsActive = 1)           as ActiveListings,
---     (select count(*)        from Requests where Status   = 'open')      as OpenRequests,
---     (select count(*)        from Bookings where Status   = 'completed') as CompletedBookings,
---     (select sum(TotalPrice) from Bookings where Status   = 'completed') as TotalRevenue;
--- go
-
-
--- ---------------------------------------------------------
--- -- section 5: update queries
-
--- -- ------------------------------------------------------------
--- -- accept one offer and decline all other offers on that request
--- -- the second update uses <> to exclude the accepted offer
-
--- update Offers
--- set Status = 'accepted'
--- where OfferID = 1
---   and Status  = 'pending';    --  do not re-accept an already accepted offer
--- go
-
--- update Offers
--- set Status = 'declined'
--- where RequestID = 1
---   and OfferID  <> 1
---   and Status    = 'pending';  -- only decline offers still in pending state
--- go
-
-
--- -- ------------------------------------------------------------
--- -- booking status transitions through the lifecycle
--- -- each step checks the current status to prevent invalid jumps
--- -- e.g. cannot go from pending directly to completed
-
--- -- lender confirms the booking
--- update Bookings
--- set Status = 'confirmed'
--- where BookingID = 4
---   and LenderID  = 4            -- only the lender of this booking can confirm it
---   and Status    = 'pending';   -- only confirm if currently pending
--- go
-
--- -- item has been handed over, rental period begins
--- update Bookings
--- set Status = 'ongoing'
--- where BookingID = 4
---   and Status    = 'confirmed'; -- can only go ongoing from confirmed
--- go
-
--- -- item returned and rental period complete
--- update Bookings
--- set Status = 'completed'
--- where BookingID = 4
---   and Status    = 'ongoing';   -- can only complete from ongoing
--- go
-
-
--- -- ------------------------------------------------------------
--- -- owner marks payment as received
--- -- lenderid check ensures only the correct lender can do this
--- update Bookings
--- set IsPaid = 1
--- where BookingID = 4
---   and LenderID  = 4    -- only this booking's lender can confirm payment
---   and IsPaid    = 0;   -- skip if already marked paid
--- go
-
-
--- -- ------------------------------------------------------------
--- --  mark all unread notifications as read for a user
--- -- the isread = 0 check avoids a pointless full-table write
--- update Notifications
--- set IsRead = 1
--- where UserID = 3
---   and IsRead = 0;   --only update notifications that are actually unread
--- go
-
-
--- -- ------------------------------------------------------------
--- -- mark unread messages as read for a user in a conversation
--- -- receiverid check ensures users cannot mark others' messages as read
-
--- update Messages
--- set IsRead = 1
--- where BookingID  = 1
---   and ReceiverID = 3   -- only mark messages where this user is the receiver
---   and IsRead     = 0;  -- eskip messages already read
--- go
-
-
--- -- ------------------------------------------------------------
--- -- owner deactivates their own listing
--- -- ownerid check prevents one user from hiding another's listing
--- -- ------------------------------------------------------------
--- update Assets
--- set IsActive = 0
--- where AssetID  = 1
---   and OwnerID  = 1 
---   and IsActive = 1;
--- go
-
-
--- -- ------------------------------------------------------------
--- -- admin bans a user
--- -- cannot ban another admin, cannot ban someone already banned
--- -- ------------------------------------------------------------
--- update Users
--- set IsBanned = 1
--- where UserID   = 5
---   and IsBanned = 0    
---   and Role     = 'user'; 
-  
--- go
-
-
--- -- ------------------------------------------------------------
--- --  admin verifies a user
--- -- ------------------------------------------------------------
--- update Users
--- set IsVerified = 1
--- where UserID     = 3
---   and IsVerified = 0;  
--- go
-
-
--- -- ------------------------------------------------------------
--- -- wallet deduction and credit for a booking payment
--- -- the balance >= amount check prevents the wallet going negative
--- -- ------------------------------------------------------------
--- update Wallets
--- set Balance   = Balance - 800.00,
---     UpdatedAt = getdate()
--- where UserID  = 5
---   and Balance >= 800.00;   -- only deduct if the user actually has enough balance
--- go
-
--- update Wallets
--- set Balance   = Balance + 800.00,
---     UpdatedAt = getdate()
--- where UserID  = 2;
--- go
-
-
--- --insert queries
-
--- -- ------------------------------------------------------------
--- -- block dates after a booking is confirmed
--- -- the unique constraint on availability automatically prevents
--- -- inserting a duplicate blocked date for the same asset
--- -- ------------------------------------------------------------
--- insert into Availability (AssetID, BlockedDate)
--- values (4, '2026-03-22');
--- go
-
-
--- -- ============================================================
--- -- section 7: delete queries
--- -- all deletes use ownership and status checks so users
--- -- cannot accidentally or maliciously delete the wrong data
--- -- ============================================================
-
-
--- -- ------------------------------------------------------------
--- -- q24: renter cancels their own pending booking
--- -- cannot cancel a confirmed, ongoing, or completed booking
--- -- ------------------------------------------------------------
--- delete from Bookings
--- where BookingID = 4
---   and RenterID  = 2          -- edge case: renter can only cancel their own booking
---   and Status    = 'pending'; -- edge case: cannot cancel after lender has already confirmed
--- go
-
-
--- -- ------------------------------------------------------------
--- -- q25: remove an asset from a user's wishlist
--- -- userid check ensures users can only remove from their own wishlist
--- -- ------------------------------------------------------------
--- delete from Wishlist
--- where UserID  = 3
---   and AssetID = 6;   -- edge case: both userid and assetid required � cannot delete blindly
--- go
-
-
--- -- ------------------------------------------------------------
--- -- q26: requester deletes their own open request
--- -- cannot delete a fulfilled request because an offer was accepted
--- -- ------------------------------------------------------------
--- delete from Requests
--- where RequestID   = 5
---   and RequesterID = 5                    -- edge case: only the creator can delete their request
---   and Status      not in ('fulfilled'); -- edge case: cannot delete after an offer was accepted
--- go
-
-
--- -- ------------------------------------------------------------
--- -- q27: admin removes an inappropriate asset listing
--- -- cascade automatically deletes all assetimages and availability
--- -- records linked to this asset -� no manual cleanup needed
--- -- ------------------------------------------------------------
--- delete from Assets
--- where AssetID = 6;
--- go
+-- VIEWS & STORED PROCEDURES 
+
+-- View: Wallet Summary
+CREATE OR ALTER VIEW vw_UserWalletSummary AS
+SELECT 
+    u.UserID, u.FullName, u.Email, w.Balance, w.UpdatedAt,
+    (SELECT COUNT(*) FROM Transactions t 
+     WHERE t.FromWalletID = w.WalletID OR t.ToWalletID = w.WalletID) AS TotalTransactions
+FROM Users u
+JOIN Wallets w ON u.UserID = w.UserID;
+GO
+
+-- View: Transaction History
+CREATE OR ALTER VIEW vw_TransactionHistory AS
+SELECT 
+    t.TransactionID, t.BookingID, t.Amount, t.Type, t.CreatedAt,
+    uFrom.FullName AS FromUser, uTo.FullName AS ToUser,
+    b.StartDate, b.EndDate
+FROM Transactions t
+LEFT JOIN Wallets wFrom ON t.FromWalletID = wFrom.WalletID
+LEFT JOIN Users uFrom ON wFrom.UserID = uFrom.UserID
+LEFT JOIN Wallets wTo ON t.ToWalletID = wTo.WalletID
+LEFT JOIN Users uTo ON wTo.UserID = uTo.UserID
+LEFT JOIN Bookings b ON t.BookingID = b.BookingID;
+GO
+
+-- Stored Procedure: Safe Deduct for Booking / Challan
+CREATE OR ALTER PROCEDURE sp_DeductForBooking
+    @BookingID INT,
+    @Amount    DECIMAL(10,2)
+AS
+BEGIN
+    SET NOCOUNT ON;
+    BEGIN TRY
+        BEGIN TRANSACTION;
+
+        DECLARE @RenterID INT, @LenderID INT, @RenterWalletID INT, @LenderWalletID INT;
+
+        SELECT @RenterID = RenterID, @LenderID = LenderID 
+        FROM Bookings WHERE BookingID = @BookingID;
+
+        SELECT @RenterWalletID = WalletID FROM Wallets WHERE UserID = @RenterID;
+        SELECT @LenderWalletID = WalletID FROM Wallets WHERE UserID = @LenderID;
+
+        IF (SELECT Balance FROM Wallets WHERE WalletID = @RenterWalletID) < @Amount
+            THROW 50002, 'Insufficient balance in wallet.', 1;
+
+        -- Deduct from renter
+        UPDATE Wallets SET Balance = Balance - @Amount, UpdatedAt = GETDATE()
+        WHERE WalletID = @RenterWalletID;
+
+        -- Credit to lender
+        UPDATE Wallets SET Balance = Balance + @Amount, UpdatedAt = GETDATE()
+        WHERE WalletID = @LenderWalletID;
+
+        -- Record transaction
+        INSERT INTO Transactions (BookingID, FromWalletID, ToWalletID, Amount, Type)
+        VALUES (@BookingID, @RenterWalletID, @LenderWalletID, @Amount, 'payment');
+
+        COMMIT TRANSACTION;
+        SELECT 'Payment deducted successfully' AS Message, @Amount AS AmountDeducted;
+
+    END TRY
+    BEGIN CATCH
+        IF @@TRANCOUNT > 0 ROLLBACK TRANSACTION;
+        THROW;
+    END CATCH
+END;
+GO

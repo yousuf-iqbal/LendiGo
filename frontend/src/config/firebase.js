@@ -1,11 +1,8 @@
 // src/config/firebase.js
 // firebase config for the frontend
-// this is safe to be public — firebase knows this
-
+// src/config/firebase.js
 import { initializeApp } from 'firebase/app';
-import { getAuth} from 'firebase/auth';
-
-
+import { getAuth, GoogleAuthProvider } from 'firebase/auth';
 
 const firebaseConfig = {
   apiKey:            "AIzaSyAZKnVOAMmdodRLwKGC3RjRoxzjkX-p5qQ",
@@ -18,4 +15,4 @@ const firebaseConfig = {
 
 const app  = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
-
+export const googleProvider = new GoogleAuthProvider();

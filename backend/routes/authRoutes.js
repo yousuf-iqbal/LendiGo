@@ -1,14 +1,12 @@
 // routes/authRoutes.js
-// only 2 routes now — firebase handles everything else
-
 const express  = require('express');
 const router   = express.Router();
 const multer   = require('multer');
 const { CloudinaryStorage } = require('multer-storage-cloudinary');
 const { cloudinary } = require('../config/cloudinary');
-const { register, login } = require('../controllers/authController');
+const { register, login, googleAuth, checkProvider, checkUserStatus} = require('../controllers/authController');
 
-// cloudinary storage — routes files to correct folder based on field name
+// cloudinary storage
 const storage = new CloudinaryStorage({
   cloudinary,
   params: async (req, file) => {
@@ -28,7 +26,6 @@ const storage = new CloudinaryStorage({
 const upload = multer({ storage });
 
 // POST /api/auth/register — save profile after firebase signup
-// frontend must send firebase token in Authorization header
 router.post('/register',
   upload.fields([
     { name: 'profilePic',  maxCount: 1 },
@@ -39,5 +36,12 @@ router.post('/register',
 
 // POST /api/auth/login — verify firebase token, return user profile
 router.post('/login', login);
+
+// POST /api/auth/google — handle Google sign-in
+router.post('/google', googleAuth);
+
+// POST /api/auth/check-provider — check if user signed up with Google or email
+router.post('/check-provider', checkProvider);
+router.post('/check-user-status', checkUserStatus);
 
 module.exports = router;

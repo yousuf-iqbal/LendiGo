@@ -17,7 +17,12 @@ export const AuthProvider = ({ children }) => {
 
       if (firebaseUser) {
         // force reload — fixes emailVerified being stale after clicking link
-        try { await firebaseUser.reload(); } catch {}
+        try { 
+          await firebaseUser.reload(); 
+        } catch (err) {
+          // Silently handle reload errors
+          console.debug('Reload error:', err?.message);
+        }
         const fresh = auth.currentUser;
 
         if (fresh?.emailVerified) {
