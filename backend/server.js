@@ -6,8 +6,8 @@ require('dotenv').config();
 require('./config/db');
 
 const authRoutes = require('./routes/authRoutes');
- const requestRoutes = require('./routes/requestRoutes');
- const offerRoutes   = require('./routes/offerRoutes');
+ //const requestRoutes = require('./routes/requestRoutes');
+// const offerRoutes   = require('./routes/offerRoutes');
 // const bookingRoutes = require('./routes/bookingRoutes');
 // const adminRoutes   = require('./routes/adminRoutes');
 const walletRoutes = require('./routes/walletRoutes');
@@ -19,8 +19,8 @@ app.use(cors());
 app.use(express.json());
 app.use('/api/auth', authRoutes);
 
-app.use('/api/requests', requestRoutes);
-app.use('/api/offers',   offerRoutes);
+//app.use('/api/requests', requestRoutes);
+//app.use('/api/offers',   offerRoutes);
 // app.use('/api/bookings', bookingRoutes);
 // app.use('/api/admin',    adminRoutes);
 app.use('/api/wallet', walletRoutes);
@@ -41,3 +41,4 @@ process.on('unhandledRejection', (err) => {
 process.on('uncaughtException', (err) => {
   console.error('uncaught exception:', err.message)
 })
+
