@@ -4,7 +4,7 @@ async function getAllRequests(filters = {}) {
     try {
         const pool = global.pool;
         if (!pool) {
-            throw new Error('Database not connected');
+            throw new Error('Database not connected-check server.js for connection setup');
         }
         
         const result = await pool.request()

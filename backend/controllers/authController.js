@@ -1,10 +1,6 @@
 // controllers/authController.js
-// firebase handles all auth (registration, login, otp, forgot password)
-// this controller only handles:
-//   1. saving profile data to our database after firebase registration
-//   2. returning user profile on login
-
-const { admin }   = require('../config/firebase');
+const { admin } = require('../config/firebase');
+const { sql, poolPromise } = require('../config/db');
 const {
   findUserByEmail,
   findUserByPhone,
@@ -12,111 +8,176 @@ const {
   updateProfilePictures,
 } = require('../models/authModel');
 
-// ─── SAVE PROFILE ─────────────────────────────────────────────────────────────
-// POST /api/auth/register
-// called AFTER firebase creates the account and sends verification email
-// frontend sends the firebase token + profile fields + images
-// we verify the token, then save profile data to our database
-
+// ─── REGISTER ─────────────────────────────────────────────────────────────────
 const register = async (req, res) => {
   try {
     const authHeader = req.headers['authorization'];
     const token      = authHeader && authHeader.split(' ')[1];
 
     if (!token) {
-      return res.status(401).json({ error: 'firebase token required' });
+      return res.status(401).json({ error: 'firebase token required.' });
     }
 
-    // verify the firebase token to get the email
     let decoded;
     try {
       decoded = await admin.auth().verifyIdToken(token);
     } catch (err) {
-      return res.status(401).json({ error: 'invalid firebase token' });
+      console.error('Token verification error:', err);
+      return res.status(401).json({ error: 'invalid firebase token.' });
+    }
+
+    if (!decoded.email_verified) {
+      return res.status(403).json({
+        error: 'email not verified. please verify your email before completing registration.',
+      });
     }
 
     const email = decoded.email;
-    const { fullName, phone, city, area, cnic } = req.body;
+    console.log('Registering user:', email);
 
-    // --- validation ---
+    const { fullName, phone, city, area, cnic } = req.body;
+    console.log('Profile data:', { fullName, phone, city, area, cnic });
+
+    // Validation
     if (!fullName || !phone || !city || !cnic) {
-      return res.status(400).json({ error: 'all required fields must be filled' });
+      return res.status(400).json({ error: 'all required fields must be filled.' });
     }
     if (!/^03\d{9}$/.test(phone)) {
-      return res.status(400).json({ error: 'phone must be 11 digits starting with 03' });
+      return res.status(400).json({ error: 'phone must be 11 digits starting with 03.' });
     }
     if (!/^\d{13}$/.test(cnic)) {
-      return res.status(400).json({ error: 'cnic must be exactly 13 digits' });
+      return res.status(400).json({ error: 'cnic must be exactly 13 digits.' });
     }
 
-    // --- check if already registered in our db ---
+    const existingPhone = await findUserByPhone(phone);
+    
+    // Check if user already exists
     const existingUser = await findUserByEmail(email);
     if (existingUser) {
-      return res.status(409).json({ error: 'profile already exists. please log in.' });
+      console.log('User already exists, updating profile:', existingUser.UserID);
+      
+      //  UPDATE existing user with new profile data
+      const pool = await poolPromise;
+      await pool.request()
+        .input('fullName', sql.NVarChar, fullName)
+        .input('phone', sql.NVarChar, phone)
+        .input('city', sql.NVarChar, city)
+        .input('area', sql.NVarChar, area || null)
+        .input('cnic', sql.NVarChar, cnic)
+        .input('email', sql.NVarChar, email)
+        .query(`update Users 
+        set FullName = @fullName, Phone = @phone, City = @city, Area = @area, CNIC = @cnic, IsVerified = 1 
+        where Email = @email`);
+      
+      // Save images if provided
+      const profilePicUrl  = req.files?.profilePic?.[0]?.path  || existingUser.ProfilePic;
+      const cnicPictureUrl = req.files?.cnicPicture?.[0]?.path || existingUser.CNICPicture;
+      if (profilePicUrl || cnicPictureUrl) {
+        await updateProfilePictures(email, profilePicUrl, cnicPictureUrl);
+      }
+      
+      // Return updated user
+      return res.status(200).json({
+        message: 'profile updated successfully.',
+        user: {
+          id:         existingUser.UserID,
+          fullName:   fullName,
+          email:      existingUser.Email,
+          phone:      phone,
+          city:       city,
+          area:       area || null,
+          role:       existingUser.Role || 'user',
+          profilePic: profilePicUrl,
+          isVerified: existingUser.IsVerified,
+        },
+      });
     }
 
-    // --- check phone duplicate ---
-    const existingPhone = await findUserByPhone(phone);
-    if (existingPhone) {
+    // Check if phone is already registered to a different user
+    if (existingPhone && existingPhone.UserID) {
       return res.status(409).json({ error: 'phone number already registered.' });
     }
 
-    // --- save to our database ---
-    await createUser({ fullName, email, phone, city, area, cnic });
+    // Create new user
+    console.log('Creating new user...');
+    const newUserId = await createUser({ fullName, email, phone, city, area, cnic, signupMethod: 'email' });
+    console.log('New user ID:', newUserId);
 
-    // --- save cloudinary image urls if uploaded ---
+const walletModel = require('../models/walletModel');
+await walletModel.createWallet(newUserId, 0);
+
+    // Save images
     const profilePicUrl  = req.files?.profilePic?.[0]?.path  || null;
     const cnicPictureUrl = req.files?.cnicPicture?.[0]?.path || null;
-
     if (profilePicUrl || cnicPictureUrl) {
       await updateProfilePictures(email, profilePicUrl, cnicPictureUrl);
     }
 
-    res.status(201).json({ message: 'profile saved successfully.' });
+    // Return complete user object
+    const userData = {
+      id: newUserId,
+      fullName: fullName,
+      email: email,
+      phone: phone,
+      city: city,
+      area: area || null,
+      role: 'user',
+      profilePic: profilePicUrl,
+      isVerified: true,
+    };
+
+    console.log('Registration successful, returning user:', userData);
+    
+    res.status(201).json({
+      message: 'profile saved successfully.',
+      user: userData,
+    });
 
   } catch (err) {
-  console.error('register error FULL:', err);
-  res.status(500).json({ error: err.message || 'something went wrong.' });
-}
+    console.error('❌ register error:', err.message);
+    console.error(err);
+    res.status(500).json({ error: 'something went wrong. please try again.' });
+  }
 };
 
 // ─── LOGIN ────────────────────────────────────────────────────────────────────
-// POST /api/auth/login
-// firebase handles password checking on the frontend
-// frontend sends firebase token → we verify it → return user profile from our db
-
 const login = async (req, res) => {
   try {
     const authHeader = req.headers['authorization'];
     const token      = authHeader && authHeader.split(' ')[1];
 
     if (!token) {
-      return res.status(401).json({ error: 'firebase token required' });
+      return res.status(401).json({ error: 'firebase token required.' });
     }
 
-    // verify token with firebase
     let decoded;
     try {
       decoded = await admin.auth().verifyIdToken(token);
     } catch (err) {
-      return res.status(401).json({ error: 'invalid or expired token. please log in again.' });
+      console.error('Token verification error:', err);
+      return res.status(401).json({ error: 'invalid or expired token.' });
     }
 
-    //check email verified in firebase
     if (!decoded.email_verified) {
-      return res.status(403).json({ 
-        error: 'please verify your email first. check your inbox for the verification link.' 
+      return res.status(403).json({
+        error: 'please verify your email first.',
+        code: 'EMAIL_NOT_VERIFIED',
       });
     }
 
-    // get profile from our database
     const user = await findUserByEmail(decoded.email);
+    console.log('Login attempt for:', decoded.email, 'User found:', !!user);
 
     if (!user) {
-      return res.status(404).json({ error: 'profile not found. please complete registration.' });
+      return res.status(404).json({
+        error: 'profile not found. please complete registration.',
+        code: 'PROFILE_NOT_FOUND',
+        requiresProfileCompletion: true,
+      });
     }
+
     if (user.IsBanned) {
-      return res.status(403).json({ error: 'your account has been suspended. contact support.' });
+      return res.status(403).json({ error: 'your account has been suspended.' });
     }
 
     res.json({
@@ -125,16 +186,190 @@ const login = async (req, res) => {
         id:         user.UserID,
         fullName:   user.FullName,
         email:      user.Email,
-        role:       user.Role,
+        phone:      user.Phone,
+        city:       user.City,
+        area:       user.Area,
+        role:       user.Role || 'user',
         profilePic: user.ProfilePic,
         isVerified: user.IsVerified,
       },
     });
 
   } catch (err) {
-    console.error('login error:', err.message);
+    console.error('❌ login error:', err.message);
+    res.status(500).json({ error: 'something went wrong.' });
+  }
+};
+
+// ─── GOOGLE AUTH ─────────────────────────────────────────────────────────────
+const googleAuth = async (req, res) => {
+  try {
+    const { token, email, fullName, photoURL } = req.body;
+
+    if (!token) {
+      return res.status(401).json({ error: 'Google token required.' });
+    }
+
+    // Verify Firebase ID token
+    let decoded;
+    try {
+      decoded = await admin.auth().verifyIdToken(token);
+    } catch (err) {
+      console.error('Token verification error:', err);
+      return res.status(401).json({ error: 'invalid Google token.' });
+    }
+
+    // Verify email matches
+    if (decoded.email !== email) {
+      return res.status(400).json({ error: 'email mismatch.' });
+    }
+
+    // Check if user exists in our DB
+    let user = await findUserByEmail(email);
+
+    if (!user) {
+      // New Google user - create minimal profile
+      const newUserId = await createUser({
+        fullName: fullName || decoded.name || email.split('@')[0],
+        email: email,
+        phone: '',
+        city: '',
+        area: null,
+        cnic: '',
+        signupMethod: 'google',
+      });
+
+      const profilePicUrl = photoURL || null;
+
+      user = {
+        UserID: newUserId,
+        FullName: fullName || decoded.name || email.split('@')[0],
+        Email: email,
+        Phone: '',
+        City: '',
+        Area: null,
+        CNIC: '',
+        ProfilePic: profilePicUrl,
+        IsVerified: true,
+        IsBanned: false,
+        Role: 'user',
+        CreatedAt: new Date(),
+      };
+
+      // Return with flag to complete profile
+      return res.status(201).json({
+        message: 'Google account created. Please complete your profile.',
+        user: {
+          id: user.UserID,
+          fullName: user.FullName,
+          email: user.Email,
+          role: user.Role,
+          profilePic: user.ProfilePic,
+          isVerified: user.IsVerified,
+        },
+        requiresProfileCompletion: true,
+      });
+    }
+
+    // Existing user - check if banned
+    if (user.IsBanned) {
+      return res.status(403).json({ error: 'your account has been suspended.' });
+    }
+
+    // Only require completion if BOTH phone AND cnic are empty
+    const needsCompletion = !user.Phone && !user.CNIC;
+
+    // Return existing user
+    res.json({
+      message: 'Google sign-in successful',
+      user: {
+        id:         user.UserID,
+        fullName:   user.FullName,
+        email:      user.Email,
+        phone:      user.Phone,
+        city:       user.City,
+        area:       user.Area,
+        role:       user.Role || 'user',
+        profilePic: user.ProfilePic,
+        isVerified: user.IsVerified,
+      },
+      requiresProfileCompletion: needsCompletion,
+    });
+
+  } catch (err) {
+    console.error(' googleAuth error:', err.message);
     res.status(500).json({ error: 'something went wrong. please try again.' });
   }
 };
 
-module.exports = { register, login };
+// ─── CHECK PROVIDER ──────────────────────────────────────────────────────────
+// POST /api/auth/check-provider
+// Checks if a user signed up with Google or email/password
+// ─── CHECK PROVIDER ──────────────────────────────────────────────────────────
+const checkProvider = async (req, res) => {
+  try {
+    const { email } = req.body;
+    
+    if (!email) {
+      return res.status(400).json({ error: 'email required' });
+    }
+
+    console.log('🔍 Checking provider for:', email);
+    
+    const user = await findUserByEmail(email);
+    
+    if (!user) {
+      console.log('❌ User not found');
+      return res.status(404).json({ error: 'user not found' });
+    }
+    
+    console.log('👤 User found:', user.UserID);
+    console.log('📊 User data:', { 
+      Phone: user.Phone, 
+      CNIC: user.CNIC,
+      SignupMethod: user.SignupMethod,
+      IsVerified: user.IsVerified 
+    });
+
+    // ✅ Use SignupMethod column directly
+    const provider = user.SignupMethod || 'email';
+    console.log('🎯 Provider:', provider);
+
+    res.json({
+      provider: provider,
+      email: user.Email,
+      hasCompleteProfile: !!user.Phone && !!user.CNIC,
+    });
+
+  } catch (err) {
+    console.error('❌ checkProvider error:', err.message);
+    res.status(500).json({ error: 'something went wrong' });
+  }
+};
+// ─── CHECK USER STATUS ───────────────────────────────────────────────────────
+// POST /api/auth/check-user-status
+// Checks if user exists and is verified before allowing password reset
+
+const checkUserStatus = async (req, res) => {
+  try {
+    const { email } = req.body;
+    
+    if (!email) {
+      return res.status(400).json({ error: 'email required' });
+    }
+
+    const user = await findUserByEmail(email);
+    
+    res.json({
+      exists: !!user,
+      isVerified: user?.IsVerified || false,
+      email: email,
+    });
+
+  } catch (err) {
+    console.error('check-user-status error:', err.message);
+    res.status(500).json({ error: 'something went wrong' });
+  }
+};
+
+module.exports = { register, login, googleAuth, checkProvider, checkUserStatus };

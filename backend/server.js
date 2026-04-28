@@ -8,6 +8,7 @@ const requestRoutes = require('./routes/requestRoutes');
 const offerRoutes = require('./routes/offerRoutes');
 const assetRoutes = require('./routes/assetRoutes');
 const bookingRoutes = require('./routes/bookingRoutes');
+const walletRoutes = require('./routes/walletRoutes');
 
 const app = express();
 app.use(cors());
@@ -16,7 +17,7 @@ app.use(express.json());
 // Initialize database connection and store globally
 (async () => {
     try {
-        global.pool = await poolPromise();
+        global.pool = await poolPromise ;
         console.log('✅ Database connected and stored globally');
     } catch (err) {
         console.error('❌ Database connection failed:', err.message);
@@ -28,6 +29,7 @@ app.use('/api/requests', requestRoutes);
 app.use('/api/offers', offerRoutes);
 app.use('/api/assets', assetRoutes);
 app.use('/api/bookings', bookingRoutes);
+app.use('/api/wallet', walletRoutes);
 
 app.get('/', (req, res) => {
     res.json({ message: 'Udhaari backend is running' });

@@ -6,12 +6,12 @@ const { sql, poolPromise } = require('../config/db');
 
 // find user by email — used in login and verifyToken middleware
 const findUserByEmail = async (email) => {
-  const pool = await poolPromise();
+  const pool = await poolPromise;
   const result = await pool.request()
     .input('email', sql.NVarChar, email)
     .query(`select UserID, FullName, Email, Phone, City, Area,
                    CNIC, CNICPicture, ProfilePic,
-                   IsVerified, IsBanned, Role, CreatedAt
+                   IsVerified, IsBanned, Role, CreatedAt, SignupMethod
             from Users
             where Email = @email`);
   return result.recordset[0];
@@ -19,7 +19,7 @@ const findUserByEmail = async (email) => {
 
 // check if phone already exists
 const findUserByPhone = async (phone) => {
-  const pool = await poolPromise();
+  const pool = await poolPromise;
   const result = await pool.request()
     .input('phone', sql.NVarChar, phone)
     .query(`select UserID from Users where Phone = @phone`);
@@ -28,24 +28,25 @@ const findUserByPhone = async (phone) => {
 
 // save user profile after firebase registration
 // firebase handles auth — we store everything else
-const createUser = async ({ fullName, email, phone, city, area, cnic }) => {
-  const pool = await poolPromise();
-  const result = await pool.request()
-    .input('fullName', sql.NVarChar, fullName)
-    .input('email',    sql.NVarChar, email)
-    .input('phone',    sql.NVarChar, phone)
-    .input('city',     sql.NVarChar, city)
-    .input('area',     sql.NVarChar, area || null)
-    .input('cnic',     sql.NVarChar, cnic)
-    .query(`insert into Users (FullName, Email, Phone, City, Area, CNIC)
-            output inserted.UserID
-            values (@fullName, @email, @phone, @city, @area, @cnic)`);
-  return result.recordset[0].UserID;
+// save user profile after firebase signup
+// firebase handles auth — we store everything else
+const createUser = async ({ fullName, email, phone, city, area, cnic, signupMethod = 'email' }) => {
+const pool = await poolPromise;
+const result = await pool.request()
+.input('fullName', sql.NVarChar, fullName)
+.input('email',    sql.NVarChar, email)
+.input('phone',    sql.NVarChar, phone)
+.input('city',     sql.NVarChar, city)
+.input('area',     sql.NVarChar, area || null)
+.input('cnic',     sql.NVarChar, cnic)
+.input('signupMethod', sql.NVarChar, signupMethod)
+.query(`insert into Users (FullName, Email, Phone, City, Area, CNIC, SignupMethod) values (@fullName, @email, @phone, @city, @area, @cnic, @signupMethod); SELECT SCOPE_IDENTITY() AS UserID;`);
+return result.recordset[0].UserID;
 };
 
 // save cloudinary image urls after upload
 const updateProfilePictures = async (email, profilePicUrl, cnicPictureUrl) => {
-  const pool = await poolPromise();
+  const pool = await poolPromise;
   await pool.request()
     .input('email',       sql.NVarChar, email)
     .input('profilePic',  sql.NVarChar, profilePicUrl  || null)

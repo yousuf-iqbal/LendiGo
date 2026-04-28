@@ -1,36 +1,34 @@
-﻿const sql = require('mssql');
+﻿// backend/config/db.js
+const sql = require('mssql');
+require('dotenv').config();
 
-const dbConfig = {
-    server: 'localhost',
-    port: 1433,
-    user: 'sa',
-    password: 'Admin123!',
-    database: 'UdhaariDB',
-    options: {
-        encrypt: false,
-        trustServerCertificate: true,
-        enableArithAbort: true
-    },
-    connectionTimeout: 30000,
-    requestTimeout: 30000
+const config = {
+  user: process.env.DB_USER,
+  password: process.env.DB_PASSWORD,
+  server: process.env.DB_SERVER,
+  database: process.env.DB_NAME,
+  options: { 
+    trustServerCertificate: true,
+    enableArithAbort: true,
+  },
+  pool: {
+    max: 10,
+    min: 0,
+    idleTimeoutMillis: 30000,
+  }
 };
 
-let pool = null;
+// ✅ Create pool promise that resolves to the connected pool
+const poolPromise = new sql.ConnectionPool(config)
+  .connect()
+  .then(pool => {
+    console.log('✅ Connected to SQL Server');
+    return pool; // Return the connected pool
+  })
+  .catch(err => {
+    console.error('❌ Database connection failed:', err.message);
+    throw err; // Re-throw so server knows connection failed
+  });
 
-async function poolPromise() {
-    if (pool && pool.connected) {
-        return pool;
-    }
-    
-    try {
-        console.log('Connecting to SQL Server...');
-        pool = await sql.connect(dbConfig);
-        console.log('✅ SQL Server connected');
-        return pool;
-    } catch (err) {
-        console.error('❌ Connection failed:', err.message);
-        throw err;
-    }
-}
-
-module.exports = { poolPromise, sql };
+// ✅ Export both sql and poolPromise
+module.exports = { sql, poolPromise };

@@ -1,50 +1,71 @@
-﻿const { admin } = require('../config/firebase');
+﻿const admin = require('firebase-admin');
 const { poolPromise, sql } = require('../config/db');
 
-module.exports = async (req, res, next) => {
-    try {
-        const authHeader = req.headers.authorization;
-        if (!authHeader || !authHeader.startsWith('Bearer ')) {
-            return res.status(401).json({ error: 'No token provided' });
-        }
-        
-        const idToken = authHeader.split(' ')[1];
-        
-        // Check if admin is initialized
-        if (!admin || !admin.auth) {
-            console.warn('Firebase Admin not initialized - using test mode');
-            // Test mode - accept any token
-            req.userID = 1;
-            req.userEmail = 'khushbakhtsohail101@gmail.com';
-            return next();
-        }
-        
-        const decodedToken = await admin.auth().verifyIdToken(idToken);
-        const email = decodedToken.email;
-        
-        const pool = await poolPromise();
-        const result = await pool.request()
-            .input('email', sql.NVarChar, email)
-            .query('SELECT UserID, FullName, Email FROM Users WHERE Email = @email');
-            
-        if (result.recordset.length === 0) {
-            return res.status(404).json({ error: 'User not found. Please sign up first.' });
-        }
-        
-        req.userID = result.recordset[0].UserID;
-        req.userEmail = email;
-        req.userName = result.recordset[0].FullName;
-        
-        console.log(`✅ Auth OK: UserID=${req.userID} (${req.userEmail})`);
-        return next();
-        
-    } catch (err) {
-        console.error('Token verification error:', err.message);
-        
-        // Fallback to test mode for development
-        console.warn('Using test mode - accepting any token');
-        req.userID = 1;
-        req.userEmail = 'khushbakhtsohail101@gmail.com';
-        return next();
+// Initialize Firebase Admin ONCE
+if (!admin.apps.length) {
+  try {
+    const serviceAccount = require('../config/serviceAccountKey.json');
+    admin.initializeApp({
+      credential: admin.credential.cert(serviceAccount)
+    });
+    console.log('✅ Firebase Admin initialized');
+  } catch (err) {
+    console.error('❌ Firebase Admin init failed:', err.message);
+  }
+}
+
+const verifyToken = async (req, res, next) => {
+  try {
+    const authHeader = req.headers.authorization;
+    
+    console.log('🔍 verifyToken - Auth Header:', authHeader ? 'Present' : 'Missing');
+
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      console.log('❌ No Bearer token found');
+      return res.status(401).json({ error: 'No token provided' });
     }
+
+    const token = authHeader.split(' ')[1];
+    console.log('🎫 Token extracted, length:', token.length);
+
+    // Verify Firebase token
+    const decodedToken = await admin.auth().verifyIdToken(token);
+    console.log('✅ Firebase token verified for:', decodedToken.email);
+
+    const userEmail = decodedToken.email;
+
+    // Find user in database
+    const pool = await poolPromise;
+    const result = await pool.request()
+      .input('email', sql.NVarChar, userEmail)
+      .query('SELECT UserID, FullName, Email FROM Users WHERE Email = @email');
+
+    if (result.recordset.length === 0) {
+      console.log('❌ User not found in DB:', userEmail);
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    // Attach user to request
+    req.userID = result.recordset[0].UserID;
+    req.userEmail = userEmail;
+    req.userName = result.recordset[0].FullName;
+
+    console.log(`✅ Authenticated: UserID ${req.userID} (${userEmail})`);
+    next();
+
+  } catch (err) {
+    console.error('❌ verifyToken ERROR:', err.message);
+    console.error('Error code:', err.code);
+    
+    if (err.code === 'auth/id-token-expired') {
+      return res.status(401).json({ error: 'Token expired. Please login again.' });
+    }
+    if (err.code === 'auth/invalid-token' || err.code === 'auth/argument-error') {
+      return res.status(401).json({ error: 'Invalid token format.' });
+    }
+
+    return res.status(403).json({ error: 'Authentication failed: ' + err.message });
+  }
 };
+
+module.exports = verifyToken;

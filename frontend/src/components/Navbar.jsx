@@ -1,101 +1,187 @@
-﻿import { useState, useEffect } from "react";
-import { Link, useLocation, useNavigate } from "react-router-dom";
-import "./Navbar.css";
+﻿// src/components/Navbar.jsx
+import { Link, useNavigate } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
 
 export default function Navbar() {
-  const [scrolled, setScrolled] = useState(false);
-  const [menuOpen, setMenuOpen] = useState(false);
-  const [user, setUser] = useState(null);
-  const location = useLocation();
+  const { user, logout } = useAuth();
   const navigate = useNavigate();
 
-  useEffect(() => {
-    const onScroll = () => setScrolled(window.scrollY > 20);
-    window.addEventListener("scroll", onScroll);
-    return () => window.removeEventListener("scroll", onScroll);
-  }, []);
-
-  useEffect(() => {
-    setMenuOpen(false);
-    // Check for user in localStorage using correct key
-    const userData = localStorage.getItem("udhaari_user") || localStorage.getItem("user");
-    if (userData) {
-      try {
-        setUser(JSON.parse(userData));
-      } catch(e) {
-        setUser(null);
-      }
-    } else {
-      setUser(null);
-    }
-  }, [location]);
-
-  const handleLogout = () => {
-    localStorage.removeItem("udhaari_user");
-    localStorage.removeItem("user");
-    localStorage.removeItem("token");
-    navigate("/login");
+  const handleLogout = async () => {
+    await logout();
+    navigate('/auth');
   };
 
-  const isActive = (path) => location.pathname === path;
-
   return (
-    <nav className={`navbar ${scrolled ? "navbar--scrolled" : ""}`}>
-      <div className="navbar__inner">
-        <Link to="/" className="navbar__logo">
-          <span className="navbar__logo-mark">U</span>
-          <span className="navbar__logo-text">dhaari</span>
+    <nav style={{
+      padding: '1rem 2rem',
+      background: '#fff',
+      borderBottom: '1px solid #e5e7eb',
+      display: 'flex',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      position: 'sticky',
+      top: 0,
+      zIndex: 100,
+      boxShadow: '0 1px 2px rgba(0,0,0,0.05)',
+    }}>
+      {/* Logo - Left */}
+      <Link to="/" style={{
+        color: '#065f46',
+        fontSize: '1.25rem',
+        fontWeight: 800,
+        textDecoration: 'none',
+        display: 'flex',
+        alignItems: 'center',
+        gap: '0.5rem',
+      }}>
+        <span style={{
+          width: '32px',
+          height: '32px',
+          borderRadius: '8px',
+          background: 'linear-gradient(135deg, #059669 0%, #10b981 100%)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          color: '#fff',
+          fontSize: '1rem',
+          fontWeight: 700,
+        }}>
+          U
+        </span>
+        dhaari
+      </Link>
+
+      {/* Feature Links - Center */}
+      <div style={{ 
+        display: 'flex', 
+        gap: '2rem',
+        alignItems: 'center',
+        marginLeft: 'auto',
+        marginRight: '2rem',
+      }}>
+        <Link 
+          to="/browse" 
+          style={{ 
+            color: '#374151', 
+            textDecoration: 'none',
+            fontWeight: 500,
+            fontSize: '0.95rem',
+          }}
+        >
+          Browse
         </Link>
-
-        <div className="navbar__links">
-          <Link to="/browse" className={`navbar__link ${isActive("/browse") ? "navbar__link--active" : ""}`}>Browse</Link>
-          <Link to="/requests" className={`navbar__link ${isActive("/requests") ? "navbar__link--active" : ""}`}>Requests</Link>
-          {user && (
-            <>
-              <Link to="/my-assets" className={`navbar__link ${isActive("/my-assets") ? "navbar__link--active" : ""}`}>My Assets</Link>
-              <Link to="/bookings" className={`navbar__link ${isActive("/bookings") ? "navbar__link--active" : ""}`}>Bookings</Link>
-            </>
-          )}
-        </div>
-
-        <div className="navbar__actions">
-          {user ? (
-            <>
-              <Link to="/profile" className="navbar__profile">
-                <div className="navbar__avatar">{user.fullName?.[0]?.toUpperCase() || user.name?.[0]?.toUpperCase() || "U"}</div>
-              </Link>
-              <button onClick={handleLogout} className="navbar__btn navbar__btn--ghost">Sign out</button>
-            </>
-          ) : (
-            <>
-              <Link to="/login" className="navbar__btn navbar__btn--ghost">Sign in</Link>
-              <Link to="/signup" className="navbar__btn navbar__btn--solid">Join</Link>
-            </>
-          )}
-        </div>
-
-        <button className="navbar__burger" onClick={() => setMenuOpen(!menuOpen)} aria-label="Menu">
-          <span className={menuOpen ? "open" : ""} />
-          <span className={menuOpen ? "open" : ""} />
-        </button>
-      </div>
-
-      <div className={`navbar__mobile ${menuOpen ? "navbar__mobile--open" : ""}`}>
-        <Link to="/browse" className="navbar__mobile-link">Browse</Link>
-        <Link to="/requests" className="navbar__mobile-link">Requests</Link>
+        <Link 
+          to="/requests" 
+          style={{ 
+            color: '#374151', 
+            textDecoration: 'none',
+            fontWeight: 500,
+            fontSize: '0.95rem',
+          }}
+        >
+          Requests
+        </Link>
+        
         {user && (
           <>
-            <Link to="/my-assets" className="navbar__mobile-link">My Assets</Link>
-            <Link to="/bookings" className="navbar__mobile-link">Bookings</Link>
-            <Link to="/profile" className="navbar__mobile-link">Profile</Link>
-            <button onClick={handleLogout} className="navbar__mobile-link navbar__mobile-logout">Sign out</button>
+            <Link 
+              to="/my-assets" 
+              style={{ 
+                color: '#374151', 
+                textDecoration: 'none',
+                fontWeight: 500,
+                fontSize: '0.95rem',
+              }}
+            >
+              My Assets
+            </Link>
+            <Link 
+              to="/bookings" 
+              style={{ 
+                color: '#374151', 
+                textDecoration: 'none',
+                fontWeight: 500,
+                fontSize: '0.95rem',
+              }}
+            >
+              Bookings
+            </Link>
           </>
         )}
-        {!user && (
+      </div>
+
+      {/* Auth Actions - Right */}
+      <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+        {user ? (
           <>
-            <Link to="/login" className="navbar__mobile-link">Sign in</Link>
-            <Link to="/signup" className="navbar__mobile-link">Join</Link>
+            {/* Profile */}
+            <Link to="/profile" style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.5rem',
+              color: '#065f46',
+              textDecoration: 'none',
+            }}>
+              <div style={{
+                width: '32px',
+                height: '32px',
+                borderRadius: '50%',
+                background: 'linear-gradient(135deg, #059669 0%, #10b981 100%)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: '0.9rem',
+                fontWeight: 600,
+                color: '#fff',
+              }}>
+                {user.fullName?.[0]?.toUpperCase() || user.FullName?.[0]?.toUpperCase() || 'U'}
+              </div>
+              <span style={{ color: '#374151', fontSize: '0.9rem', fontWeight: 500 }}>
+                {user.fullName || user.FullName}
+              </span>
+            </Link>
+            
+            {/* Wallet */}
+            <Link to="/wallet" style={{
+              padding: '0.5rem 1rem',
+              background: '#f0fdf4',
+              border: '1px solid #86efac',
+              borderRadius: '8px',
+              color: '#065f46',
+              textDecoration: 'none',
+              fontSize: '0.85rem',
+              fontWeight: 500,
+            }}>
+              Wallet
+            </Link>
+            
+            {/* Logout */}
+            <button onClick={handleLogout} style={{
+              padding: '0.5rem 1rem',
+              background: '#fee2e2',
+              border: '1px solid #fca5a5',
+              borderRadius: '8px',
+              color: '#dc2626',
+              cursor: 'pointer',
+              fontSize: '0.85rem',
+              fontWeight: 500,
+            }}>
+              Logout
+            </button>
           </>
+        ) : (
+          <Link to="/auth" style={{
+            padding: '0.5rem 1rem',
+            background: 'linear-gradient(135deg, #059669 0%, #10b981 100%)',
+            border: 'none',
+            borderRadius: '8px',
+            color: '#fff',
+            textDecoration: 'none',
+            fontWeight: 600,
+            fontSize: '0.9rem',
+          }}>
+            Sign In
+          </Link>
         )}
       </div>
     </nav>

@@ -1,89 +1,66 @@
-﻿import { createContext, useState, useEffect, useContext } from 'react';
-import { getAuth, onAuthStateChanged } from 'firebase/auth';
+﻿// src/context/AuthContext.jsx
+import { createContext, useContext, useEffect, useState } from 'react';
+import { onAuthStateChanged, signOut } from 'firebase/auth';
 import { auth } from '../config/firebase';
 import API from '../api/axios';
 
-const AuthContext = createContext();
+const AuthContext = createContext(null);
 
-export function AuthProvider({ children }) {
+export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
+  const [fbUser, setFbUser] = useState(null);
   const [loading, setLoading] = useState(true);
-
-  // Token refresh function
-  const setupTokenRefresh = (firebaseUser) => {
-    if (window.tokenRefreshInterval) {
-      clearInterval(window.tokenRefreshInterval);
-    }
-    
-    if (firebaseUser) {
-      window.tokenRefreshInterval = setInterval(async () => {
-        try {
-          const freshToken = await firebaseUser.getIdToken(true);
-          localStorage.setItem('token', freshToken);
-          console.log('🔄 Token refreshed automatically');
-        } catch (error) {
-          console.error('Failed to refresh token:', error);
-        }
-      }, 50 * 60 * 1000); // 50 minutes
-    }
-  };
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+      setFbUser(firebaseUser);
+
       if (firebaseUser) {
-        const token = await firebaseUser.getIdToken();
-        localStorage.setItem('token', token);
-        
-        // Setup auto token refresh
-        setupTokenRefresh(firebaseUser);
-        
-        // Get user from backend
         try {
-          const res = await API.post('/auth/login', {}, {
-            headers: { Authorization: `Bearer ${token}` }
-          });
-          const userData = res.data.user;
-          localStorage.setItem('udhaari_user', JSON.stringify(userData));
-          setUser(userData);
-        } catch (err) {
-          console.error('Auth error:', err);
+          await firebaseUser.reload();
+          if (!auth.currentUser?.emailVerified) {
+            setUser(null); // Not verified yet
+          } else {
+            try {
+              const res = await API.post('/auth/login');
+              setUser(res.data.user);
+              localStorage.setItem('udhaari_user', JSON.stringify(res.data.user));
+            } catch (err) {
+              // If backend says profile not found (404), keep Firebase auth alive
+              // Don't set user=null here to avoid redirect loops
+              if (err.response?.status !== 404) {
+                setUser(null);
+                localStorage.removeItem('udhaari_user');
+                localStorage.removeItem('token');
+              }
+            }
+          }
+        } catch {
           setUser(null);
         }
       } else {
-        if (window.tokenRefreshInterval) {
-          clearInterval(window.tokenRefreshInterval);
-        }
-        localStorage.removeItem('token');
-        localStorage.removeItem('udhaari_user');
         setUser(null);
+        localStorage.removeItem('udhaari_user');
+        localStorage.removeItem('token');
       }
       setLoading(false);
     });
 
-    return () => {
-      unsubscribe();
-      if (window.tokenRefreshInterval) {
-        clearInterval(window.tokenRefreshInterval);
-      }
-    };
+    return unsubscribe;
   }, []);
 
   const logout = async () => {
-    const auth = getAuth();
-    await auth.signOut();
-    if (window.tokenRefreshInterval) {
-      clearInterval(window.tokenRefreshInterval);
-    }
+    await signOut(auth);
     localStorage.removeItem('token');
     localStorage.removeItem('udhaari_user');
     setUser(null);
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, logout }}>
+    <AuthContext.Provider value={{ user, setUser, fbUser, loading, logout }}>
       {children}
     </AuthContext.Provider>
   );
-}
+};
 
 export const useAuth = () => useContext(AuthContext);
