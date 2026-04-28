@@ -56,7 +56,7 @@ const register = async (req, res) => {
     if (existingUser) {
       console.log('User already exists, updating profile:', existingUser.UserID);
       
-      // ✅ UPDATE existing user with new profile data
+      //  UPDATE existing user with new profile data
       const pool = await poolPromise;
       await pool.request()
         .input('fullName', sql.NVarChar, fullName)
@@ -66,8 +66,8 @@ const register = async (req, res) => {
         .input('cnic', sql.NVarChar, cnic)
         .input('email', sql.NVarChar, email)
         .query(`update Users 
-                set FullName = @fullName, Phone = @phone, City = @city, Area = @area, CNIC = @cnic 
-                where Email = @email`);
+        set FullName = @fullName, Phone = @phone, City = @city, Area = @area, CNIC = @cnic, IsVerified = 1 
+        where Email = @email`);
       
       // Save images if provided
       const profilePicUrl  = req.files?.profilePic?.[0]?.path  || existingUser.ProfilePic;
@@ -100,8 +100,11 @@ const register = async (req, res) => {
 
     // Create new user
     console.log('Creating new user...');
-    const newUserId = await createUser({ fullName, email, phone, city, area, cnic });
+    const newUserId = await createUser({ fullName, email, phone, city, area, cnic, signupMethod: 'email' });
     console.log('New user ID:', newUserId);
+
+const walletModel = require('../models/walletModel');
+await walletModel.createWallet(newUserId, 0);
 
     // Save images
     const profilePicUrl  = req.files?.profilePic?.[0]?.path  || null;
@@ -123,7 +126,7 @@ const register = async (req, res) => {
       isVerified: true,
     };
 
-    console.log('✅ Registration successful, returning user:', userData);
+    console.log('Registration successful, returning user:', userData);
     
     res.status(201).json({
       message: 'profile saved successfully.',

@@ -28,20 +28,20 @@ const findUserByPhone = async (phone) => {
 
 // save user profile after firebase registration
 // firebase handles auth — we store everything else
+// save user profile after firebase signup
+// firebase handles auth — we store everything else
 const createUser = async ({ fullName, email, phone, city, area, cnic, signupMethod = 'email' }) => {
-  const pool = await poolPromise;
-  const result = await pool.request()
-    .input('fullName', sql.NVarChar, fullName)
-    .input('email',    sql.NVarChar, email)
-    .input('phone',    sql.NVarChar, phone)
-    .input('city',     sql.NVarChar, city)
-    .input('area',     sql.NVarChar, area || null)
-    .input('cnic',     sql.NVarChar, cnic)
-    .input('signupMethod', sql.NVarChar, signupMethod)
-    .query(`insert into Users (FullName, Email, Phone, City, Area, CNIC, SignupMethod)
-            output inserted.UserID
-            values (@fullName, @email, @phone, @city, @area, @cnic, @signupMethod)`);
-  return result.recordset[0].UserID;
+const pool = await poolPromise;
+const result = await pool.request()
+.input('fullName', sql.NVarChar, fullName)
+.input('email',    sql.NVarChar, email)
+.input('phone',    sql.NVarChar, phone)
+.input('city',     sql.NVarChar, city)
+.input('area',     sql.NVarChar, area || null)
+.input('cnic',     sql.NVarChar, cnic)
+.input('signupMethod', sql.NVarChar, signupMethod)
+.query(`insert into Users (FullName, Email, Phone, City, Area, CNIC, SignupMethod) values (@fullName, @email, @phone, @city, @area, @cnic, @signupMethod); SELECT SCOPE_IDENTITY() AS UserID;`);
+return result.recordset[0].UserID;
 };
 
 // save cloudinary image urls after upload

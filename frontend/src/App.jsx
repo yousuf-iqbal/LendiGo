@@ -3,9 +3,9 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import AuthPage from './pages/AuthPage';
 import CompleteProfile from './pages/CompleteProfile';
+import WalletDashboard from './pages/WalletDashboard';
+
 function HomePage() {
-  // const { user } = useAuth(); // No longer needed
-  
   return (
     <div style={{
       minHeight: '100vh', background: '#080810', color: '#fff',
@@ -22,8 +22,7 @@ function HomePage() {
         import('firebase/auth').then(({ getAuth, signOut }) => {
           signOut(getAuth());
           localStorage.removeItem('udhaari_user');
-          localStorage.removeItem('udhaari_pending_profile');
-          localStorage.removeItem('udhaari_pending_email');
+          localStorage.removeItem('token');
           window.location.href = '/auth';
         });
       }} style={{
@@ -38,12 +37,10 @@ function HomePage() {
   );
 }
 
+// ✅ FIXED: Strictly check 'user' state. No stale 'storedUser' fallback.
 function ProtectedRoute({ children }) {
   const { user, loading } = useAuth();
-  
-  // ✅ Check localStorage directly as fallback
-  const storedUser = localStorage.getItem('udhaari_user');
-  
+
   if (loading) {
     return (
       <div style={{
@@ -54,12 +51,13 @@ function ProtectedRoute({ children }) {
       </div>
     );
   }
-  
-  // ✅ Check both context user AND localStorage
-  if (user || storedUser) {
+
+  // Only render if authenticated by Firebase AND Backend
+  if (user) {
     return children;
   }
-  
+
+  // If not authenticated, redirect to auth page
   return <Navigate to="/auth" replace />;
 }
 
@@ -72,9 +70,20 @@ export default function App() {
           <Route path="/login" element={<Navigate to="/auth" replace />} />
           <Route path="/signup" element={<Navigate to="/auth" replace />} />
           <Route path="/complete-profile" element={<CompleteProfile />} />
-          <Route path="/" element={
-            <ProtectedRoute><HomePage /></ProtectedRoute>
+          
+          {/* Protected Routes */}
+          <Route path="/wallet" element={
+            <ProtectedRoute>
+              <WalletDashboard />
+            </ProtectedRoute>
           } />
+          
+          <Route path="/" element={
+            <ProtectedRoute>
+              <HomePage />
+            </ProtectedRoute>
+          } />
+          
           <Route path="*" element={<Navigate to="/auth" replace />} />
         </Routes>
       </BrowserRouter>

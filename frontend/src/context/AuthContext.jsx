@@ -7,8 +7,8 @@ import API from '../api/axios';
 const AuthContext = createContext(null);
 
 export const AuthProvider = ({ children }) => {
-  const [user, setUser]       = useState(null);
-  const [fbUser, setFbUser]   = useState(null);
+  const [user, setUser] = useState(null);
+  const [fbUser, setFbUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -16,50 +16,48 @@ export const AuthProvider = ({ children }) => {
       setFbUser(firebaseUser);
 
       if (firebaseUser) {
-        // force reload — fixes emailVerified being stale after clicking link
-        try { 
-          await firebaseUser.reload(); 
+        try {
+          // Force reload to ensure emailVerified is fresh
+          await firebaseUser.reload();
+          
+          // Try to login to backend to get profile
+          const res = await API.post('/auth/login');
+          setUser(res.data.user);
+          
+          // Keep localStorage in sync
+          localStorage.setItem('udhaari_user', JSON.stringify(res.data.user));
         } catch (err) {
-          // Silently handle reload errors
-          console.debug('Reload error:', err?.message);
-        }
-        const fresh = auth.currentUser;
-
-        if (fresh?.emailVerified) {
-          try {
-            // try to login — get profile from DB
-            const res = await API.post('/auth/login');
-            setUser(res.data.user);
-          } catch (err) {
-            if (err.response?.status === 404) {
-              // profile not in DB yet — check for pending profile data
-              const pending = localStorage.getItem('udhaari_pending_profile');
-              if (pending) {
-                try {
-                  const data = JSON.parse(pending);
-                  const form = new FormData();
-                  Object.entries(data).forEach(([k, v]) => { if (v) form.append(k, v); });
-                  await API.post('/auth/register', form);
-                  localStorage.removeItem('udhaari_pending_profile');
-                  localStorage.removeItem('udhaari_pending_email');
-                  // now fetch profile
-                  const loginRes = await API.post('/auth/login');
-                  setUser(loginRes.data.user);
-                } catch {
-                  setUser(null);
-                }
-              } else {
+          console.error("Auto-login failed:", err);
+          
+          // If profile not found (404), check for pending registration
+          if (err.response?.status === 404) {
+            const pending = localStorage.getItem('udhaari_pending_profile');
+            if (pending) {
+              try {
+                const data = JSON.parse(pending);
+                const form = new FormData();
+                Object.entries(data).forEach(([k, v]) => { if (v) form.append(k, v); });
+                await API.post('/auth/register', form);
+                localStorage.removeItem('udhaari_pending_profile');
+                
+                // Retry login
+                const loginRes = await API.post('/auth/login');
+                setUser(loginRes.data.user);
+              } catch {
                 setUser(null);
               }
             } else {
               setUser(null);
             }
+          } else {
+            setUser(null);
           }
-        } else {
-          setUser(null);
         }
       } else {
+        // ✅ CRITICAL: Firebase says no user. Clear stale storage and state.
         setUser(null);
+        localStorage.removeItem('udhaari_user');
+        localStorage.removeItem('token');
       }
 
       setLoading(false);

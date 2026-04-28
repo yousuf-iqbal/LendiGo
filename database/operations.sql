@@ -1,158 +1,197 @@
+--------- testing and admin operations for UdhaariDB ---------
+use UdhaariDB;
+go
 
--- -- Udhaari Testing & CRUD Operations SQL
--- --for manual testing, Postman verification, admin tasks, and data reset operations.
--- --------------------------------------------------------------------
+select top 10 * from Users;
+go
 
-USE UdhaariDB;
-GO
--- -- 1. Find your UserID
--- SELECT UserID, Email FROM Users WHERE Email = 'yousuf907734@gmail.com';
+--------- setup test user 8 if not exists ---------
+if not exists (select 1 from Users where Email = 'yousuf907734@gmail.com')
+begin
+    insert into Users (FullName, Email, Phone, City, Area, CNIC, IsVerified, Role, SignupMethod)
+    values ('Test User', 'yousuf907734@gmail.com', '03009999999', 'Lahore', 'Test Area', '3520999999999', 1, 'user', 'email');
+end
+go
 
--- -- 2. Insert a wallet (replace X with your actual UserID from step 1)
--- INSERT INTO Wallets (UserID, Balance) 
--- VALUES (8, 10000.00);  -- e.g., VALUES (8, 10000.00)
 
--- -- 3. Verify it worked
--- SELECT u.Email, w.Balance 
--- FROM Users u 
--- JOIN Wallets w ON u.UserID = w.UserID 
--- WHERE u.Email = 'yousuf907734@gmail.com';
+SELECT BookingID, RenterID, LenderID, Status, IsPaid, TotalPrice
+FROM Bookings
+WHERE RenterID = 5;
+--------- ensure user 8 has a wallet ---------
+if not exists (select 1 from Wallets where UserID =5 )
+    insert into Wallets (UserID, Balance) values (8, 10000.00);
+else
+    update Wallets set Balance = 10000.00 where UserID = 5;
+go
 
--- 1. USERS CRUD & ADMIN OPERATIONS
+--------- add a new test booking for user 5 (l242539@lhr.nu.edu.pk) ---------
+INSERT INTO Bookings (AssetID, RenterID, LenderID, StartDate, EndDate, TotalPrice, Status, IsPaid)
+VALUES (
+    1,                    -- AssetID: Canon EOS M50 Camera (exists in Assets table)
+    5,                    -- RenterID: your test user (l242539@lhr.nu.edu.pk)
+    1,                    -- LenderID: Yousuf (user 1, owns the camera)
+    '2026-05-01',         -- StartDate: future date
+    '2026-05-03',         -- EndDate: must be >= StartDate
+    400.00,              -- TotalPrice: 3 days * 1500/day
+    'pending',            -- Status: must be one of the allowed values
+    0                     -- IsPaid: 0 = not paid yet
+);
+--------- queries for wallet demo ---------
 
--- Get all users
---SELECT * FROM Users ORDER BY UserID;
+--------- show user 8 wallet balance before payment ---------
+select u.FullName, u.Email, w.Balance, w.UpdatedAt 
+from Wallets w
+join Users u on w.UserID = u.UserID
+where u.UserID = 5;
+go
 
--- -- Get single user by email (very useful for testing)
--- SELECT * FROM Users WHERE Email = 'yousuf@email.com';
+--------- show transaction history for user 8 before payment ---------
+select 
+    t.TransactionID, t.Amount, t.Type, t.CreatedAt, b.BookingID
+from Transactions t
+left join Bookings b on t.BookingID = b.BookingID
+where t.FromWalletID = (select WalletID from Wallets where UserID = 5)
+   or t.ToWalletID = (select WalletID from Wallets where UserID = 5)
+order by t.CreatedAt desc;
+go
 
--- -- Update user profile (example)
--- UPDATE Users 
--- SET FullName = 'Yousuf Iqbal Updated', 
---     Phone = '03005551234', 
---     City = 'Lahore'
--- WHERE Email = 'yousuf@email.com';
+--------- test the payment stored procedure ---------
+--------- execute sp_DeductForBooking @BookingID = 100, @Amount = 500.00, @PayerUserID = 8; ---------
 
--- -- Admin: Ban / Unban a user
--- UPDATE Users SET IsBanned = 1 WHERE UserID = 5;     -- Ban
--- UPDATE Users SET IsBanned = 0 WHERE UserID = 5;     -- Unban
+--------- show updated balance after payment ---------
+select u.FullName, u.Email, w.Balance as NewBalance, w.UpdatedAt
+from Users u
+join Wallets w on u.UserID = w.UserID
+where u.UserID = 8;
+go
 
--- -- Admin: Verify user
--- UPDATE Users SET IsVerified = 1 WHERE UserID = 3;
+--------- show new transaction created ---------
+select top 1 
+    t.TransactionID, t.Amount, t.Type, t.FromWalletID, t.ToWalletID, t.CreatedAt
+from Transactions t
+where t.FromWalletID = (select WalletID from Wallets where UserID = 8)
+order by t.CreatedAt desc;
+go
 
--- -- Delete a user (be careful - cascades may apply)
--- DELETE FROM Users WHERE UserID = 999;   -- change ID
+--------- admin queries ---------
 
--- -- =============================================
--- -- 2. WALLET & PAYMENT OPERATIONS
--- -- =============================================
+--------- list all users with signup method ---------
+select UserID, FullName, Email, SignupMethod, IsVerified, CreatedAt
+from Users
+order by CreatedAt desc;
+go
 
--- -- Check current wallet balance for a user
-SELECT u.FullName, u.Email, w.Balance, w.UpdatedAt 
-FROM Wallets w
-JOIN Users u ON w.UserID = u.UserID
-WHERE u.Email = 'yousuf907734@gmail.com';
+--------- count users by signup method ---------
+select 
+    SignupMethod,
+    count(*) as TotalUsers,
+    sum(case when IsVerified = 1 then 1 else 0 end) as VerifiedUsers
+from Users
+group by SignupMethod;
+go
 
--- -- View wallet summary (using the view we created)
--- SELECT * FROM vw_UserWalletSummary ORDER BY Balance DESC;
+--------- check wallet exists for every user ---------
+select u.UserID, u.FullName, 
+       case when w.WalletID is null then 'No Wallet' else 'Has Wallet' end as WalletStatus
+from Users u
+left join Wallets w on u.UserID = w.UserID;
+go
 
--- -- Add money to wallet (Top-up / Deposit for testing)
--- UPDATE Wallets 
--- SET Balance = Balance + 10000.00, 
---     UpdatedAt = GETDATE()
--- WHERE UserID = 1;   -- Change UserID as needed
+--------- view wallet summary with window functions ---------
+select * from vw_UserWalletSummary;
+go
 
--- -- Reset a specific wallet to default amount
--- UPDATE Wallets SET Balance = 15000.00 WHERE UserID = 1;
+--------- view transaction history with running total ---------
+select * from vw_TransactionHistory;
+go
 
--- -- View full transaction history
--- SELECT * FROM vw_TransactionHistory ORDER BY CreatedAt DESC;
+--------- update user verification status ---------
+update Users set IsVerified = 1 where Email = 'yousuf907734@gmail.com';
+go
 
--- -- Test the challan deduction stored procedure (Booking payment)
--- EXEC sp_DeductForBooking @BookingID = 4, @Amount = 400.00;
+--------- reset wallet balances for testing ---------
+update Wallets set Balance = 15000.00 where UserID = 1;
+update Wallets set Balance = 8000.00 where UserID = 2;
+update Wallets set Balance = 10000.00 where UserID = 8;
+go
 
--- -- Check balance after deduction
--- SELECT u.FullName, w.Balance 
--- FROM Wallets w 
--- JOIN Users u ON w.UserID = u.UserID 
--- WHERE u.UserID = 2;   -- Renter of BookingID 4
 
--- -- Manual wallet deduction (if you don't want to use stored proc)
--- UPDATE Wallets 
--- SET Balance = Balance - 500.00, UpdatedAt = GETDATE()
--- WHERE UserID = 1 AND Balance >= 500.00;
+--------- testing and admin operations for UdhaariDB ---------
+use UdhaariDB;
+go
 
--- -- =============================================
--- -- 3. MESSAGES CRUD (for when we implement messaging)
--- -- =============================================
+--------- seed data (2-3 rows per table) ---------
+insert into Categories (Name, Description) values
+('Electronics', 'Cameras, laptops, phones, gadgets'),
+('Vehicles', 'Cars, bikes, rickshaws'),
+('Property', 'Farmhouses, halls, event spaces');
+go
 
--- -- View all messages
--- SELECT m.MessageID, s.FullName AS Sender, r.FullName AS Receiver, 
---        m.Body, m.SentAt, m.IsRead
--- FROM Messages m
--- JOIN Users s ON m.SenderID = s.UserID
--- JOIN Users r ON m.ReceiverID = r.UserID
--- ORDER BY m.SentAt DESC;
+insert into Users (FullName, Email, Phone, City, Area, CNIC, IsVerified, Role, SignupMethod) values
+('Yousuf', 'yousuf@email.com', '03001234567', 'Lahore', 'DHA Phase 5', '3520112345671', 1, 'user', 'email'),
+('Dua', 'dua@email.com', '03211234567', 'Lahore', 'Gulberg III', '3520298765432', 1, 'user', 'google'),
+('Admin User', 'admin@udhaari.com', '03001111111', 'Lahore', 'FAST-NU', '3520743210987', 1, 'admin', 'email');
+go
 
--- -- Mark messages as read
--- UPDATE Messages 
--- SET IsRead = 1 
--- WHERE ReceiverID = 3 AND IsRead = 0;
+insert into Wallets (UserID, Balance) values
+(1, 15000.00),
+(2, 8000.00),
+(3, 5000.00);
+go
 
--- -- Insert a test message
--- INSERT INTO Messages (SenderID, ReceiverID, BookingID, Body)
--- VALUES (1, 3, 1, 'Test message for backend testing - please ignore');
+insert into Assets (OwnerID, CategoryID, Title, Description, PricePerDay, Deposit, City, Area) values
+(1, 1, 'Canon EOS M50 Camera', 'Great for events. Comes with 2 lenses.', 1500.00, 5000.00, 'Lahore', 'DHA Phase 5'),
+(2, 2, 'Honda CD 70 Motorcycle', 'Well maintained 2022 model.', 600.00, 3000.00, 'Lahore', 'Cantt');
+go
 
--- -- Delete old test messages
--- DELETE FROM Messages WHERE Body LIKE '%test message%';
+insert into Bookings (AssetID, RenterID, LenderID, StartDate, EndDate, TotalPrice, Status, IsPaid) values
+(1, 2, 1, '2026-03-15', '2026-03-16', 3000.00, 'confirmed', 1),
+(2, 1, 2, '2026-03-18', '2026-03-20', 1800.00, 'ongoing', 0);
+go
 
--- -- =============================================
--- -- 4. BOOKINGS & PAYMENT RELATED
--- -- =============================================
+insert into Transactions (BookingID, FromWalletID, ToWalletID, Amount, Type) values
+(1, 2, 1, 3000.00, 'payment'),
+(2, 1, 2, 1800.00, 'hold');
+go
 
--- -- View all bookings with status
--- SELECT b.BookingID, a.Title AS Asset, 
---        ur.FullName AS Renter, ul.FullName AS Lender,
---        b.TotalPrice, b.Status, b.IsPaid, b.StartDate, b.EndDate
--- FROM Bookings b
--- JOIN Assets a ON b.AssetID = a.AssetID
--- JOIN Users ur ON b.RenterID = ur.UserID
--- JOIN Users ul ON b.LenderID = ul.UserID
--- ORDER BY b.CreatedAt DESC;
+--------- demo queries ---------
+--------- show user 8 wallet balance before payment ---------
+select u.FullName, u.Email, w.Balance, w.UpdatedAt 
+from Wallets w
+join Users u on w.UserID = u.UserID
+where u.UserID = 1;
+go
 
--- -- Mark a booking as paid (admin/lender action)
--- UPDATE Bookings SET IsPaid = 1 WHERE BookingID = 4;
+--------- show transaction history for user 1 before payment ---------
+select 
+    t.TransactionID, t.Amount, t.Type, t.CreatedAt, b.BookingID
+from Transactions t
+left join Bookings b on t.BookingID = b.BookingID
+where t.FromWalletID = (select WalletID from Wallets where UserID = 1)
+   or t.ToWalletID = (select WalletID from Wallets where UserID = 1)
+order by t.CreatedAt desc;
+go
 
--- -- Change booking status
--- UPDATE Bookings SET Status = 'confirmed' WHERE BookingID = 4;
+--------- test secure payment stored procedure ---------
+--------- exec sp_DeductForBooking @BookingID = 2, @Amount = 500.00, @PayerUserID = 1; ---------
 
--- -- =============================================
--- -- 5. OTHER USEFUL QUERIES FOR TESTING
--- -- =============================================
+--------- show updated balance after payment ---------
+select u.FullName, u.Email, w.Balance as NewBalance, w.UpdatedAt
+from Users u
+join Wallets w on u.UserID = w.UserID
+where u.UserID = 1;
+go
 
--- -- Check if wallet exists for every user (important after new registration)
--- SELECT u.UserID, u.FullName, 
---        CASE WHEN w.WalletID IS NULL THEN 'No Wallet' ELSE 'Has Wallet' END AS WalletStatus
--- FROM Users u
--- LEFT JOIN Wallets w ON u.UserID = w.UserID;
+--------- show new transaction created ---------
+select top 1 
+    t.TransactionID, t.Amount, t.Type, t.FromWalletID, t.ToWalletID, t.CreatedAt
+from Transactions t
+where t.FromWalletID = (select WalletID from Wallets where UserID = 1)
+order by t.CreatedAt desc;
+go
 
--- -- Count total records in each table
--- SELECT 'Users' AS TableName, COUNT(*) AS Count FROM Users UNION ALL
--- SELECT 'Wallets', COUNT(*) FROM Wallets UNION ALL
--- SELECT 'Transactions', COUNT(*) FROM Transactions UNION ALL
--- SELECT 'Messages', COUNT(*) FROM Messages UNION ALL
--- SELECT 'Bookings', COUNT(*) FROM Bookings;
-
--- -- Reset all wallets to initial amounts (for repeated testing)
--- UPDATE Wallets SET Balance = 15000.00 WHERE UserID = 1;
--- UPDATE Wallets SET Balance =  8000.00 WHERE UserID = 2;
--- UPDATE Wallets SET Balance =  5000.00 WHERE UserID = 3;
--- UPDATE Wallets SET Balance = 12000.00 WHERE UserID = 4;
--- UPDATE Wallets SET Balance =  3000.00 WHERE UserID = 5;
--- UPDATE Wallets SET Balance = 20000.00 WHERE UserID = 6;
--- UPDATE Wallets SET Balance =     0.00 WHERE UserID = 7;
-
--- -- Clear test transactions
--- -- DELETE FROM Transactions WHERE Type = 'payment' AND CreatedAt > DATEADD(HOUR, -1, GETDATE());
-
--- GO
+--------- verify window functions work ---------
+select * from vw_UserWalletSummary;
+go
+select * from vw_TransactionHistory;
+go

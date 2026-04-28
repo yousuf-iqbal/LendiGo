@@ -1,406 +1,484 @@
--- ==========================================================
--- UdhaariDB - Full Schema with Wallet + Views + Stored Procedures
--- Group 6 - Deliverable 2
--- ==========================================================
-
-USE master;
-GO
-
-IF EXISTS (SELECT name FROM sys.databases WHERE name = 'UdhaariDB')
-    DROP DATABASE UdhaariDB;
-GO
-
-CREATE DATABASE UdhaariDB;
-GO
-
-USE UdhaariDB;
-GO
-
--- =============================================
--- TABLES
--- =============================================
-
-CREATE TABLE Users 
-(
-    UserID      INT PRIMARY KEY IDENTITY(1,1),
-    FullName    NVARCHAR(100) NOT NULL,
-    Email       NVARCHAR(100) NOT NULL UNIQUE,
-    Phone       NVARCHAR(20),
-    City        NVARCHAR(50),
-    Area        NVARCHAR(100),
-    CNIC        NVARCHAR(15),
-    CNICPicture NVARCHAR(255),
-    ProfilePic  NVARCHAR(255),
-    IsVerified  BIT DEFAULT 0,
-    IsBanned    BIT DEFAULT 0,
-    Role        NVARCHAR(10) DEFAULT 'user' CHECK (Role IN ('user', 'admin')),
-    CreatedAt   DATETIME DEFAULT GETDATE()
-);
-GO
-
-CREATE TABLE Categories 
-(
-    CategoryID  INT PRIMARY KEY IDENTITY(1,1),
-    Name        NVARCHAR(50) NOT NULL UNIQUE,
-    Description NVARCHAR(200),
-    IconURL     NVARCHAR(255)
-);
-GO
-
-CREATE TABLE Assets 
-(
-    AssetID     INT PRIMARY KEY IDENTITY(1,1),
-    OwnerID     INT NOT NULL FOREIGN KEY REFERENCES Users(UserID),
-    CategoryID  INT NOT NULL FOREIGN KEY REFERENCES Categories(CategoryID),
-    Title       NVARCHAR(150) NOT NULL,
-    Description NVARCHAR(1000),
-    PricePerDay DECIMAL(10,2) NOT NULL CHECK (PricePerDay >= 0),
-    Deposit     DECIMAL(10,2) DEFAULT 0,
-    City        NVARCHAR(50),
-    Area        NVARCHAR(100),
-    IsActive    BIT DEFAULT 1,
-    CreatedAt   DATETIME DEFAULT GETDATE()
-);
-GO
-
-CREATE TABLE AssetImages 
-(
-    ImageID   INT PRIMARY KEY IDENTITY(1,1),
-    AssetID   INT NOT NULL FOREIGN KEY REFERENCES Assets(AssetID) ON DELETE CASCADE,
-    ImageURL  NVARCHAR(255) NOT NULL,
-    IsPrimary BIT DEFAULT 0
-);
-GO
-
-CREATE TABLE Requests 
-(
-    RequestID   INT PRIMARY KEY IDENTITY(1,1),
-    RequesterID INT NOT NULL FOREIGN KEY REFERENCES Users(UserID),
-    CategoryID  INT FOREIGN KEY REFERENCES Categories(CategoryID),
-    Title       NVARCHAR(150) NOT NULL,
-    Description NVARCHAR(1000),
-    Area        NVARCHAR(100),
-    City        NVARCHAR(50),
-    StartDate   DATE NOT NULL,
-    EndDate     DATE NOT NULL,
-    MaxBudget   DECIMAL(10,2),
-    Status      NVARCHAR(20) DEFAULT 'open' CHECK (Status IN ('open','fulfilled','closed','expired')),
-    CreatedAt   DATETIME DEFAULT GETDATE(),
-    CHECK (EndDate >= StartDate)
-);
-GO
-
-CREATE TABLE Offers 
-(
-    OfferID      INT PRIMARY KEY IDENTITY(1,1),
-    RequestID    INT NOT NULL FOREIGN KEY REFERENCES Requests(RequestID),
-    LenderID     INT NOT NULL FOREIGN KEY REFERENCES Users(UserID),
-    AssetID      INT FOREIGN KEY REFERENCES Assets(AssetID),
-    OfferedPrice DECIMAL(10,2) NOT NULL CHECK (OfferedPrice >= 0),
-    Message      NVARCHAR(500),
-    Status       NVARCHAR(20) DEFAULT 'pending' CHECK (Status IN ('pending','accepted','declined')),
-    CreatedAt    DATETIME DEFAULT GETDATE(),
-    UNIQUE (RequestID, LenderID)
-);
-GO
-
-CREATE TABLE Bookings 
-(
-    BookingID         INT PRIMARY KEY IDENTITY(1,1),
-    AssetID           INT FOREIGN KEY REFERENCES Assets(AssetID),
-    OfferID           INT FOREIGN KEY REFERENCES Offers(OfferID),
-    RenterID          INT NOT NULL FOREIGN KEY REFERENCES Users(UserID),
-    LenderID          INT NOT NULL FOREIGN KEY REFERENCES Users(UserID),
-    StartDate         DATE NOT NULL,
-    EndDate           DATE NOT NULL,
-    TotalPrice        DECIMAL(10,2) NOT NULL CHECK (TotalPrice >= 0),
-    Status            NVARCHAR(20) DEFAULT 'pending' CHECK (Status IN ('pending','confirmed','ongoing','returned','completed','cancelled')),
-    PaymentScreenshot NVARCHAR(255),
-    IsPaid            BIT DEFAULT 0,
-    CreatedAt         DATETIME DEFAULT GETDATE(),
-    CHECK (EndDate >= StartDate)
-);
-GO
-
-CREATE TABLE Availability 
-(
-    AvailabilityID INT PRIMARY KEY IDENTITY(1,1),
-    AssetID        INT NOT NULL FOREIGN KEY REFERENCES Assets(AssetID) ON DELETE CASCADE,
-    BlockedDate    DATE NOT NULL,
-    UNIQUE (AssetID, BlockedDate)
-);
-GO
-
-CREATE TABLE Wallets
-(
-    WalletID  INT PRIMARY KEY IDENTITY(1,1),
-    UserID    INT NOT NULL UNIQUE FOREIGN KEY REFERENCES Users(UserID),
-    Balance   DECIMAL(10,2) DEFAULT 0 CHECK (Balance >= 0),
-    UpdatedAt DATETIME DEFAULT GETDATE()
-);
-GO
-
-CREATE TABLE Transactions 
-(
-    TransactionID INT PRIMARY KEY IDENTITY(1,1),
-    BookingID     INT NOT NULL FOREIGN KEY REFERENCES Bookings(BookingID),
-    FromWalletID  INT FOREIGN KEY REFERENCES Wallets(WalletID),
-    ToWalletID    INT FOREIGN KEY REFERENCES Wallets(WalletID),
-    Amount        DECIMAL(10,2) NOT NULL CHECK (Amount > 0),
-    Type          NVARCHAR(20) NOT NULL CHECK (Type IN ('payment','deposit','refund','hold','release')),
-    CreatedAt     DATETIME DEFAULT GETDATE()
-);
-GO
-
-CREATE TABLE Messages 
-(
-    MessageID  INT PRIMARY KEY IDENTITY(1,1),
-    SenderID   INT NOT NULL FOREIGN KEY REFERENCES Users(UserID),
-    ReceiverID INT NOT NULL FOREIGN KEY REFERENCES Users(UserID),
-    BookingID  INT FOREIGN KEY REFERENCES Bookings(BookingID),
-    Body       NVARCHAR(2000) NOT NULL,
-    IsRead     BIT DEFAULT 0,
-    SentAt     DATETIME DEFAULT GETDATE(),
-    CHECK (SenderID <> ReceiverID)
-);
-GO
-
-CREATE TABLE Reviews 
-(
-    ReviewID   INT PRIMARY KEY IDENTITY(1,1),
-    BookingID  INT NOT NULL FOREIGN KEY REFERENCES Bookings(BookingID),
-    ReviewerID INT NOT NULL FOREIGN KEY REFERENCES Users(UserID),
-    RevieweeID INT NOT NULL FOREIGN KEY REFERENCES Users(UserID),
-    AssetID    INT FOREIGN KEY REFERENCES Assets(AssetID),
-    Rating     TINYINT NOT NULL CHECK (Rating BETWEEN 1 AND 5),
-    Comment    NVARCHAR(500),
-    CreatedAt  DATETIME DEFAULT GETDATE(),
-    UNIQUE (BookingID, ReviewerID),
-    CHECK (ReviewerID <> RevieweeID)
-);
-GO
-
-CREATE TABLE Notifications
-(
-    NotificationID INT PRIMARY KEY IDENTITY(1,1),
-    UserID         INT NOT NULL FOREIGN KEY REFERENCES Users(UserID),
-    Title          NVARCHAR(100) NOT NULL,
-    Message        NVARCHAR(300) NOT NULL,
-    Type           NVARCHAR(20) NOT NULL CHECK (Type IN ('offer','booking','message','review','payment','admin','system')),
-    IsRead         BIT DEFAULT 0,
-    CreatedAt      DATETIME DEFAULT GETDATE()
-);
-GO
-
-CREATE TABLE Wishlist 
-(
-    WishlistID INT PRIMARY KEY IDENTITY(1,1),
-    UserID     INT NOT NULL FOREIGN KEY REFERENCES Users(UserID),
-    AssetID    INT NOT NULL FOREIGN KEY REFERENCES Assets(AssetID),
-    AddedAt    DATETIME DEFAULT GETDATE(),
-    UNIQUE (UserID, AssetID)
-);
-GO
-
-
--- dummy data
--- inserted in dependency order i.e. parents before children
-
--- categories first since assets and requests reference them
-insert into Categories (Name, Description) values
-('Electronics',    'Cameras, laptops, phones, gadgets'),
-('Party Supplies', 'Decorations, lights, tables, chairs'),
-('Vehicles',       'Cars, bikes, rickshaws'),
-('Tools',          'Drills, hammers, power tools'),
-('Property',       'Farmhouses, halls, event spaces'),
-('Sports',         'Gear, equipment, outdoor items'),
-('Clothing',       'Formal wear, costumes, traditional dress');
+--------- database setup ---------
+use master;
 go
 
--- users second since almost every table references userid
--- passwords shown as placeholders bcrypt hashes these in the real app
-insert into Users (FullName, Email, Phone, City, Area, CNIC, IsVerified, Role) values
-('Yousuf',     'yousuf@email.com',     '03001234567', 'Lahore', 'DHA Phase 5', '3520112345671', 1, 'user'),
-('Dua',        'dua@email.com',        '03211234567', 'Lahore', 'Gulberg III', '3520298765432', 1, 'user'),
-('Khushbakht', 'khushbakht@email.com', '03451234567', 'Lahore', 'Model Town',  '3520387654321', 0, 'user'),
-('Noor',       'noor@email.com',       '03331234567', 'Lahore', 'Johar Town',  '3520476543210', 1, 'user'),
-('Sara Khan',  'sara@email.com',       '03121234567', 'Lahore', 'Bahria Town', '3520565432109', 0, 'user'),
-('Ahmed Raza', 'ahmed@email.com',      '03041234567', 'Lahore', 'Cantt',       '3520654321098', 1, 'user'),
-('Admin User', 'admin@udhaari.com',    '03001111111', 'Lahore', 'FAST-NU',     '3520743210987', 1, 'admin');
+if exists (select name from sys.databases where name = 'UdhaariDB')
+    drop database UdhaariDB;
+go
 
+create database UdhaariDB;
+go
 
--- one wallet per user
+use UdhaariDB;
+go
+
+--------- tables ---------
+
+create table Users 
+(
+    UserID      int primary key identity(1,1),
+    FullName    nvarchar(100) not null,
+    Email       nvarchar(100) not null unique,
+    Phone       nvarchar(20),
+    City        nvarchar(50),
+    Area        nvarchar(100),
+    CNIC        nvarchar(15),
+    CNICPicture nvarchar(255),
+    ProfilePic  nvarchar(255),
+    IsVerified  bit default 0,
+    IsBanned    bit default 0,
+    Role        nvarchar(10) default 'user' check (Role in ('user', 'admin')),
+    SignupMethod nvarchar(50) default 'email',
+        CreatedAt   datetime default getdate()
+);
+go
+
+create table Categories 
+(
+    CategoryID  int primary key identity(1,1),
+    Name        nvarchar(50) not null unique,
+    Description nvarchar(200),
+    IconURL     nvarchar(255)
+);
+go
+
+create table Assets 
+(
+    AssetID     int primary key identity(1,1),
+    OwnerID     int not null foreign key references Users(UserID),
+    CategoryID  int not null foreign key references Categories(CategoryID),
+    Title       nvarchar(150) not null,
+    Description nvarchar(1000),
+    PricePerDay decimal(10,2) not null check (PricePerDay >= 0),
+    Deposit     decimal(10,2) default 0,
+    City        nvarchar(50),
+    Area        nvarchar(100),
+    IsActive    bit default 1,
+    CreatedAt   datetime default getdate()
+);
+go
+
+create table AssetImages 
+(
+    ImageID   int primary key identity(1,1),
+    AssetID   int not null foreign key references Assets(AssetID) on delete cascade,
+    ImageURL  nvarchar(255) not null,
+    IsPrimary bit default 0
+);
+go
+
+create table Requests 
+(
+    RequestID   int primary key identity(1,1),
+    RequesterID int not null foreign key references Users(UserID),
+    CategoryID  int foreign key references Categories(CategoryID),
+    Title       nvarchar(150) not null,
+    Description nvarchar(1000),
+    Area        nvarchar(100),
+    City        nvarchar(50),
+    StartDate   date not null,
+    EndDate     date not null,
+    MaxBudget   decimal(10,2),
+    Status      nvarchar(20) default 'open' check (Status in ('open','fulfilled','closed','expired')),
+    CreatedAt   datetime default getdate(),
+    check (EndDate >= StartDate)
+);
+go
+
+create table Offers 
+(
+    OfferID      int primary key identity(1,1),
+    RequestID    int not null foreign key references Requests(RequestID),
+    LenderID     int not null foreign key references Users(UserID),
+    AssetID      int foreign key references Assets(AssetID),
+    OfferedPrice decimal(10,2) not null check (OfferedPrice >= 0),
+    Message      nvarchar(500),
+    Status       nvarchar(20) default 'pending' check (Status in ('pending','accepted','declined')),
+    CreatedAt    datetime default getdate(),
+    unique (RequestID, LenderID)
+);
+go
+
+create table Bookings 
+(
+    BookingID         int primary key identity(1,1),
+    AssetID           int foreign key references Assets(AssetID),
+    OfferID           int foreign key references Offers(OfferID),
+    RenterID          int not null foreign key references Users(UserID),
+    LenderID          int not null foreign key references Users(UserID),
+    StartDate         date not null,
+    EndDate           date not null,
+    TotalPrice        decimal(10,2) not null check (TotalPrice >= 0),
+    Status            nvarchar(20) default 'pending' check (Status in ('pending','confirmed','ongoing','returned','completed','cancelled')),
+    PaymentScreenshot nvarchar(255),
+    IsPaid            bit default 0,
+    CreatedAt         datetime default getdate(),
+    check (EndDate >= StartDate)
+);
+go
+
+create table Availability 
+(
+    AvailabilityID int primary key identity(1,1),
+    AssetID        int not null foreign key references Assets(AssetID) on delete cascade,
+    BlockedDate    date not null,
+    unique (AssetID, BlockedDate)
+);
+go
+
+create table Wallets
+(
+    WalletID  int primary key identity(1,1),
+    UserID    int not null unique foreign key references Users(UserID),
+    Balance   decimal(10,2) default 0 check (Balance >= 0),
+    UpdatedAt datetime default getdate()
+);
+go
+
+create table Transactions 
+(
+    TransactionID int primary key identity(1,1),
+    BookingID     int not null foreign key references Bookings(BookingID),
+    FromWalletID  int foreign key references Wallets(WalletID),
+    ToWalletID    int foreign key references Wallets(WalletID),
+    Amount        decimal(10,2) not null check (Amount > 0),
+    Type          nvarchar(20) not null check (Type in ('payment','deposit','refund','hold','release')),
+    CreatedAt     datetime default getdate()
+);
+go
+
+create table Messages 
+(
+    MessageID  int primary key identity(1,1),
+    SenderID   int not null foreign key references Users(UserID),
+    ReceiverID int not null foreign key references Users(UserID),
+    BookingID  int foreign key references Bookings(BookingID),
+    Body       nvarchar(2000) not null,
+    IsRead     bit default 0,
+    SentAt     datetime default getdate(),
+    check (SenderID <> ReceiverID)
+);
+go
+
+create table Reviews 
+(
+    ReviewID   int primary key identity(1,1),
+    BookingID  int not null foreign key references Bookings(BookingID),
+    ReviewerID int not null foreign key references Users(UserID),
+    RevieweeID int not null foreign key references Users(UserID),
+    AssetID    int foreign key references Assets(AssetID),
+    Rating     tinyint not null check (Rating between 1 and 5),
+    Comment    nvarchar(500),
+    CreatedAt  datetime default getdate(),
+    unique (BookingID, ReviewerID),
+    check (ReviewerID <> RevieweeID)
+);
+go
+
+create table Notifications
+(
+    NotificationID int primary key identity(1,1),
+    UserID         int not null foreign key references Users(UserID),
+    Title          nvarchar(100) not null,
+    Message        nvarchar(300) not null,
+    Type           nvarchar(20) not null check (Type in ('offer','booking','message','review','payment','admin','system')),
+    IsRead         bit default 0,
+    CreatedAt      datetime default getdate()
+);
+go
+
+create table Wishlist 
+(
+    WishlistID int primary key identity(1,1),
+    UserID     int not null foreign key references Users(UserID),
+    AssetID    int not null foreign key references Assets(AssetID),
+    AddedAt    datetime default getdate(),
+    unique (UserID, AssetID)
+);
+go
+
+---------   dummy data   ---------
+
+insert into Categories (Name, Description) values
+('Electronics', 'Cameras, laptops, phones, gadgets'),
+('Vehicles', 'Cars, bikes, rickshaws'),
+('Property', 'Farmhouses, halls, event spaces');
+go
+
+insert into Users (FullName, Email, Phone, City, Area, CNIC, IsVerified, Role, SignupMethod) values
+('Yousuf', 'yousuf@email.com', '03001234567', 'Lahore', 'DHA Phase 5', '3520112345671', 1, 'user', 'email'),
+('Dua', 'dua@email.com', '03211234567', 'Lahore', 'Gulberg III', '3520298765432', 1, 'user', 'google'),
+('Admin User', 'admin@udhaari.com', '03001111111', 'Lahore', 'FAST-NU', '3520743210987', 1, 'admin', 'email');
+go
+
 insert into Wallets (UserID, Balance) values
 (1, 15000.00),
-(2,  8000.00),
-(3,  5000.00),
-(4, 12000.00),
-(5,  3000.00),
-(6, 20000.00),
-(7,     0.00);
+(2, 8000.00),
+(3, 5000.00);
 go
 
--- assets depend on users and categories
 insert into Assets (OwnerID, CategoryID, Title, Description, PricePerDay, Deposit, City, Area) values
-(1, 1, 'Canon EOS M50 Camera',  'Great for events. Comes with 2 lenses and a bag.',  1500.00,  5000.00, 'Lahore', 'DHA Phase 5'),
-(2, 2, 'Birthday Party Decoration Set', 'Balloons, banners, fairy lights for 20 people.', 800.00,  2000.00, 'Lahore', 'Gulberg III'),
-(6, 3, 'Honda CD 70 Motorcycle',  'Well maintained 2022 model. Full tank provided.',  600.00,  3000.00, 'Lahore', 'Cantt'),
-(4, 4, 'Bosch Power Drill',   'Heavy duty drill with full set of bits.',   400.00,  1500.00, 'Lahore', 'Johar Town'),
-(1, 6, 'Cricket Kit - Full Set',  'Bat, pads, gloves, helmet and ball included.',  700.00,  2500.00, 'Lahore', 'DHA Phase 5'),
-(6, 5, 'Farmhouse - 1 Kanal', 'Lawn, kitchen, 3 rooms. Up to 50 guests.', 15000.00, 30000.00, 'Lahore', 'Bedian Road');
+(1, 1, 'Canon EOS M50 Camera', 'Great for events. Comes with 2 lenses.', 1500.00, 5000.00, 'Lahore', 'DHA Phase 5'),
+(2, 2, 'Honda CD 70 Motorcycle', 'Well maintained 2022 model.', 600.00, 3000.00, 'Lahore', 'Cantt');
 go
 
--- one primary image and one extra image per asset where applicable
-insert into AssetImages (AssetID, ImageURL, IsPrimary) values
-(1, '/uploads/canon_main.jpg',      1),
-(1, '/uploads/canon_lens.jpg',      0),
-(2, '/uploads/decor_main.jpg',      1),
-(3, '/uploads/honda_main.jpg',      1),
-(4, '/uploads/drill_main.jpg',      1),
-(5, '/uploads/cricket_main.jpg',    1),
-(6, '/uploads/farmhouse_main.jpg',  1),
-(6, '/uploads/farmhouse_lawn.jpg',  0);
+insert into Bookings (AssetID, RenterID, LenderID, StartDate, EndDate, TotalPrice, Status, IsPaid) values
+(1, 2, 1, '2026-03-15', '2026-03-16', 3000.00, 'confirmed', 1),
+(2, 1, 2, '2026-03-18', '2026-03-20', 1800.00, 'ongoing', 0);
 go
 
-insert into Requests (RequesterID, CategoryID, Title, Description, Area, City, StartDate, EndDate, MaxBudget) values
-(3, 1, 'Need a DSLR Camera for 2 days', 'For a wedding shoot. Must include lenses.',    'Model Town',  'Lahore', '2026-03-15', '2026-03-16', 3000.00),
-(5, 2, 'Looking for party decoration items', 'Birthday party for 30 people.',  'Bahria Town', 'Lahore', '2026-03-20', '2026-03-20', 1500.00),
-(3, 3, 'Need a bike for 3 days',  'Short trip. Any well-maintained bike.', 'Model Town',  'Lahore', '2026-03-18', '2026-03-20', 2000.00),
-(2, 4, 'Drill needed for weekend project', 'Simple home renovation, one day only.', 'Gulberg III', 'Lahore', '2026-03-22', '2026-03-22',  500.00),
-(5, 6, 'Cricket kit for a gully match', 'Need full kit for 1 day. 6 players.', 'Bahria Town', 'Lahore', '2026-03-19', '2026-03-19', 1000.00);
-go
-
--- assetid is null for offer 2 that lender has no formal listing 
-insert into Offers (RequestID, LenderID, AssetID, OfferedPrice, Message) values
-(1, 1,    1, 1500.00, 'Canon EOS M50 available on your dates. Comes with 2 lenses.'),
-(1, 6, null, 1200.00, 'I have a Nikon D3500. Can deliver to Model Town.'),
-(2, 2,    2,  800.00, 'Full decoration set perfect for 30 people.'),
-(3, 6,    3,  600.00, 'Honda CD70 available. Full tank included.'),
-(4, 4,    4,  400.00, 'Bosch drill available. Can drop off at your location.'),
-(5, 1,    5,  700.00, 'Full cricket kit available. Can meet at Model Town.');
-go
-
-insert into Bookings (AssetID, OfferID, RenterID, LenderID, StartDate, EndDate, TotalPrice, Status, IsPaid) values
-(1, 1, 3, 1, '2026-03-15', '2026-03-16', 3000.00, 'completed', 1),
-(2, 3, 5, 2, '2026-03-20', '2026-03-20',  800.00, 'confirmed', 1),
-(3, 4, 3, 6, '2026-03-18', '2026-03-20', 1800.00, 'ongoing',   1),
-(4, 5, 2, 4, '2026-03-22', '2026-03-22',  400.00, 'pending',   0),
-(5, 6, 5, 1, '2026-03-19', '2026-03-19',  700.00, 'confirmed', 1);
-go
-
-insert into Availability (AssetID, BlockedDate) values
-(1, '2026-03-15'),
-(1, '2026-03-16'),
-(3, '2026-03-18'),
-(3, '2026-03-19'),
-(3, '2026-03-20'),
-(5, '2026-03-19');
-go
-
--- fromwalletid = payer, towalletid = receiver
 insert into Transactions (BookingID, FromWalletID, ToWalletID, Amount, Type) values
-(1, 3, 1, 3000.00, 'payment'),
-(2, 5, 2,  800.00, 'hold'),
-(3, 3, 6, 1800.00, 'payment'),
-(5, 5, 1,  700.00, 'hold');
+(1, 2, 1, 3000.00, 'payment'),
+(2, 1, 2, 1800.00, 'hold');
 go
 
-insert into Messages (SenderID, ReceiverID, BookingID, Body) values
-(3, 1, 1,    'Hi, can we meet at DHA Y block on Saturday morning?'),
-(1, 3, 1,    'Sure, 10am works. I will bring the camera bag too.'),
-(3, 1, 1,    'Perfect, see you then!'),
-(5, 2, 2,    'Should I pick up the decorations from your place?'),
-(2, 5, 2,    'Yes please, come after 5pm on the 20th.'),
-(7, 3, null, 'Your account has been reviewed and verified. Welcome to Udhaari!');
+--------- triggers ---------
+
+--------- trigger to auto-create wallet when user signs up---------
+
+create trigger trg_AutoSetupUser
+on Users
+after insert
+as
+begin
+insert into Wallets (UserID, Balance, UpdatedAt)
+select i.UserID, 0.00, getdate()
+from inserted i
+where not exists (select 1 from Wallets w where w.UserID = i.UserID);
+
+update Users
+set IsVerified = 1
+where UserID in (select UserID from inserted)
+and IsVerified = 0;
+
+end;
 go
 
-insert into Reviews (BookingID, ReviewerID, RevieweeID, AssetID, Rating, Comment) values
-(1, 3, 1, 1, 5, 'Camera was in perfect condition. Very helpful and punctual.'),
-(1, 1, 3, 1, 4, 'Took great care of the camera and returned it on time.');
+
+--------- trigger to auto update wallet updatedat on balance change ---------
+create trigger trg_UpdateWalletTimestamp
+on Wallets
+after update
+as
+begin
+    if update(Balance)
+    begin
+        update Wallets
+        set UpdatedAt = getdate()
+        where WalletID in (select WalletID from inserted)
+    end
+end;
 go
 
-insert into Notifications (UserID, Title, Message, Type) values
-(1, 'New Offer on Your Request',  'Someone made an offer on your request for a DSLR Camera.', 'offer'),
-(3, 'Offer Accepted',  'Your offer for Canon EOS M50 has been accepted!',  'offer'),
-(3, 'Booking Confirmed','Your booking for Canon EOS M50 is confirmed.', 'booking'),
-(5, 'New Message',      'Dua sent you a message about your decoration booking.','message'),
-(3, 'Account Verified', 'Your account has been verified by the admin.', 'admin'),
-(2, 'Payment Received', 'Payment of Rs. 800 received for decoration booking.', 'payment');
+--------- trigger to auto mark booking as paid when payment transaction is inserted ---------
+create trigger trg_MarkBookingPaidOnPayment
+on Transactions
+after insert
+as
+begin
+    update Bookings
+    set IsPaid = 1, Status = 'confirmed'
+    where BookingID in (
+        select i.BookingID 
+        from inserted i 
+        where i.Type = 'payment'
+    )
+end;
 go
 
-insert into Wishlist (UserID, AssetID) values
-(3, 6),
-(5, 1),
-(2, 3),
-(3, 5);
-go
+--------- views with window functions ---------
 
--- VIEWS & STORED PROCEDURES 
-
--- View: Wallet Summary
-CREATE OR ALTER VIEW vw_UserWalletSummary AS
-SELECT 
+--------- view: wallet summary with transaction count using window function ---------
+create or alter view vw_UserWalletSummary as
+select 
     u.UserID, u.FullName, u.Email, w.Balance, w.UpdatedAt,
-    (SELECT COUNT(*) FROM Transactions t 
-     WHERE t.FromWalletID = w.WalletID OR t.ToWalletID = w.WalletID) AS TotalTransactions
-FROM Users u
-JOIN Wallets w ON u.UserID = w.UserID;
-GO
+    count(t.TransactionID) over (partition by w.WalletID) as TotalTransactions,
+    row_number() over (partition by u.UserID order by w.UpdatedAt desc) as WalletUpdateRank
+from Users u
+join Wallets w on u.UserID = w.UserID
+left join Transactions t on t.FromWalletID = w.WalletID or t.ToWalletID = w.WalletID;
+go
 
--- View: Transaction History
-CREATE OR ALTER VIEW vw_TransactionHistory AS
-SELECT 
+--------- view: transaction history with running total using window function ---------
+create or alter view vw_TransactionHistory as
+select 
     t.TransactionID, t.BookingID, t.Amount, t.Type, t.CreatedAt,
-    uFrom.FullName AS FromUser, uTo.FullName AS ToUser,
-    b.StartDate, b.EndDate
-FROM Transactions t
-LEFT JOIN Wallets wFrom ON t.FromWalletID = wFrom.WalletID
-LEFT JOIN Users uFrom ON wFrom.UserID = uFrom.UserID
-LEFT JOIN Wallets wTo ON t.ToWalletID = wTo.WalletID
-LEFT JOIN Users uTo ON wTo.UserID = uTo.UserID
-LEFT JOIN Bookings b ON t.BookingID = b.BookingID;
-GO
+    uFrom.FullName as FromUser, uTo.FullName as ToUser,
+    b.StartDate, b.EndDate,
+    sum(t.Amount) over (partition by t.FromWalletID order by t.CreatedAt rows between unbounded preceding and current row) as RunningTotalSpent
+from Transactions t
+left join Wallets wFrom on t.FromWalletID = wFrom.WalletID
+left join Users uFrom on wFrom.UserID = uFrom.UserID
+left join Wallets wTo on t.ToWalletID = wTo.WalletID
+left join Users uTo on wTo.UserID = uTo.UserID
+left join Bookings b on t.BookingID = b.BookingID;
+go
 
--- Stored Procedure: Safe Deduct for Booking / Challan
-CREATE OR ALTER PROCEDURE sp_DeductForBooking
-    @BookingID INT,
-    @Amount    DECIMAL(10,2)
-AS
+--------- view: user spending analytics with monthly breakdown ---------
+create or alter view vw_UserSpendingAnalytics as
+select 
+    u.UserID,
+    u.FullName,
+    u.Email,
+    w.Balance as CurrentBalance,
+    count(t.TransactionID) over (partition by u.UserID) as TotalTransactions,
+    sum(t.Amount) over (partition by u.UserID) as TotalSpent,
+    avg(t.Amount) over (partition by u.UserID) as AvgTransaction,
+    row_number() over (partition by u.UserID order by t.CreatedAt desc) as LastTransactionRank,
+    datepart(month, t.CreatedAt) as TransactionMonth,
+    sum(t.Amount) over (partition by u.UserID, datepart(month, t.CreatedAt)) as MonthlySpent
+from Users u
+join Wallets w on u.UserID = w.UserID
+left join Transactions t on w.WalletID = t.FromWalletID
+where t.Type = 'payment' or t.Type is null;
+go
+
+--------- stored procedures ---------
+
+--------- stored procedure: safe deduct for booking with security check ---------
+create or alter procedure sp_DeductForBooking
+    @BookingID int,
+    @Amount    decimal(10,2),
+    @PayerUserID int
+as
+begin
+    set nocount on;
+
+   -- Add this check at the start of sp_DeductForBooking
+IF EXISTS (
+    SELECT 1 FROM Bookings 
+    WHERE BookingID = @BookingID 
+    AND IsPaid = 1
+)
 BEGIN
-    SET NOCOUNT ON;
-    BEGIN TRY
-        BEGIN TRANSACTION;
+    RAISERROR('This booking has already been paid', 16, 1);
+    RETURN;
+END 
+    begin try
+        begin transaction;
 
-        DECLARE @RenterID INT, @LenderID INT, @RenterWalletID INT, @LenderWalletID INT;
+        declare @RenterID int, @LenderID int, @PayerWalletID int, @LenderWalletID int;
 
-        SELECT @RenterID = RenterID, @LenderID = LenderID 
-        FROM Bookings WHERE BookingID = @BookingID;
+        select @RenterID = RenterID, @LenderID = LenderID 
+        from Bookings where BookingID = @BookingID;
 
-        SELECT @RenterWalletID = WalletID FROM Wallets WHERE UserID = @RenterID;
-        SELECT @LenderWalletID = WalletID FROM Wallets WHERE UserID = @LenderID;
+        if @RenterID is null or @LenderID is null
+        begin
+            raiserror('booking not found or has invalid renter/lender', 16, 1);
+            rollback transaction;
+            return;
+        end
 
-        IF (SELECT Balance FROM Wallets WHERE WalletID = @RenterWalletID) < @Amount
-            THROW 50002, 'Insufficient balance in wallet.', 1;
+        if @PayerUserID <> @RenterID
+        begin
+            raiserror('security error: you are not the renter for this booking', 16, 1);
+            rollback transaction;
+            return;
+        end
 
-        -- Deduct from renter
-        UPDATE Wallets SET Balance = Balance - @Amount, UpdatedAt = GETDATE()
-        WHERE WalletID = @RenterWalletID;
+        select @PayerWalletID = WalletID from Wallets where UserID = @PayerUserID;
+        select @LenderWalletID = WalletID from Wallets where UserID = @LenderID;
 
-        -- Credit to lender
-        UPDATE Wallets SET Balance = Balance + @Amount, UpdatedAt = GETDATE()
-        WHERE WalletID = @LenderWalletID;
+        if @PayerWalletID is null or @LenderWalletID is null
+        begin
+            raiserror('wallet configuration error', 16, 1);
+            rollback transaction;
+            return;
+        end
 
-        -- Record transaction
-        INSERT INTO Transactions (BookingID, FromWalletID, ToWalletID, Amount, Type)
-        VALUES (@BookingID, @RenterWalletID, @LenderWalletID, @Amount, 'payment');
+        if (select Balance from Wallets where WalletID = @PayerWalletID) < @Amount
+        begin
+            raiserror('insufficient balance in wallet', 16, 1);
+            rollback transaction;
+            return;
+        end
 
-        COMMIT TRANSACTION;
-        SELECT 'Payment deducted successfully' AS Message, @Amount AS AmountDeducted;
+        update Wallets set Balance = Balance - @Amount, UpdatedAt = getdate()
+        where WalletID = @PayerWalletID;
 
-    END TRY
-    BEGIN CATCH
-        IF @@TRANCOUNT > 0 ROLLBACK TRANSACTION;
-        THROW;
-    END CATCH
-END;
-GO
+        update Wallets set Balance = Balance + @Amount, UpdatedAt = getdate()
+        where WalletID = @LenderWalletID;
+
+        insert into Transactions (BookingID, FromWalletID, ToWalletID, Amount, Type, CreatedAt)
+        values (@BookingID, @PayerWalletID, @LenderWalletID, @Amount, 'payment', getdate());
+
+        commit transaction;
+        select 'payment deducted successfully' as Message, @Amount as AmountDeducted;
+
+    end try
+    begin catch
+        if @@trancount > 0 rollback transaction;
+        throw;
+    end catch
+end;
+go
+
+--------- procedure: safe wallet top up with logging ---------
+create or alter procedure sp_TopUpWallet
+    @UserID int,
+    @Amount decimal(10,2),
+    @Description nvarchar(200) = null
+as
+begin
+    set nocount on;
+    
+    begin try
+        begin transaction;
+
+        declare @WalletID int;
+        select @WalletID = WalletID from Wallets where UserID = @UserID;
+
+        if @WalletID is null
+        begin
+            raiserror('wallet not found for user', 16, 1);
+            rollback transaction;
+            return;
+        end
+
+        if @Amount <= 0
+        begin
+            raiserror('amount must be positive', 16, 1);
+            rollback transaction;
+            return;
+        end
+
+        update Wallets 
+        set Balance = Balance + @Amount, UpdatedAt = getdate()
+        where WalletID = @WalletID;
+
+        insert into Transactions (BookingID, FromWalletID, ToWalletID, Amount, Type, CreatedAt)
+        values (null, null, @WalletID, @Amount, 'deposit', getdate());
+
+        commit transaction;
+        select 'top up successful' as Message, @Amount as AmountAdded;
+
+    end try
+    begin catch
+        if @@trancount > 0 rollback transaction;
+        throw;
+    end catch
+end;
+go
+
+--------- procedure: get complete user financial summary ---------
+create or alter procedure sp_GetUserFinancialSummary
+    @UserID int
+as
+begin
+    set nocount on;
+
+    select 
+        u.UserID,
+        u.FullName,
+        u.Email,
+        w.Balance as CurrentBalance,
+        w.UpdatedAt as BalanceLastUpdated,
+        (select count(*) from Transactions t where t.FromWalletID = w.WalletID or t.ToWalletID = w.WalletID) as TotalTransactions,
+        (select sum(Amount) from Transactions t where t.FromWalletID = w.WalletID and t.Type = 'payment') as TotalSpent,
+        (select sum(Amount) from Transactions t where t.ToWalletID = w.WalletID and t.Type = 'payment') as TotalReceived,
+        (select top 1 CreatedAt from Transactions t where t.FromWalletID = w.WalletID or t.ToWalletID = w.WalletID order by CreatedAt desc) as LastActivity
+    from Users u
+    join Wallets w on u.UserID = w.UserID
+    where u.UserID = @UserID;
+end;
+go

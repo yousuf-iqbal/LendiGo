@@ -153,11 +153,16 @@ const handleLogin = async (e) => {
       setError('Please verify your email first. Check your inbox.');
       setLoading(false); return;
     }
-    await auth.currentUser.getIdToken(true);
-    try {
-      const res = await API.post('/auth/login');
-      localStorage.setItem('udhaari_user', JSON.stringify(res.data.user));
-      navigate('/');
+   // ✅ GET AND SAVE THE FIREBASE TOKEN
+const token = await auth.currentUser.getIdToken(true);
+localStorage.setItem('token', token);  // ← CRITICAL: Save as 'token'
+
+try {
+  const res = await API.post('/auth/login', {}, {
+    headers: { 'Authorization': `Bearer ${token}` }  // ← Send token to backend
+  });
+  localStorage.setItem('udhaari_user', JSON.stringify(res.data.user));
+  navigate('/');
     } catch (apiErr) {
       if (apiErr.response?.status === 404) {
         navigate('/complete-profile');
@@ -233,6 +238,7 @@ console.error('Login error details:', {
       const userCredential = await createUserWithEmailAndPassword(auth, suEmail, suPass);
       const user = userCredential.user;
       
+      
       // Send verification email
       await sendEmailVerification(user);
       
@@ -240,6 +246,7 @@ console.error('Login error details:', {
       localStorage.setItem('udhaari_pending_email', suEmail);
       
       setSuccess('✅ Verification email sent! Please check your inbox.');
+      
       
       // Navigate to verify view (stay on same page, just change view)
       setTimeout(() => {
@@ -275,20 +282,17 @@ console.error('Login error details:', {
 const handleGoogleAuth = async () => {
   clear();
   setLoading(true);
-  
   try {
-    // Import dynamically to avoid bundle issues
     const { signInWithPopup } = await import('firebase/auth');
     const { googleProvider } = await import('../config/firebase');
     
-    // Open Google sign-in popup
     const result = await signInWithPopup(auth, googleProvider);
     const user = result.user;
     
-    // Get Firebase token
+    // ✅ SAVE TOKEN IMMEDIATELY
     const token = await user.getIdToken();
+    localStorage.setItem('token', token);
     
-    // Send to backend
     const response = await API.post('/auth/google', {
       token,
       email: user.email,
@@ -296,32 +300,26 @@ const handleGoogleAuth = async () => {
       photoURL: user.photoURL,
     });
     
-    // Save user to localStorage
     if (response.data.user) {
       localStorage.setItem('udhaari_user', JSON.stringify(response.data.user));
     }
     
-    // Check if profile completion is needed
     if (response.data.requiresProfileCompletion) {
       navigate('/complete-profile');
     } else {
       navigate('/');
     }
-    
   } catch (err) {
-    if (err.code === 'auth/popup-closed-by-user') {
-      // User closed popup, do nothing
-    } else if (err.code === 'auth/account-exists-with-different-credential') {
-      setError('An account already exists with this email. Please sign in with your existing method.');
-    } else {
-      setError('Google sign-in failed. Please try again.');
+    if (err.code !== 'auth/popup-closed-by-user') {
+      setError(err.code === 'auth/account-exists-with-different-credential' 
+        ? 'An account already exists with this email. Please sign in with your existing method.'
+        : 'Google sign-in failed. Please try again.');
+      triggerShake();
     }
-    triggerShake();
   }
   setLoading(false);
 };
-
-  // ── FORGOT ────────────────────────────────────────────────────────────────
+  
 // ── FORGOT ────────────────────────────────────────────────────────────────
 const handleForgot = async (e) => {
   e.preventDefault(); clear();
