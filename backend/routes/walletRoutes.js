@@ -1,4 +1,3 @@
-// backend/routes/walletRoutes.js
 const express = require('express');
 const router = express.Router();
 const walletController = require('../controllers/walletController');
@@ -6,6 +5,9 @@ const verifyToken = require('../middleware/verifyToken');
 
 // All wallet routes are protected
 router.use(verifyToken);
+
+// ✅ NEW: Get wallet info (alias for balance)
+router.get('/', walletController.getBalance);
 
 // Get wallet balance
 router.get('/balance', walletController.getBalance);
@@ -19,4 +21,4 @@ router.post('/topup', walletController.topUp);
 // Pay for booking (challan flow)
 router.post('/pay-booking', walletController.payBooking);
 
-module.exports = router; // ✅ Export the router, not an object
+module.exports = router;

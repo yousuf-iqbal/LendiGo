@@ -641,7 +641,8 @@ const handleForgot = async (e) => {
           }}
         >
           {loading ? 'Checking...' : 'I\'ve Verified My Email'}
-        </RippleButton>
+                </RippleButton>
+                
         
         <GhostBtn onClick={() => go(VIEWS.LOGIN)}>← Back to Sign In</GhostBtn>
       </div>

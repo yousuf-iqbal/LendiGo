@@ -1,63 +1,11 @@
-﻿import { useState, useEffect } from "react";
-import { Link, useNavigate } from "react-router-dom";
-import axios from "axios";
-import "./MyAssetsPage.css";
-
-const getCategoryImage = (category) => {
-  const images = {
-    'Electronics': 'https://cdn-icons-png.flaticon.com/512/1055/1055685.png',
-    'Tools': 'https://cdn-icons-png.flaticon.com/512/2963/2963308.png',
-    'Party Supplies': 'https://cdn-icons-png.flaticon.com/512/2963/2963198.png',
-    'Vehicles': 'https://cdn-icons-png.flaticon.com/512/2963/2963201.png',
-    'Sports': 'https://cdn-icons-png.flaticon.com/512/2963/2963206.png',
-  };
-  return images[category] || 'https://cdn-icons-png.flaticon.com/512/1055/1055685.png';
-};
-
-function AssetCard({ asset, onToggle, onDelete }) {
-  const [deleting, setDeleting] = useState(false);
-
-  const handleDelete = async () => {
-    if (!window.confirm("Remove this asset?")) return;
-    setDeleting(true);
-    await onDelete(asset.asset_id);
-    setDeleting(false);
-  };
-
-  return (
-    <div className="my-asset-card">
-      <div className="my-asset-card__image" onClick={() => window.location.href = `/assets/${asset.asset_id}`}>
-        <img src={getCategoryImage(asset.category)} alt={asset.name} />
-        <span className={`my-asset-card__status ${asset.availability_status === "available" ? "status-available" : "status-unavailable"}`}>
-          {asset.availability_status}
-        </span>
-      </div>
-      <div className="my-asset-card__body">
-        <h3 className="my-asset-card__name">{asset.name}</h3>
-        <p className="my-asset-card__category">{asset.category || "Uncategorised"}</p>
-        <div className="my-asset-card__price">
-          {asset.price_per_day ? `Rs ${Number(asset.price_per_day).toLocaleString()}/day` : "Free"}
-        </div>
-        <div className="my-asset-card__actions">
-          <Link to={`/assets/${asset.asset_id}`} className="my-asset-card__btn btn-view">
-            View
-          </Link>
-          <button className="my-asset-card__btn btn-toggle" onClick={() => onToggle(asset.asset_id, asset.availability_status)}>
-            {asset.availability_status === "available" ? "Mark Unavailable" : "Mark Available"}
-          </button>
-          <button className="my-asset-card__btn btn-delete" onClick={handleDelete} disabled={deleting}>
-            {deleting ? "..." : "Remove"}
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
+﻿import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import API from '../api/axios';
 
 export default function MyAssetsPage() {
+  const navigate = useNavigate();
   const [assets, setAssets] = useState([]);
   const [loading, setLoading] = useState(true);
-  const navigate = useNavigate();
   const user = JSON.parse(localStorage.getItem("udhaari_user") || "null");
 
   useEffect(() => {
@@ -65,85 +13,142 @@ export default function MyAssetsPage() {
   }, []);
 
   const fetchAssets = async () => {
+    setLoading(true);
     try {
-      const token = localStorage.getItem("token");
-      const userId = user?.UserID || user?.id;
-      
-      if (!userId) {
-        navigate("/login");
-        return;
-      }
-      
-      const { data } = await axios.get(`http://localhost:5000/api/assets`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      
-      const userAssets = data.filter(asset => asset.owner_id === userId);
+      // Fetch ALL user's assets (both active and inactive)
+      const res = await API.get('/assets/my');
+      const userAssets = res.data.filter(a => a.owner_id === (user?.UserID || user?.id));
       setAssets(userAssets);
     } catch (err) {
-      console.error("Error fetching assets:", err);
+      console.error('Error fetching assets:', err);
     } finally {
       setLoading(false);
     }
   };
 
   const handleToggle = async (assetId, currentStatus) => {
-    const token = localStorage.getItem("token");
-    const newStatus = currentStatus === "available" ? 0 : 1;
+    const newStatus = currentStatus === 'available' ? 0 : 1;
     try {
-      await axios.patch(`http://localhost:5000/api/assets/${assetId}`, 
-        { isActive: newStatus },
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
-      fetchAssets();
+      await API.patch(`/assets/${assetId}`, { isActive: newStatus });
+      fetchAssets(); // Refresh the list
     } catch (err) {
-      console.error(err);
+      console.error('Error toggling asset:', err);
     }
   };
 
-  const handleDelete = async (assetId) => {
-    const token = localStorage.getItem("token");
-    try {
-      await axios.delete(`http://localhost:5000/api/assets/${assetId}`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      fetchAssets();
-    } catch (err) {
-      console.error(err);
-    }
-  };
-
-  if (loading) {
-    return <div className="my-assets-page"><div className="my-assets__inner">Loading your assets...</div></div>;
+ const handleDelete = async (assetId) => {
+  if (!window.confirm('Delete this asset permanently?')) return;
+  try {
+    await API.delete(`/assets/${assetId}`);
+    fetchAssets(); // Refresh list on success
+  } catch (err) {
+    // ✅ Show the friendly error message from backend
+    alert(err.response?.data?.error || 'Failed to delete asset.');
   }
+};
+
+  if (loading) return <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>Loading...</div>;
 
   return (
-    <div className="my-assets-page">
-      <div className="my-assets__inner">
-        <div className="my-assets__header">
-          <div>
-            <h1 className="my-assets__title">My Assets</h1>
-            <p className="my-assets__subtitle">Items you have listed for lending</p>
-          </div>
-          <Link to="/my-assets/add" className="my-assets__add-btn">
+    <div style={{ minHeight: '100vh', background: '#f9fafb', padding: '2rem' }}>
+      <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
+          <h1 style={{ fontSize: '2rem', fontWeight: 800, color: '#1f2937' }}>My Assets</h1>
+          <button 
+            onClick={() => navigate('/my-assets/add')}
+            style={{ padding: '0.75rem 1.5rem', background: '#059669', color: '#fff', border: 'none', borderRadius: '8px', fontWeight: 600, cursor: 'pointer' }}
+          >
             + Add Asset
-          </Link>
+          </button>
         </div>
 
         {assets.length === 0 ? (
-          <div className="my-assets__empty">
-            <p>No assets listed yet.</p>
-            <Link to="/my-assets/add" className="my-assets__add-btn">List your first asset</Link>
+          <div style={{ textAlign: 'center', padding: '3rem', color: '#6b7280' }}>
+            You haven't listed any assets yet.
+            <button 
+              onClick={() => navigate('/my-assets/add')}
+              style={{ marginTop: '1rem', padding: '0.5rem 1.5rem', background: '#059669', color: '#fff', border: 'none', borderRadius: '8px', cursor: 'pointer' }}
+            >
+              List Your First Asset
+            </button>
           </div>
         ) : (
-          <div className="my-assets__grid">
-            {assets.map((asset) => (
-              <AssetCard
-                key={asset.asset_id}
-                asset={asset}
-                onToggle={handleToggle}
-                onDelete={handleDelete}
-              />
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '1.5rem' }}>
+            {assets.map(a => (
+              <div key={a.asset_id} style={{ 
+                background: '#fff', 
+                borderRadius: '12px', 
+                overflow: 'hidden', 
+                boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
+                opacity: a.availability_status === 'unavailable' ? 0.7 : 1
+              }}>
+                <div 
+                  onClick={() => navigate(`/assets/${a.asset_id}`)}
+                  style={{ 
+                    height: '200px', 
+                    background: a.primary_image ? `url(${a.primary_image})` : '#f3f4f6',
+                    backgroundSize: 'cover',
+                    backgroundPosition: 'center',
+                    cursor: 'pointer',
+                    position: 'relative'
+                  }}
+                >
+                  {!a.primary_image && (
+                    <div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#9ca3af', fontSize: '3rem' }}>📦</div>
+                  )}
+                  <div style={{
+                    position: 'absolute',
+                    top: '8px',
+                    right: '8px',
+                    background: a.availability_status === 'available' ? 'rgba(5, 150, 105, 0.9)' : 'rgba(239, 68, 68, 0.9)',
+                    color: '#fff',
+                    padding: '0.25rem 0.75rem',
+                    borderRadius: '20px',
+                    fontSize: '0.75rem',
+                    fontWeight: 600
+                  }}>
+                    {a.availability_status === 'available' ? 'Available' : 'Unavailable'}
+                  </div>
+                </div>
+                
+                <div style={{ padding: '1rem' }}>
+                  <h3 style={{ fontSize: '1.1rem', fontWeight: 700, color: '#1f2937', marginBottom: '0.5rem' }}>{a.name}</h3>
+                  <p style={{ color: '#6b7280', fontSize: '0.9rem', marginBottom: '0.5rem' }}>{a.location}</p>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <span style={{ fontSize: '1.25rem', fontWeight: 800, color: '#059669' }}>Rs. {a.price_per_day}/day</span>
+                  </div>
+                  
+                  {/* Owner Controls */}
+                  <div style={{ display: 'flex', gap: '0.5rem', marginTop: '1rem' }}>
+                    <button 
+                      onClick={() => navigate(`/my-assets/edit/${a.asset_id}`)}
+                      style={{ flex: 1, padding: '0.5rem', background: '#dbeafe', color: '#1e40af', border: 'none', borderRadius: '6px', cursor: 'pointer' }}
+                    >
+                      Edit
+                    </button>
+                    <button 
+                      onClick={() => handleToggle(a.asset_id, a.availability_status)}
+                      style={{ 
+                        flex: 1, 
+                        padding: '0.5rem', 
+                        background: a.availability_status === 'available' ? '#fee2e2' : '#dcfce7', 
+                        color: a.availability_status === 'available' ? '#dc2626' : '#16a34a', 
+                        border: 'none', 
+                        borderRadius: '6px', 
+                        cursor: 'pointer' 
+                      }}
+                    >
+                      {a.availability_status === 'available' ? 'Mark Unavailable' : 'Mark Available'}
+                    </button>
+                    <button 
+                      onClick={() => handleDelete(a.asset_id)}
+                      style={{ flex: 1, padding: '0.5rem', background: '#fee2e2', color: '#dc2626', border: 'none', borderRadius: '6px', cursor: 'pointer' }}
+                    >
+                      Delete
+                    </button>
+                  </div>
+                </div>
+              </div>
             ))}
           </div>
         )}

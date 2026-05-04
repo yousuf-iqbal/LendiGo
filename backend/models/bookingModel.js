@@ -103,4 +103,26 @@ async function updateBookingStatus(bookingID, userID, newStatus) {
   return { booking: result.recordset[0] };
 }
 
-module.exports = { createBooking, getBookingsByUser, getBookingById, updateBookingStatus };
+async function acceptBooking(bookingID, userID) {
+  const pool = await poolPromise;
+  
+  // Verify booking exists and user is the lender
+  const booking = await getBookingById(bookingID);
+  if (!booking) return { error: 'booking not found', code: 404 };
+  if (booking.LenderID !== userID) {
+    return { error: 'only lender can accept bookings', code: 403 };
+  }
+  if (booking.Status !== 'pending') {
+    return { error: `cannot accept booking with status ${booking.Status}`, code: 400 };
+  }
+
+  // Update status to 'accepted'
+  const result = await pool.request()
+    .input('bookingID', sql.Int, parseInt(bookingID))
+    .input('status', sql.NVarChar, 'accepted')
+    .query(`UPDATE Bookings SET Status = @status, UpdatedAt = GETDATE() OUTPUT INSERTED.* WHERE BookingID = @bookingID`);
+  
+  return { booking: result.recordset[0] };
+}
+
+module.exports = { createBooking, getBookingsByUser, getBookingById, updateBookingStatus, acceptBooking };

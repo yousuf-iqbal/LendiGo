@@ -1,250 +1,133 @@
 ﻿import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import axios from 'axios';
+import API from '../api/axios';
 
 export default function RequestDetailPage() {
   const { id } = useParams();
   const navigate = useNavigate();
   const [request, setRequest] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [showOfferForm, setShowOfferForm] = useState(false);
+  const [offerForm, setOfferForm] = useState({ offeredPrice: '', message: '', assetId: '' });
+  const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
-  const [isOwner, setIsOwner] = useState(false);
-  const [offerPrice, setOfferPrice] = useState('');
-  const [offerMessage, setOfferMessage] = useState('');
-  const [offerLoading, setOfferLoading] = useState(false);
-  const [offerError, setOfferError] = useState('');
-  const [offerSuccess, setOfferSuccess] = useState('');
-  const [actionMsg, setActionMsg] = useState('');
-  const [user, setUser] = useState(null);
+  const user = JSON.parse(localStorage.getItem('udhaari_user') || 'null');
 
   useEffect(() => {
-    const userStr = localStorage.getItem('udhaari_user');
-    const token = localStorage.getItem('token');
-    
-    if (!token) {
-      navigate('/login');
-      return;
-    }
-    
-    if (userStr) {
-      setUser(JSON.parse(userStr));
-    }
-    
     fetchRequest();
   }, [id]);
 
   const fetchRequest = async () => {
+    setLoading(true);
     try {
-      const token = localStorage.getItem('token');
-      const response = await axios.get(`http://localhost:5000/api/requests/${id}`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      setRequest(response.data);
-      
-      const userStr = localStorage.getItem('udhaari_user');
-      if (userStr) {
-        const currentUser = JSON.parse(userStr);
-        const userId = currentUser.UserID || currentUser.id;
-        setIsOwner(response.data.requesterId === userId);
-      }
+      const res = await API.get(`/requests/${id}`);
+      setRequest(res.data);
     } catch (err) {
-      setError('Could not load request');
+      setError('Request not found');
     } finally {
       setLoading(false);
     }
   };
 
-  const handleDelete = async () => {
-    if (!window.confirm('Are you sure you want to delete this request?')) return;
-    
-    try {
-      const token = localStorage.getItem('token');
-      await axios.delete(`http://localhost:5000/api/requests/${id}`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      setActionMsg('Request deleted! Redirecting...');
-      setTimeout(() => navigate('/requests'), 2000);
-    } catch (err) {
-      setActionMsg(err.response?.data?.error || 'Could not delete request');
-    }
-  };
-
-  const handleClose = async () => {
-    try {
-      const token = localStorage.getItem('token');
-      await axios.patch(`http://localhost:5000/api/requests/${id}/status`, 
-        { status: 'closed' },
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
-      setActionMsg('Request closed');
-      fetchRequest();
-    } catch (err) {
-      setActionMsg(err.response?.data?.error || 'Could not close request');
-    }
-  };
-
-  const handleOpen = async () => {
-    try {
-      const token = localStorage.getItem('token');
-      await axios.patch(`http://localhost:5000/api/requests/${id}/status`, 
-        { status: 'open' },
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
-      setActionMsg('Request reopened');
-      fetchRequest();
-    } catch (err) {
-      setActionMsg(err.response?.data?.error || 'Could not reopen request');
-    }
-  };
-
-  const handleMakeOffer = async () => {
-    if (!offerPrice) {
-      setOfferError('Please enter a price');
+  const handleMakeOffer = async (e) => {
+    e.preventDefault();
+    if (!offerForm.offeredPrice || parseFloat(offerForm.offeredPrice) <= 0) {
+      setError('Please enter a valid offer price');
       return;
     }
-    
-    setOfferLoading(true);
-    setOfferError('');
-    setOfferSuccess('');
-    
+    setSubmitting(true);
+    setError('');
     try {
-      const token = localStorage.getItem('token');
-      await axios.post('http://localhost:5000/api/offers', {
-        requestID: parseInt(id),
-        offeredPrice: parseFloat(offerPrice),
-        message: offerMessage || null
-      }, {
-        headers: { Authorization: `Bearer ${token}` }
+      await API.post('/offers', {
+        requestId: parseInt(id, 10),
+        assetId: offerForm.assetId || null,
+        offeredPrice: parseFloat(offerForm.offeredPrice),
+        message: offerForm.message?.trim(),
       });
-      setOfferSuccess('Offer submitted successfully!');
-      setOfferPrice('');
-      setOfferMessage('');
+      setShowOfferForm(false);
+      setOfferForm({ offeredPrice: '', message: '', assetId: '' });
+      alert('Offer submitted successfully! The requester will review it in My Requests.');
     } catch (err) {
-      setOfferError(err.response?.data?.error || 'Could not submit offer');
+      setError(err.response?.data?.error || 'Failed to submit offer');
     } finally {
-      setOfferLoading(false);
+      setSubmitting(false);
     }
   };
 
-  if (loading) {
-    return <div style={{ padding: '100px', textAlign: 'center' }}>Loading...</div>;
-  }
+  if (loading) return <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>Loading...</div>;
+  if (error || !request) return <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#dc2626' }}>{error || 'Request not found'}</div>;
 
-  if (error || !request) {
-    return <div style={{ padding: '100px', textAlign: 'center' }}>{error || 'Request not found'}</div>;
-  }
-
-  const startDate = request.startDate ? new Date(request.startDate).toLocaleDateString() : 'Not set';
-  const endDate = request.endDate ? new Date(request.endDate).toLocaleDateString() : 'Not set';
+  // ✅ Casing-safe requester check (handles both camelCase and PascalCase)
+  const currentUserId = user?.UserID ?? user?.id ?? user?.userId ?? user?.userID;
+  const requestOwnerId = request.RequesterID ?? request.requesterId;
+  const isRequester = user && currentUserId && requestOwnerId && Number(currentUserId) === Number(requestOwnerId);
+  const isPending = request.Status === 'open' || request.status === 'open';
 
   return (
-    <div style={{ padding: '100px 24px', maxWidth: '800px', margin: '0 auto' }}>
-      <button onClick={() => navigate('/requests')} style={{ marginBottom: '20px', padding: '8px 16px', cursor: 'pointer' }}>
-        ← Back to Requests
-      </button>
-      
-      {actionMsg && (
-        <div style={{ padding: '10px', marginBottom: '20px', background: '#e0f0ff', borderRadius: '8px' }}>
-          {actionMsg}
+    <div style={{ minHeight: '100vh', background: '#f9fafb', padding: '2rem' }}>
+      <div style={{ maxWidth: '900px', margin: '0 auto' }}>
+        <button onClick={() => navigate(-1)} style={{ marginBottom: '1.5rem', background: 'none', border: 'none', color: '#059669', cursor: 'pointer', fontWeight: 500 }}>← Back</button>
+
+        {/* Request Details Card */}
+        <div style={{ background: '#fff', borderRadius: '16px', padding: '2rem', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', marginBottom: '2rem' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', marginBottom: '1rem', flexWrap: 'wrap', gap: '1rem' }}>
+            <div>
+              <h1 style={{ fontSize: '1.75rem', fontWeight: 800, color: '#1f2937', marginBottom: '0.5rem' }}>{request.Title || request.title}</h1>
+              <p style={{ color: '#6b7280', fontSize: '0.95rem', marginBottom: '1rem' }}>{request.Description || request.description}</p>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '1rem', fontSize: '0.9rem' }}>
+                <div><strong style={{ color: '#374151' }}>Dates:</strong><br/>{request.StartDate ? new Date(request.StartDate).toLocaleDateString() : request.startDate ? new Date(request.startDate).toLocaleDateString() : 'N/A'} - {request.EndDate ? new Date(request.EndDate).toLocaleDateString() : request.endDate ? new Date(request.endDate).toLocaleDateString() : 'N/A'}</div>
+                <div><strong style={{ color: '#374151' }}>Budget:</strong><br/>Rs. {(request.MaxBudget || request.maxBudget)?.toLocaleString() || 'Negotiable'}</div>
+                <div><strong style={{ color: '#374151' }}>Location:</strong><br/>{request.City || request.city}{(request.Area || request.area) ? `, ${request.Area || request.area}` : ''}</div>
+                <div><strong style={{ color: '#374151' }}>Posted by:</strong><br/>{request.RequesterName || request.requesterName}</div>
+              </div>
+            </div>
+            <span style={{ padding: '0.5rem 1rem', borderRadius: '20px', fontSize: '0.85rem', fontWeight: 600, background: isPending ? '#dcfce7' : '#f3f4f6', color: isPending ? '#166534' : '#374151' }}>
+              {request.Status || request.status}
+            </span>
+          </div>
+
+          {/* Requester-only notice */}
+          {isRequester && (
+            <div style={{ background: '#f0fdf4', padding: '1rem', borderRadius: '12px', marginBottom: '1.5rem', borderLeft: '4px solid #059669' }}>
+              <p style={{ color: '#166534', margin: 0, fontWeight: 500 }}>
+                ✓ This is your request. Manage offers and status from the <strong>My Requests</strong> tab.
+              </p>
+            </div>
+          )}
+
+          {/* Make Offer Form - ONLY for non-requesters when request is open */}
+          {!isRequester && isPending && (
+            <div style={{ marginTop: '2rem', paddingTop: '2rem', borderTop: '1px solid #e5e7eb' }}>
+              {!showOfferForm ? (
+                <button onClick={() => setShowOfferForm(true)} style={{ padding: '0.75rem 1.5rem', background: '#059669', color: '#fff', border: 'none', borderRadius: '8px', fontWeight: 600, cursor: 'pointer' }}>
+                  + Make an Offer
+                </button>
+              ) : (
+                <form onSubmit={handleMakeOffer} style={{ background: '#f9fafb', padding: '1.5rem', borderRadius: '12px', border: '1px solid #e5e7eb' }}>
+                  <h3 style={{ fontSize: '1.1rem', fontWeight: 700, color: '#1f2937', marginBottom: '1rem' }}>Submit Your Offer</h3>
+                  {error && <p style={{ color: '#dc2626', marginBottom: '1rem' }}>{error}</p>}
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
+                    <input type="number" placeholder="Your Price (Rs)" value={offerForm.offeredPrice} onChange={e => setOfferForm({...offerForm, offeredPrice: e.target.value})} style={{ padding: '0.75rem', borderRadius: '8px', border: '1px solid #d1d5db' }} required />
+                    <input type="text" placeholder="Asset Name (Optional)" value={offerForm.assetId} onChange={e => setOfferForm({...offerForm, assetId: e.target.value})} style={{ padding: '0.75rem', borderRadius: '8px', border: '1px solid #d1d5db' }} />
+                  </div>
+                  <textarea placeholder="Message to requester..." rows="3" value={offerForm.message} onChange={e => setOfferForm({...offerForm, message: e.target.value})} style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid #d1d5db', marginBottom: '1rem' }} />
+                  <div style={{ display: 'flex', gap: '0.75rem' }}>
+                    <button type="submit" disabled={submitting} style={{ flex: 1, padding: '0.75rem', background: submitting ? '#9ca3af' : '#059669', color: '#fff', border: 'none', borderRadius: '8px', fontWeight: 600, cursor: submitting ? 'not-allowed' : 'pointer' }}>Submit Offer</button>
+                    <button type="button" onClick={() => setShowOfferForm(false)} style={{ flex: 1, padding: '0.75rem', background: '#f3f4f6', border: 'none', borderRadius: '8px', fontWeight: 600, cursor: 'pointer' }}>Cancel</button>
+                  </div>
+                </form>
+              )}
+            </div>
+          )}
+
+          {/* If request is closed or user is requester, show helpful message instead of offer form */}
+          {(!isPending || isRequester) && !showOfferForm && (
+            <div style={{ marginTop: '2rem', paddingTop: '2rem', borderTop: '1px solid #e5e7eb', textAlign: 'center', color: '#6b7280' }}>
+              <p>{isPending ? 'You cannot make an offer on your own request.' : 'This request is no longer open for offers.'}</p>
+            </div>
+          )}
         </div>
-      )}
-      
-      <div style={{ border: '1px solid #ddd', borderRadius: '12px', padding: '24px', marginBottom: '24px' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', marginBottom: '16px' }}>
-          <h1 style={{ margin: 0 }}>{request.title}</h1>
-          <span style={{
-            padding: '4px 12px',
-            borderRadius: '20px',
-            background: request.status === 'open' ? '#e6f7ee' : '#fce8e8',
-            color: request.status === 'open' ? '#15803d' : '#dc2626'
-          }}>
-            {request.status || 'open'}
-          </span>
-        </div>
-        
-        <p style={{ color: '#666', marginBottom: '16px' }}>{request.description}</p>
-        
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '16px' }}>
-          <div>
-            <strong>Category:</strong> {request.categoryName || 'Uncategorized'}
-          </div>
-          <div>
-            <strong>Max Budget:</strong> {request.maxBudget ? `Rs ${request.maxBudget.toLocaleString()}` : 'Negotiable'}
-          </div>
-          <div>
-            <strong>Dates:</strong> {startDate} → {endDate}
-          </div>
-          <div>
-            <strong>Location:</strong> {request.city || 'Not specified'} {request.area ? `, ${request.area}` : ''}
-          </div>
-          <div>
-            <strong>Requested by:</strong> {request.requesterName}
-          </div>
-        </div>
-        
-        {isOwner && request.status === 'open' && (
-          <div style={{ display: 'flex', gap: '12px', marginTop: '16px' }}>
-            <button onClick={handleClose} style={{ padding: '8px 16px', background: '#f0f0f0', border: 'none', borderRadius: '6px', cursor: 'pointer' }}>
-              Close Request
-            </button>
-            <button onClick={handleDelete} style={{ padding: '8px 16px', background: '#dc2626', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer' }}>
-              Delete Request
-            </button>
-          </div>
-        )}
-        
-        {isOwner && request.status === 'closed' && (
-          <div style={{ marginTop: '16px' }}>
-            <button onClick={handleOpen} style={{ padding: '8px 16px', background: '#15803d', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer' }}>
-              Reopen Request
-            </button>
-          </div>
-        )}
       </div>
-      
-      {!isOwner && request.status === 'open' && (
-        <div style={{ border: '1px solid #ddd', borderRadius: '12px', padding: '24px' }}>
-          <h2>Make an Offer</h2>
-          
-          {offerError && <div style={{ color: 'red', marginBottom: '12px' }}>{offerError}</div>}
-          {offerSuccess && <div style={{ color: 'green', marginBottom: '12px' }}>{offerSuccess}</div>}
-          
-          <div style={{ marginBottom: '16px' }}>
-            <label style={{ display: 'block', marginBottom: '8px', fontWeight: 'bold' }}>Your Price (Rs)</label>
-            <input
-              type="number"
-              style={{ width: '100%', padding: '10px', border: '1px solid #ccc', borderRadius: '6px' }}
-              value={offerPrice}
-              onChange={e => setOfferPrice(e.target.value)}
-              placeholder="Enter amount"
-            />
-          </div>
-          
-          <div style={{ marginBottom: '16px' }}>
-            <label style={{ display: 'block', marginBottom: '8px', fontWeight: 'bold' }}>Message (optional)</label>
-            <textarea
-              style={{ width: '100%', padding: '10px', border: '1px solid #ccc', borderRadius: '6px', minHeight: '80px' }}
-              value={offerMessage}
-              onChange={e => setOfferMessage(e.target.value)}
-              placeholder="Tell the requester about your item..."
-            />
-          </div>
-          
-          <button 
-            onClick={handleMakeOffer} 
-            disabled={offerLoading}
-            style={{ padding: '12px 24px', background: '#c8f230', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold' }}
-          >
-            {offerLoading ? 'Submitting...' : 'Submit Offer'}
-          </button>
-        </div>
-      )}
-      
-      {request.status === 'closed' && !isOwner && (
-        <div style={{ border: '1px solid #ddd', borderRadius: '12px', padding: '24px', background: '#f5f5f5', textAlign: 'center' }}>
-          This request is closed and no longer accepting offers.
-        </div>
-      )}
     </div>
   );
 }

@@ -223,9 +223,9 @@ insert into Assets (OwnerID, CategoryID, Title, Description, PricePerDay, Deposi
 go
 
 insert into AssetImages (AssetID, ImageURL, IsPrimary) values
-(1, '/uploads/canon_main.jpg', 1),
-(1, '/uploads/canon_lens.jpg', 0),
-(2, '/uploads/honda_main.jpg', 1);
+(1, 'https://res.cloudinary.com/dxse8dp1u/image/upload/v1777719827/canon-camera_jme8a8.jpg', 0),
+(2, 'https://res.cloudinary.com/dxse8dp1u/image/upload/v1777719828/cd70_fz5ocx.webp', 1),
+(2, 'https://res.cloudinary.com/dxse8dp1u/image/upload/v1777719827/614414388-800x600_oywlkb.webp', 1);
 go
 
 insert into Requests (RequesterID, CategoryID, Title, Description, Area, City, StartDate, EndDate, MaxBudget) values
@@ -525,3 +525,41 @@ begin
     where u.UserID = @UserID;
 end;
 go
+
+--------- 🆕 PRODUCTION ENHANCEMENTS: ImageURL + Indexes + AssetImages ---------
+
+-- Add ImageURL column to Assets table if not exists
+IF NOT EXISTS (
+    SELECT * FROM sys.columns 
+    WHERE object_id = OBJECT_ID('Assets') 
+    AND name = 'ImageURL'
+)
+BEGIN
+    ALTER TABLE Assets ADD ImageURL NVARCHAR(255);
+END
+GO
+
+-- Add performance indexes for faster queries
+CREATE INDEX IX_Assets_Category ON Assets(CategoryID);
+CREATE INDEX IX_Assets_City ON Assets(City);
+CREATE INDEX IX_Assets_Price ON Assets(PricePerDay);
+CREATE INDEX IX_Assets_IsActive ON Assets(IsActive);
+CREATE INDEX IX_Assets_CreatedAt ON Assets(CreatedAt DESC);
+CREATE INDEX IX_Bookings_LenderID ON Bookings(LenderID);
+CREATE INDEX IX_Bookings_RenterID ON Bookings(RenterID);
+CREATE INDEX IX_Bookings_Status ON Bookings(Status);
+CREATE INDEX IX_Transactions_FromWalletID ON Transactions(FromWalletID);
+CREATE INDEX IX_Transactions_ToWalletID ON Transactions(ToWalletID);
+GO
+
+-- Ensure AssetImages table exists (for multiple images per asset)
+IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = 'AssetImages')
+BEGIN
+    CREATE TABLE AssetImages (
+        ImageID INT PRIMARY KEY IDENTITY(1,1),
+        AssetID INT NOT NULL FOREIGN KEY REFERENCES Assets(AssetID) ON DELETE CASCADE,
+        ImageURL NVARCHAR(255) NOT NULL,
+        IsPrimary BIT DEFAULT 0
+    );
+END
+GO

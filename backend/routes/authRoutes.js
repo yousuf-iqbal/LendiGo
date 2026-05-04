@@ -1,7 +1,7 @@
 ﻿// routes/authRoutes.js
 const express  = require('express');
 const router   = express.Router();
-const multer   = require('multer');
+const multer = require('multer');
 const { CloudinaryStorage } = require('multer-storage-cloudinary');
 const { cloudinary } = require('../config/cloudinary');
 const { register, login, googleAuth, checkProvider, checkUserStatus} = require('../controllers/authController');

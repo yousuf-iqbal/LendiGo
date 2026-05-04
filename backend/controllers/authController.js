@@ -7,13 +7,13 @@ const {
   createUser,
   updateProfilePictures,
 } = require('../models/authModel');
+const walletModel = require('../models/walletModel');
 
-// ─── REGISTER ─────────────────────────────────────────────────────────────────
+// ─── REGISTER ────────────────────────────────────────────────────────────────
 const register = async (req, res) => {
   try {
     const authHeader = req.headers['authorization'];
     const token      = authHeader && authHeader.split(' ')[1];
-
     if (!token) {
       return res.status(401).json({ error: 'firebase token required.' });
     }
@@ -27,7 +27,7 @@ const register = async (req, res) => {
     }
 
     if (!decoded.email_verified) {
-      return res.status(403).json({
+      return res.status(403).json({ 
         error: 'email not verified. please verify your email before completing registration.',
       });
     }
@@ -50,17 +50,16 @@ const register = async (req, res) => {
     }
 
     const existingPhone = await findUserByPhone(phone);
-    
-    // Check if user already exists
     const existingUser = await findUserByEmail(email);
+
     if (existingUser) {
       console.log('User already exists, updating profile:', existingUser.UserID);
       
-      //  UPDATE existing user with new profile data
+      // 1. UPDATE existing user with new profile data
       const pool = await poolPromise;
       await pool.request()
         .input('fullName', sql.NVarChar, fullName)
-        .input('phone', sql.NVarChar, phone)
+        .input('phone',  sql.NVarChar, phone)
         .input('city', sql.NVarChar, city)
         .input('area', sql.NVarChar, area || null)
         .input('cnic', sql.NVarChar, cnic)
@@ -69,14 +68,24 @@ const register = async (req, res) => {
         set FullName = @fullName, Phone = @phone, City = @city, Area = @area, CNIC = @cnic, IsVerified = 1 
         where Email = @email`);
       
-      // Save images if provided
+      // 2. Save images if provided
       const profilePicUrl  = req.files?.profilePic?.[0]?.path  || existingUser.ProfilePic;
       const cnicPictureUrl = req.files?.cnicPicture?.[0]?.path || existingUser.CNICPicture;
       if (profilePicUrl || cnicPictureUrl) {
         await updateProfilePictures(email, profilePicUrl, cnicPictureUrl);
       }
       
-      // Return updated user
+      // ✅ SAFETY NET: Ensure existing user has a wallet with 5000 RS
+      try {
+        const wallet = await walletModel.getBalance(existingUser.UserID);
+        if (!wallet) {
+          console.log(`🔧 Safety Net: Creating wallet for existing user ${existingUser.UserID} with 5000 RS`);
+          await walletModel.createWallet(existingUser.UserID, 5000);
+        }
+      } catch (err) {
+        console.error('Wallet safety net error:', err);
+      }
+
       return res.status(200).json({
         message: 'profile updated successfully.',
         user: {
@@ -93,7 +102,6 @@ const register = async (req, res) => {
       });
     }
 
-    // Check if phone is already registered to a different user
     if (existingPhone && existingPhone.UserID) {
       return res.status(409).json({ error: 'phone number already registered.' });
     }
@@ -102,9 +110,10 @@ const register = async (req, res) => {
     console.log('Creating new user...');
     const newUserId = await createUser({ fullName, email, phone, city, area, cnic, signupMethod: 'email' });
     console.log('New user ID:', newUserId);
-
-const walletModel = require('../models/walletModel');
-await walletModel.createWallet(newUserId, 0);
+    
+    // ✅ Create wallet with 5000 RS
+    await walletModel.createWallet(newUserId, 5000);
+    console.log('Wallet created with 5000 RS for new user:', newUserId);
 
     // Save images
     const profilePicUrl  = req.files?.profilePic?.[0]?.path  || null;
@@ -113,26 +122,20 @@ await walletModel.createWallet(newUserId, 0);
       await updateProfilePictures(email, profilePicUrl, cnicPictureUrl);
     }
 
-    // Return complete user object
-    const userData = {
-      id: newUserId,
-      fullName: fullName,
-      email: email,
-      phone: phone,
-      city: city,
-      area: area || null,
-      role: 'user',
-      profilePic: profilePicUrl,
-      isVerified: true,
-    };
-
-    console.log('Registration successful, returning user:', userData);
-    
     res.status(201).json({
       message: 'profile saved successfully.',
-      user: userData,
+      user: {
+        id: newUserId,
+        fullName: fullName,
+        email: email,
+        phone: phone,
+        city: city,
+        area: area || null,
+        role: 'user',
+        profilePic: profilePicUrl,
+        isVerified: true,
+      },
     });
-
   } catch (err) {
     console.error('❌ register error:', err.message);
     console.error(err);
@@ -145,7 +148,6 @@ const login = async (req, res) => {
   try {
     const authHeader = req.headers['authorization'];
     const token      = authHeader && authHeader.split(' ')[1];
-
     if (!token) {
       return res.status(401).json({ error: 'firebase token required.' });
     }
@@ -180,6 +182,21 @@ const login = async (req, res) => {
       return res.status(403).json({ error: 'your account has been suspended.' });
     }
 
+    // ✅ SAFETY NET: Check wallet balance on login
+    try {
+      const wallet = await walletModel.getBalance(user.UserID);
+      if (!wallet) {
+        console.log(`🔧 Safety Net: Creating wallet for user ${user.UserID} with 5000 RS`);
+        await walletModel.createWallet(user.UserID, 5000);
+      } else if (parseFloat(wallet.Balance) <= 0) {
+        // If wallet exists but is empty, fill it with 5000 RS so they can test
+        console.log(`🔧 Safety Net: Topping up user ${user.UserID} wallet to 5000 RS`);
+        await walletModel.addMoney(user.UserID, 5000);
+      }
+    } catch (err) {
+      console.error('Wallet safety net error:', err);
+    }
+
     res.json({
       message: 'login successful',
       user: {
@@ -194,7 +211,6 @@ const login = async (req, res) => {
         isVerified: user.IsVerified,
       },
     });
-
   } catch (err) {
     console.error('❌ login error:', err.message);
     res.status(500).json({ error: 'something went wrong.' });
@@ -205,7 +221,6 @@ const login = async (req, res) => {
 const googleAuth = async (req, res) => {
   try {
     const { token, email, fullName, photoURL } = req.body;
-
     if (!token) {
       return res.status(401).json({ error: 'Google token required.' });
     }
@@ -239,6 +254,9 @@ const googleAuth = async (req, res) => {
         signupMethod: 'google',
       });
 
+      // ✅ Create wallet with 5000 RS
+      await walletModel.createWallet(newUserId, 5000);
+
       const profilePicUrl = photoURL || null;
 
       user = {
@@ -256,7 +274,6 @@ const googleAuth = async (req, res) => {
         CreatedAt: new Date(),
       };
 
-      // Return with flag to complete profile
       return res.status(201).json({
         message: 'Google account created. Please complete your profile.',
         user: {
@@ -276,10 +293,22 @@ const googleAuth = async (req, res) => {
       return res.status(403).json({ error: 'your account has been suspended.' });
     }
 
-    // Only require completion if BOTH phone AND cnic are empty
+    // ✅ SAFETY NET: Ensure existing Google user has wallet with 5000 RS
+    try {
+      const wallet = await walletModel.getBalance(user.UserID);
+      if (!wallet) {
+        console.log(`🔧 Safety Net: Creating wallet for Google user ${user.UserID} with 5000 RS`);
+        await walletModel.createWallet(user.UserID, 5000);
+      } else if (parseFloat(wallet.Balance) <= 0) {
+        console.log(`🔧 Safety Net: Topping up Google user ${user.UserID} wallet to 5000 RS`);
+        await walletModel.addMoney(user.UserID, 5000);
+      }
+    } catch (err) {
+      console.error('Wallet safety net error:', err);
+    }
+
     const needsCompletion = !user.Phone && !user.CNIC;
 
-    // Return existing user
     res.json({
       message: 'Google sign-in successful',
       user: {
@@ -295,7 +324,6 @@ const googleAuth = async (req, res) => {
       },
       requiresProfileCompletion: needsCompletion,
     });
-
   } catch (err) {
     console.error(' googleAuth error:', err.message);
     res.status(500).json({ error: 'something went wrong. please try again.' });
@@ -303,35 +331,22 @@ const googleAuth = async (req, res) => {
 };
 
 // ─── CHECK PROVIDER ──────────────────────────────────────────────────────────
-// POST /api/auth/check-provider
-// Checks if a user signed up with Google or email/password
-// ─── CHECK PROVIDER ──────────────────────────────────────────────────────────
 const checkProvider = async (req, res) => {
   try {
     const { email } = req.body;
-    
     if (!email) {
       return res.status(400).json({ error: 'email required' });
     }
 
     console.log('🔍 Checking provider for:', email);
-    
+
     const user = await findUserByEmail(email);
-    
+
     if (!user) {
       console.log('❌ User not found');
       return res.status(404).json({ error: 'user not found' });
     }
-    
-    console.log('👤 User found:', user.UserID);
-    console.log('📊 User data:', { 
-      Phone: user.Phone, 
-      CNIC: user.CNIC,
-      SignupMethod: user.SignupMethod,
-      IsVerified: user.IsVerified 
-    });
 
-    // ✅ Use SignupMethod column directly
     const provider = user.SignupMethod || 'email';
     console.log('🎯 Provider:', provider);
 
@@ -340,32 +355,27 @@ const checkProvider = async (req, res) => {
       email: user.Email,
       hasCompleteProfile: !!user.Phone && !!user.CNIC,
     });
-
   } catch (err) {
     console.error('❌ checkProvider error:', err.message);
     res.status(500).json({ error: 'something went wrong' });
   }
 };
-// ─── CHECK USER STATUS ───────────────────────────────────────────────────────
-// POST /api/auth/check-user-status
-// Checks if user exists and is verified before allowing password reset
 
+// ─── CHECK USER STATUS ───────────────────────────────────────────────────────
 const checkUserStatus = async (req, res) => {
   try {
     const { email } = req.body;
-    
     if (!email) {
       return res.status(400).json({ error: 'email required' });
     }
 
     const user = await findUserByEmail(email);
-    
+
     res.json({
       exists: !!user,
       isVerified: user?.IsVerified || false,
       email: email,
     });
-
   } catch (err) {
     console.error('check-user-status error:', err.message);
     res.status(500).json({ error: 'something went wrong' });

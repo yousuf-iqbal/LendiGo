@@ -1,15 +1,10 @@
-﻿const express = require('express');
-const router = express.Router();
+const express  = require('express');
+const router   = express.Router();
 const verifyToken = require('../middleware/verifyToken');
-const { poolPromise } = require('../config/db'); // ✅ Import poolPromise
+const { getBorrowerDashboard, getLenderDashboard } = require('../controllers/dashboardController');
 
-// Temporary placeholder routes
-router.get('/borrower', verifyToken, (req, res) => {
-    res.json({ message: 'Borrower dashboard - coming soon' });
-});
-
-router.get('/lender', verifyToken, (req, res) => {
-    res.json({ message: 'Lender dashboard - coming soon' });
-});
+// Both routes require auth
+router.get('/borrower', verifyToken, getBorrowerDashboard);
+router.get('/lender',   verifyToken, getLenderDashboard);
 
 module.exports = router;

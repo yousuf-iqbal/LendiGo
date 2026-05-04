@@ -1,18 +1,17 @@
-﻿// src/App.jsx
-import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
+﻿import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
 
-// Your pages
 import AuthPage from './pages/AuthPage';
 import CompleteProfile from './pages/CompleteProfile';
 import WalletDashboard from './pages/WalletDashboard';
-
-// Friend's pages (keep these imports)
+import EditAssetPage from './pages/EditAssetPage';
+import Dashboard from './pages/Dashboard'; 
 import Navbar from './components/Navbar';
 import BrowsePage from './pages/BrowsePage';
-import RequestBoardPage from './pages/RequestBoardPage';
+import AvailableRequestsPage from './pages/AvailableRequestsPage'; 
 import RequestDetailPage from './pages/RequestDetailPage';
 import MyRequestsPage from './pages/MyRequestsPage';
+import MyOffersPage from './pages/MyOffersPage';
 import EditRequestPage from './pages/EditRequestPage';
 import ProfilePage from './pages/ProfilePage';
 import HomePage from './pages/HomePage';
@@ -21,11 +20,12 @@ import AddAssetPage from './pages/AddAssetPage';
 import MyAssetsPage from './pages/MyAssetsPage';
 import AssetDetailPage from './pages/AssetDetailPage';
 import MyBookingsPage from './pages/MyBookingsPage';
+import PaymentReceiptPage from './pages/PaymentReceiptPage'; 
 import HelpCorner from './components/HelpCorner';
 
 import './App.css';
 
-// ✅ LOOP-PROOF ProtectedRoute
+
 function ProtectedRoute({ children }) {
   const { user, loading } = useAuth();
   const location = useLocation();
@@ -39,24 +39,10 @@ function ProtectedRoute({ children }) {
     );
   }
 
-  // Allow access if authenticated OR if we have stored user data
   if (user || storedUser) return children;
-
-  // ✅ CRITICAL: Don't redirect if already on auth pages
   if (location.pathname === '/auth' || location.pathname === '/complete-profile') return children;
 
   return <Navigate to="/auth" replace />;
-}
-
-function Dashboard() {
-  const { user, logout } = useAuth();
-  return (
-    <div style={{ minHeight: '100vh', background: '#080810', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: '1rem', fontFamily: 'system-ui' }}>
-      <h1 style={{ color: '#8b5cf6', fontSize: '2.5rem', fontWeight: 800 }}>Welcome, {user?.fullName || user?.FullName}!</h1>
-      <p style={{ color: 'rgba(255,255,255,0.6)', fontSize: '1.1rem' }}>Your account is active 🎉</p>
-      <button onClick={logout} style={{ padding: '0.75rem 2rem', background: '#8b5cf6', border: 'none', borderRadius: '12px', color: '#fff', fontWeight: 600, cursor: 'pointer', fontSize: '0.95rem', marginTop: '1rem' }}>Logout</button>
-    </div>
-  );
 }
 
 export default function App() {
@@ -72,26 +58,82 @@ export default function App() {
             <Route path="/signup" element={<Navigate to="/auth" replace />} />
             <Route path="/complete-profile" element={<CompleteProfile />} />
             
-            {/* Friend's Public Routes */}
+            {/* Public Routes */}
             <Route path="/" element={<HomePage />} />
             <Route path="/browse" element={<BrowsePage />} />
-            <Route path="/requests" element={<RequestBoardPage />} />
+            
+            {/* Request Routes - Separate Pages */}
+            <Route path="/requests" element={<AvailableRequestsPage />} /> {/* Public feed */}
             <Route path="/requests/:id" element={<RequestDetailPage />} />
-            <Route path="/my-requests" element={<MyRequestsPage />} />
-            <Route path="/edit-request/:id" element={<EditRequestPage />} />
-            <Route path="/profile" element={<ProfilePage />} />
-            <Route path="/create-request" element={<PostRequestPage />} />
-            <Route path="/requests/new" element={<PostRequestPage />} />
-            <Route path="/post-request" element={<PostRequestPage />} />
-            <Route path="/my-assets" element={<MyAssetsPage />} />
-            <Route path="/my-assets/add" element={<AddAssetPage />} />
+            <Route path="/my-requests" element={
+              <ProtectedRoute>
+                <MyRequestsPage />
+              </ProtectedRoute>
+            } /> {/* Private - user's requests */}
+            <Route path="/my-offers" element={
+  <ProtectedRoute>
+    <MyOffersPage />
+  </ProtectedRoute>
+} />
+            <Route path="/edit-request/:id" element={
+              <ProtectedRoute>
+                <EditRequestPage />
+              </ProtectedRoute>
+            } />
+            <Route path="/post-request" element={
+              <ProtectedRoute>
+                <PostRequestPage />
+              </ProtectedRoute>
+            } />
+            
+            {/* Profile & Assets */}
+            <Route path="/profile" element={
+              <ProtectedRoute>
+                <ProfilePage />
+              </ProtectedRoute>
+            } />
+            <Route path="/my-assets" element={
+              <ProtectedRoute>
+                <MyAssetsPage />
+              </ProtectedRoute>
+            } />
+            <Route path="/my-assets/add" element={
+              <ProtectedRoute>
+                <AddAssetPage />
+              </ProtectedRoute>
+            } />
+            <Route path="/my-assets/edit/:id" element={
+              <ProtectedRoute>
+                <EditAssetPage />
+              </ProtectedRoute>
+            } />
             <Route path="/assets/:id" element={<AssetDetailPage />} />
-            <Route path="/bookings" element={<MyBookingsPage />} />
             
-            {/* Your Protected Routes */}
-            <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
-            <Route path="/wallet" element={<ProtectedRoute><WalletDashboard /></ProtectedRoute>} />
+            {/* Bookings & Payments */}
+            <Route path="/bookings" element={
+              <ProtectedRoute>
+                <MyBookingsPage />
+              </ProtectedRoute>
+            } />
+            <Route path="/bookings/:bookingId/payment" element={
+              <ProtectedRoute>
+                <PaymentReceiptPage />
+              </ProtectedRoute>
+            } /> {/* NEW */}
             
+            {/* Dashboard & Wallet */}
+            <Route path="/dashboard" element={
+              <ProtectedRoute>
+                <Dashboard />
+              </ProtectedRoute>
+            } />
+            <Route path="/wallet" element={
+              <ProtectedRoute>
+                <WalletDashboard />
+              </ProtectedRoute>
+            } />
+            
+            {/* Catch-all */}
             <Route path="*" element={<Navigate to="/auth" replace />} />
           </Routes>
           <HelpCorner />

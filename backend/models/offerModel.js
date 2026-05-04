@@ -1,180 +1,170 @@
-const { poolPromise, sql } = require('../config/db');
-const bookingModel = require('./bookingModel');
 
-async function getOffersByRequest(requestID) {
-  const pool = await poolPromise();
+const { poolPromise, sql } = require('../config/db');
+
+// ── CREATE ────────────────────────────────────────────────────────────────────
+async function createOffer(data, lenderID) {
+  const pool = await poolPromise;
+
+  // Check for duplicate offer (same lender, same request)
+  const existing = await pool.request()
+    .input('RequestID', sql.Int, Number(data.requestId))
+    .input('LenderID', sql.Int, Number(lenderID))
+    .query('SELECT OfferID FROM Offers WHERE RequestID = @RequestID AND LenderID = @LenderID');
+
+  if (existing.recordset.length > 0) {
+    throw new Error('You have already made an offer for this request');
+  }
+
   const result = await pool.request()
-    .input('RequestID', requestID)
+    .input('RequestID', sql.Int, Number(data.requestId))
+    .input('LenderID', sql.Int, Number(lenderID))
+    .input('AssetID', sql.Int, data.assetId ? Number(data.assetId) : null)
+    .input('OfferedPrice', sql.Decimal(10, 2), parseFloat(data.offeredPrice))
+    .input('Message', sql.NVarChar, data.message || '')
     .query(`
-      SELECT
-        o.OfferID, o.RequestID, o.LenderID, o.OfferedPrice, o.Message, o.Status, o.CreatedAt,
-        u.FullName AS LenderName, u.City AS LenderCity, u.Area AS LenderArea, u.ProfilePic AS LenderPic,
-        COALESCE((SELECT AVG(CAST(Rating AS FLOAT)) FROM Reviews WHERE RevieweeID = o.LenderID), 0) AS LenderRating
-      FROM Offers o
-      JOIN Users u ON o.LenderID = u.UserID
-      WHERE o.RequestID = @RequestID
-      ORDER BY o.CreatedAt ASC
+      INSERT INTO Offers (RequestID, LenderID, AssetID, OfferedPrice, Message, Status)
+      OUTPUT INSERTED.OfferID
+      VALUES (@RequestID, @LenderID, @AssetID, @OfferedPrice, @Message, 'pending')
     `);
-  return result.recordset;
+  return result.recordset[0].OfferID;
 }
 
-async function getOffersByUser(userID) {
-  const pool = await poolPromise();
+// ── READ ─────────────────────────────────────────────────────────────────────
+async function getOffersByRequest(requestId) {
+  const pool = await poolPromise;
   const result = await pool.request()
-    .input('UserID', sql.Int, parseInt(userID))
+    .input('RequestID', sql.Int, Number(requestId))
     .query(`
       SELECT
         o.OfferID, o.OfferedPrice, o.Message, o.Status, o.CreatedAt,
-        r.Title AS RequestTitle, r.CategoryID, r.RequestID, r.StartDate, r.EndDate,
-        c.Name AS RequestCategory,
-        u.FullName AS RequesterName
+        u.FullName AS LenderName, u.UserID AS LenderID, u.ProfilePic AS LenderPic, u.Phone AS LenderPhone,
+        a.Title AS AssetTitle, a.AssetID, a.PricePerDay,
+        (SELECT TOP 1 ImageURL FROM AssetImages WHERE AssetID = a.AssetID AND IsPrimary = 1) AS AssetImage
       FROM Offers o
-      JOIN Requests r ON o.RequestID = r.RequestID
-      LEFT JOIN Categories c ON r.CategoryID = c.CategoryID
-      JOIN Users u ON r.RequesterID = u.UserID
-      WHERE o.LenderID = @UserID
+      JOIN Users u ON o.LenderID = u.UserID
+      LEFT JOIN Assets a ON o.AssetID = a.AssetID
+      WHERE o.RequestID = @RequestID
       ORDER BY o.CreatedAt DESC
     `);
   return result.recordset;
 }
 
-async function getOfferById(offerID) {
-  const pool = await poolPromise();
+async function getOffersByLender(lenderID) {
+  const pool = await poolPromise;
   const result = await pool.request()
-    .input('OfferID', offerID)
+    .input('LenderID', sql.Int, Number(lenderID))
     .query(`
-      SELECT o.OfferID, o.RequestID, o.LenderID, o.OfferedPrice, o.Message, o.Status, o.CreatedAt,
-             r.RequesterID, r.StartDate, r.EndDate, r.Title AS RequestTitle
+      SELECT
+        o.OfferID, o.OfferedPrice, o.Message, o.Status, o.CreatedAt,
+        r.Title AS RequestTitle, r.RequestID, r.StartDate, r.EndDate,
+        u.FullName AS RequesterName, u.UserID AS RequesterID
       FROM Offers o
       JOIN Requests r ON o.RequestID = r.RequestID
+      JOIN Users u ON r.RequesterID = u.UserID
+      WHERE o.LenderID = @LenderID
+      ORDER BY o.CreatedAt DESC
+    `);
+  return result.recordset;
+}
+
+async function getOfferById(offerId) {
+  const pool = await poolPromise;
+  const result = await pool.request()
+    .input('OfferID', sql.Int, Number(offerId))
+    .query(`
+      SELECT
+        o.OfferID, o.OfferedPrice, o.Message, o.Status, o.CreatedAt,
+        r.Title AS RequestTitle, r.RequestID, r.StartDate, r.EndDate, r.MaxBudget,
+        u.FullName AS RequesterName, u.UserID AS RequesterID, u.ProfilePic AS RequesterPic,
+        a.Title AS AssetTitle, a.AssetID, a.PricePerDay,
+        o.LenderID
+      FROM Offers o
+      JOIN Requests r ON o.RequestID = r.RequestID
+      JOIN Users u ON r.RequesterID = u.UserID
+      LEFT JOIN Assets a ON o.AssetID = a.AssetID
       WHERE o.OfferID = @OfferID
     `);
   return result.recordset[0];
 }
 
-async function createOffer(requestID, lenderID, offeredPrice, message) {
-  const pool = await poolPromise();
+// ── UPDATE ───────────────────────────────────────────────────────────────────
+async function updateOfferStatus(offerId, status, requesterID) {
+  const pool = await poolPromise;
 
-  const ownerCheck = await pool.request()
-    .input('RequestID', requestID)
-    .input('LenderID', lenderID)
-    .query(`SELECT RequesterID FROM Requests WHERE RequestID = @RequestID`);
-
-  if (!ownerCheck.recordset[0]) return { error: 'request not found.', code: 404 };
-  if (ownerCheck.recordset[0].RequesterID === lenderID) {
-    return { error: 'you cannot make an offer on your own request.', code: 400 };
-  }
-
-  const statusCheck = await pool.request()
-    .input('RequestID', requestID)
-    .query(`SELECT Status FROM Requests WHERE RequestID = @RequestID`);
-  if (statusCheck.recordset[0].Status !== 'open') {
-    return { error: 'this request is no longer open.', code: 400 };
-  }
-
-  try {
-    const result = await pool.request()
-      .input('RequestID', requestID)
-      .input('LenderID', lenderID)
-      .input('OfferedPrice', offeredPrice)
-      .input('Message', message || null)
-      .query(`
-        INSERT INTO Offers (RequestID, LenderID, OfferedPrice, Message, Status, CreatedAt)
-        OUTPUT INSERTED.*
-        VALUES (@RequestID, @LenderID, @OfferedPrice, @Message, 'pending', GETDATE())
-      `);
-    return { offer: result.recordset[0] };
-  } catch (err) {
-    if (err.number === 2627 || err.number === 2601) {
-      return { error: 'you have already made an offer on this request.', code: 409 };
-    }
-    throw err;
-  }
-}
-
-async function acceptOffer(offerID, requesterID) {
-  const pool = await poolPromise();
-
+  // Verify offer belongs to requester's request
   const check = await pool.request()
-    .input('OfferID', offerID)
+    .input('OfferID', sql.Int, Number(offerId))
+    .input('RequesterID', sql.Int, Number(requesterID))
     .query(`
-      SELECT o.RequestID, o.LenderID, o.OfferedPrice, o.AssetID,
-             r.RequesterID, r.Status AS RequestStatus,
-             r.StartDate, r.EndDate
-      FROM Offers o
+      SELECT o.OfferID FROM Offers o
       JOIN Requests r ON o.RequestID = r.RequestID
-      WHERE o.OfferID = @OfferID
+      WHERE o.OfferID = @OfferID AND r.RequesterID = @RequesterID
     `);
 
-  if (!check.recordset[0]) return { error: 'offer not found.', code: 404 };
-  const offer = check.recordset[0];
-
-  if (offer.RequesterID !== requesterID) {
-    return { error: 'only the requester can accept an offer.', code: 403 };
-  }
-  if (offer.RequestStatus !== 'open') {
-    return { error: 'this request is no longer open.', code: 400 };
+  if (check.recordset.length === 0) {
+    throw new Error('Unauthorized: You can only manage offers for your own requests');
   }
 
-  const requestID = offer.RequestID;
-
+  // ⚠️ NOTE: Offers table has NO UpdatedAt column in your schema — removed it.
   await pool.request()
-    .input('OfferID', offerID)
-    .query(`UPDATE Offers SET Status = 'accepted' WHERE OfferID = @OfferID`);
-
-  await pool.request()
-    .input('RequestID', requestID)
-    .input('OfferID', offerID)
-    .query(`UPDATE Offers SET Status = 'rejected' WHERE RequestID = @RequestID AND OfferID != @OfferID`);
-
-  await pool.request()
-    .input('RequestID', requestID)
-    .query(`UPDATE Requests SET Status = 'closed' WHERE RequestID = @RequestID`);
-
-  // auto-create booking
-  let durationDays = 1;
-  if (offer.StartDate && offer.EndDate) {
-    const start = new Date(offer.StartDate);
-    const end = new Date(offer.EndDate);
-    durationDays = Math.max(1, Math.ceil((end - start) / (1000 * 60 * 60 * 24)) + 1);
-  }
-  const totalPrice = parseFloat(offer.OfferedPrice) * durationDays;
-
-  const booking = await bookingModel.createBooking({
-    assetID: offer.AssetID || null,
-    offerID,
-    renterID: requesterID,
-    lenderID: offer.LenderID,
-    startDate: offer.StartDate,
-    endDate: offer.EndDate,
-    totalPrice,
-  });
-
-  return { success: true, requestID, booking };
+    .input('OfferID', sql.Int, Number(offerId))
+    .input('Status', sql.NVarChar, status)
+    .query('UPDATE Offers SET Status = @Status WHERE OfferID = @OfferID');
 }
 
-async function rejectOffer(offerID, requesterID) {
-  const pool = await poolPromise();
+// ── DELETE ───────────────────────────────────────────────────────────────────
+async function deleteOffer(offerId, lenderID) {
+  const pool = await poolPromise;
 
   const check = await pool.request()
-    .input('OfferID', offerID)
-    .query(`
-      SELECT r.RequesterID
-      FROM Offers o
-      JOIN Requests r ON o.RequestID = r.RequestID
-      WHERE o.OfferID = @OfferID
-    `);
+    .input('OfferID', sql.Int, Number(offerId))
+    .input('LenderID', sql.Int, Number(lenderID))
+    .query('SELECT OfferID FROM Offers WHERE OfferID = @OfferID AND LenderID = @LenderID');
 
-  if (!check.recordset[0]) return { error: 'offer not found.', code: 404 };
-  if (check.recordset[0].RequesterID !== requesterID) {
-    return { error: 'only the requester can reject an offer.', code: 403 };
+  if (check.recordset.length === 0) {
+    throw new Error('Unauthorized: You can only delete your own offers');
   }
 
   await pool.request()
-    .input('OfferID', offerID)
-    .query(`UPDATE Offers SET Status = 'rejected' WHERE OfferID = @OfferID`);
-
-  return { success: true };
+    .input('OfferID', sql.Int, Number(offerId))
+    .query('DELETE FROM Offers WHERE OfferID = @OfferID');
 }
 
-module.exports = { getOffersByRequest, getOffersByUser, getOfferById, createOffer, acceptOffer, rejectOffer };
+async function getIncomingOffersByRequester(requesterID) {
+  const pool = await poolPromise;
+  const result = await pool.request()
+    .input('RequesterID', sql.Int, Number(requesterID))
+    .query(`
+      SELECT
+        o.OfferID,
+        o.OfferedPrice,
+        o.Message,
+        o.Status,
+        o.CreatedAt,
+        r.RequestID,
+        r.Title AS RequestTitle,
+        r.Description AS RequestDescription,
+        r.MaxBudget,
+        r.StartDate,
+        r.EndDate,
+        u.FullName AS LenderName,
+        u.UserID AS LenderID,
+        u.ProfilePic AS LenderPic
+      FROM Offers o
+      JOIN Requests r ON o.RequestID = r.RequestID
+      JOIN Users u ON o.LenderID = u.UserID
+      WHERE r.RequesterID = @RequesterID
+      ORDER BY o.CreatedAt DESC
+    `);
+  return result.recordset;
+}
+
+module.exports = {
+  createOffer,
+  getOffersByRequest,
+  getOffersByLender,
+  getOfferById,
+  updateOfferStatus,
+  deleteOffer,
+  getIncomingOffersByRequester,
+};

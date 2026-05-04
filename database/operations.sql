@@ -1,6 +1,20 @@
 --------- testing and admin operations for UdhaariDB ---------
 use UdhaariDB;
+
 go
+-- all select queries for all table
+select * from Users;
+select * from Wallets;
+select * from Transactions;
+select * from Categories;
+select * from Assets;   
+select * from AssetImages;
+select * from Bookings;
+select * from Requests;
+select * from Reviews;
+
+
+
 
 --------- setup test user 3 if not exists ---------
 if not exists (select 1 from Users where Email = 'test@email.com')
@@ -10,11 +24,12 @@ begin
 end;
 go
 
+
 --------- ensure user 3 has a wallet ---------
 if not exists (select 1 from Wallets where UserID = 4)
     insert into Wallets (UserID, Balance) values (4, 5000.00);
 else
-    update Wallets set Balance = 5000.00 where UserID = 3;
+    update Wallets set Balance = 5000.00 where UserID = 4;
 go
 
 --------- create a test booking for user 3 to pay ---------

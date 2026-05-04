@@ -1,17 +1,6 @@
 ﻿import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import axios from "axios";
-
-const getCategoryImage = (category) => {
-  const images = {
-    'Electronics': 'https://cdn-icons-png.flaticon.com/512/1055/1055685.png',
-    'Tools': 'https://cdn-icons-png.flaticon.com/512/2963/2963308.png',
-    'Party Supplies': 'https://cdn-icons-png.flaticon.com/512/2963/2963198.png',
-    'Vehicles': 'https://cdn-icons-png.flaticon.com/512/2963/2963201.png',
-    'Sports': 'https://cdn-icons-png.flaticon.com/512/2963/2963206.png',
-  };
-  return images[category] || 'https://cdn-icons-png.flaticon.com/512/1055/1055685.png';
-};
+import API from "../api/axios";
 
 export default function AssetDetailPage() {
   const { id } = useParams();
@@ -19,6 +8,7 @@ export default function AssetDetailPage() {
   const [asset, setAsset] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [selectedImage, setSelectedImage] = useState(0);
   const [booking, setBooking] = useState({ start_date: "", end_date: "", message: "" });
   const [submitting, setSubmitting] = useState(false);
   const [booked, setBooked] = useState(false);
@@ -28,9 +18,14 @@ export default function AssetDetailPage() {
   useEffect(() => {
     const fetchAsset = async () => {
       try {
-        const { data } = await axios.get(`http://localhost:5000/api/assets/${id}`);
+        const { data } = await API.get(`/assets/${id}`);
         console.log("Asset data:", data);
         setAsset(data);
+        // Set primary image as selected
+        if (data.images && data.images.length > 0) {
+          const primaryIdx = data.images.findIndex(img => img.IsPrimary);
+          setSelectedImage(primaryIdx >= 0 ? primaryIdx : 0);
+        }
       } catch (err) {
         setError("Asset not found.");
       } finally {
@@ -41,28 +36,28 @@ export default function AssetDetailPage() {
   }, [id]);
 
   const handleBook = async () => {
-    if (!user) { 
-      navigate("/login"); 
-      return; 
+    if (!user) {
+      navigate("/login");
+      return;
     }
-    if (!booking.start_date || !booking.end_date) { 
-      setError("Please select start and end dates."); 
-      return; 
+    if (!booking.start_date || !booking.end_date) {
+      setError("Please select start and end dates.");
+      return;
     }
     if (new Date(booking.end_date) <= new Date(booking.start_date)) {
-      setError("End date must be after start date."); 
+      setError("End date must be after start date.");
       return;
     }
     setSubmitting(true);
     setError("");
     try {
-      await axios.post("http://localhost:5000/api/bookings", {
+      await API.post("/bookings", {
         asset_id: id,
         borrower_id: user.UserID || user.id,
         start_date: booking.start_date,
         end_date: booking.end_date,
         message: booking.message,
-      }, { headers: { Authorization: `Bearer ${token}` } });
+      });
       setBooked(true);
     } catch (err) {
       setError(err.response?.data?.message || "Booking failed. Please try again.");
@@ -77,16 +72,65 @@ export default function AssetDetailPage() {
 
   const isOwner = user && (user.UserID === asset.owner_id || user.id === asset.owner_id);
   const isAvailable = asset.availability_status === "available";
+  const images = asset.images || [];
+  const currentImage = images[selectedImage]?.ImageURL || null;
 
   return (
     <div style={{ padding: "80px 24px", maxWidth: "1000px", margin: "0 auto" }}>
       <button onClick={() => navigate(-1)} style={{ marginBottom: "24px", background: "none", border: "none", fontSize: "14px", cursor: "pointer" }}>← Back</button>
-
+      
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "40px" }}>
-        <div style={{ background: "#f5f5f5", borderRadius: "20px", padding: "40px", display: "flex", justifyContent: "center", alignItems: "center" }}>
-          <img src={getCategoryImage(asset.category)} alt={asset.name} style={{ width: "200px", height: "200px", objectFit: "contain" }} />
+        {/* Image Gallery */}
+        <div>
+          <div style={{ 
+            width: "100%", 
+            height: "400px", 
+            background: currentImage ? `url(${currentImage})` : "#f5f5f5",
+            backgroundSize: "cover",
+            backgroundPosition: "center",
+            borderRadius: "20px",
+            marginBottom: "12px"
+          }}>
+            {!currentImage && (
+              <div style={{ 
+                height: "100%", 
+                display: "flex", 
+                alignItems: "center", 
+                justifyContent: "center",
+                color: "#9ca3af",
+                fontSize: "4rem"
+              }}>
+                📦
+              </div>
+            )}
+          </div>
+          
+          {/* Thumbnail Navigation */}
+          {images.length > 1 && (
+            <div style={{ display: "flex", gap: "8px", overflowX: "auto" }}>
+              {images.map((img, idx) => (
+                <button
+                  key={idx}
+                  onClick={() => setSelectedImage(idx)}
+                  style={{
+                    width: "80px",
+                    height: "80px",
+                    background: `url(${img.ImageURL})`,
+                    backgroundSize: "cover",
+                    backgroundPosition: "center",
+                    border: selectedImage === idx ? "3px solid #059669" : "2px solid #e5e7eb",
+                    borderRadius: "8px",
+                    cursor: "pointer",
+                    flexShrink: 0,
+                    opacity: selectedImage === idx ? 1 : 0.7
+                  }}
+                />
+              ))}
+            </div>
+          )}
         </div>
 
+        {/* Asset Details */}
         <div>
           <h1 style={{ fontSize: "32px", marginBottom: "8px" }}>{asset.name}</h1>
           <p style={{ color: "#666", marginBottom: "16px" }}>by {asset.owner_name || "Owner"}</p>
@@ -123,13 +167,13 @@ export default function AssetDetailPage() {
               <h3 style={{ marginBottom: "16px" }}>Request this item</h3>
               <div style={{ marginBottom: "12px" }}>
                 <label>Start Date</label>
-                <input type="date" style={{ width: "100%", padding: "10px", marginTop: "4px", border: "1px solid #ddd", borderRadius: "8px" }}
+                <input type="date" style={{ width: "100%", padding: "10px", marginTop: "4px", border: "1px solid #ddd", borderRadius: "8px" }} 
                   value={booking.start_date} min={new Date().toISOString().split("T")[0]}
                   onChange={e => setBooking({...booking, start_date: e.target.value})} />
               </div>
               <div style={{ marginBottom: "12px" }}>
                 <label>End Date</label>
-                <input type="date" style={{ width: "100%", padding: "10px", marginTop: "4px", border: "1px solid #ddd", borderRadius: "8px" }}
+                <input type="date" style={{ width: "100%", padding: "10px", marginTop: "4px", border: "1px solid #ddd", borderRadius: "8px" }} 
                   value={booking.end_date} min={booking.start_date}
                   onChange={e => setBooking({...booking, end_date: e.target.value})} />
               </div>

@@ -37,4 +37,27 @@ async function updateStatus(req, res) {
   }
 }
 
-module.exports = { getMyBookings, getBookingById, updateStatus };
+async function acceptBooking(req, res) {
+  try {
+    const bookingID = req.params.id;
+    const userID = req.userID;
+    
+    const result = await bookingModel.acceptBooking(bookingID, userID);
+    
+    if (result.error) {
+      return res.status(result.code).json({ error: result.error });
+    }
+    
+    res.json({ 
+      message: 'Booking accepted', 
+      booking: result.booking,
+      nextStep: 'payment',
+      paymentUrl: `/bookings/${bookingID}/payment`
+    });
+  } catch (err) {
+    console.error('Accept booking error:', err);
+    res.status(500).json({ error: 'server error' });
+  }
+}
+
+module.exports = { getMyBookings, getBookingById, updateStatus, acceptBooking };
