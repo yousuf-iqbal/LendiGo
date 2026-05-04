@@ -23,7 +23,7 @@ const toInt = (val) => {
 // ── CREATE ────────────────────────────────────────────────────────────────────
 async function createOffer(req, res) {
   try {
-    const { requestId, assetId, offeredPrice, message } = req.body;
+    const { requestId, assetId, offeredPrice, message, startDate, endDate } = req.body;
 
     const reqIdInt = toInt(requestId);
     if (!reqIdInt) return res.status(400).json({ error: 'Valid Request ID is required' });
@@ -36,6 +36,8 @@ async function createOffer(req, res) {
       assetId: assetId ? toInt(assetId) : null,
       offeredPrice: parseFloat(offeredPrice),
       message: message?.trim(),
+      startDate: startDate || null,
+      endDate: endDate || null,
     }, req.userID);
 
     // Notify requester (optional - won't break if fails)
@@ -102,12 +104,22 @@ async function getIncomingOffers(req, res) {
   }
 }
 
+// ── GET OUTGOING OFFERS (Offers I made to others) ────────────────────────────
+async function getOutgoingOffers(req, res) {
+  try {
+    const offers = await offerModel.getOffersByLender(req.userID);
+    res.json(offers);
+  } catch (err) {
+    console.error('Get outgoing offers error:', err);
+    res.status(500).json({ error: err.message || 'Failed to fetch outgoing offers' });
+  }
+}
+
 // ── ACCEPT OFFER (Creates Booking) ───────────────────────────────────────────
 async function acceptOffer(req, res) {
   try {
     const offerIdInt = toInt(req.params.offerId);
     if (!offerIdInt) return res.status(400).json({ error: 'Invalid offer ID' });
-    const { startDate, endDate } = req.body;
 
     const offer = await offerModel.getOfferById(offerIdInt);
     if (!offer) return res.status(404).json({ error: 'Offer not found' });
@@ -124,14 +136,14 @@ async function acceptOffer(req, res) {
     // Update offer status
     await offerModel.updateOfferStatus(offerIdInt, 'accepted', req.userID);
 
-    // Create booking using poolPromise correctly (await the promise)
+    // Create booking using offer's dates and price
     const pool = await poolPromise;
     const bookingResult = await pool.request()
       .input('AssetID', sql.Int, offer.AssetID || null)
       .input('RenterID', sql.Int, req.userID) // Requester becomes renter
       .input('LenderID', sql.Int, offer.LenderID ?? offer.lenderId)
-      .input('StartDate', sql.Date, offer.StartDate ?? offer.startDate)
-      .input('EndDate', sql.Date, offer.EndDate ?? offer.endDate)
+      .input('StartDate', sql.Date, offer.OfferStartDate ?? offer.StartDate ?? offer.startDate ?? offer.RequestStartDate)
+      .input('EndDate', sql.Date, offer.OfferEndDate ?? offer.EndDate ?? offer.endDate ?? offer.RequestEndDate)
       .input('TotalPrice', sql.Decimal, offer.OfferedPrice)
       .input('Status', sql.NVarChar, 'pending')
       .input('OfferID', sql.Int, offerIdInt)
@@ -148,7 +160,7 @@ async function acceptOffer(req, res) {
       await notificationModel.createNotification({
         userId: offer.LenderID,
         title: 'Offer Accepted!',
-        message: `Your offer for "${offer.RequestTitle}" was accepted. Proceed to payment.`,
+        message: `Your offer for "${offer.RequestTitle}" was accepted.`,
         type: 'booking',
         relatedId: bookingId,
         relatedType: 'booking'
@@ -158,10 +170,10 @@ async function acceptOffer(req, res) {
     }
 
     res.json({
-      message: 'Offer accepted. Booking created.',
+      message: 'Offer accepted. Booking created and awaiting confirmation from lender.',
       bookingId,
-      nextStep: 'payment',
-      paymentUrl: `/bookings/${bookingId}/payment`
+      nextStep: 'wait_confirmation',
+      statusCheckUrl: `/bookings/${bookingId}`
     });
   } catch (err) {
     console.error('Accept offer error:', err);
@@ -234,6 +246,7 @@ module.exports = {
   getOffersForRequest,
   getMyOffers,
   getIncomingOffers,
+  getOutgoingOffers,
   acceptOffer,
   rejectOffer,
   deleteOffer

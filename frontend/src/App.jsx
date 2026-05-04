@@ -12,6 +12,7 @@ import AvailableRequestsPage from './pages/AvailableRequestsPage';
 import RequestDetailPage from './pages/RequestDetailPage';
 import MyRequestsPage from './pages/MyRequestsPage';
 import MyOffersPage from './pages/MyOffersPage';
+import MyOutgoingOffersPage from './pages/MyOutgoingOffersPage';
 import EditRequestPage from './pages/EditRequestPage';
 import ProfilePage from './pages/ProfilePage';
 import HomePage from './pages/HomePage';
@@ -73,6 +74,11 @@ export default function App() {
             <Route path="/my-offers" element={
   <ProtectedRoute>
     <MyOffersPage />
+  </ProtectedRoute>
+} />
+            <Route path="/my-offers-made" element={
+  <ProtectedRoute>
+    <MyOutgoingOffersPage />
   </ProtectedRoute>
 } />
             <Route path="/edit-request/:id" element={

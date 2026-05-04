@@ -8,7 +8,8 @@ const {
   acceptOffer,
   rejectOffer,
     deleteOffer,
-  getIncomingOffers
+  getIncomingOffers,
+  getOutgoingOffers
 } = require('../controllers/offerController');
 
 // Create new offer (lender)
@@ -22,7 +23,8 @@ router.get('/request/:requestId', getOffersForRequest);
 router.get('/my', verifyToken, getMyOffers);
 // Get all offers received by current user (requester view)
 router.get('/incoming', verifyToken, getIncomingOffers);
-// Get offers received by current user (requester view)
+// Get all offers I made to others (outgoing)
+router.get('/my-outgoing', verifyToken, getOutgoingOffers);
 
 
 // Accept an offer (requester only) - creates booking

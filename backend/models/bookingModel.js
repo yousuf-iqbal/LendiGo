@@ -116,13 +116,35 @@ async function acceptBooking(bookingID, userID) {
     return { error: `cannot accept booking with status ${booking.Status}`, code: 400 };
   }
 
-  // Update status to 'accepted'
+  // Update status to 'confirmed'
   const result = await pool.request()
     .input('bookingID', sql.Int, parseInt(bookingID))
-    .input('status', sql.NVarChar, 'accepted')
+    .input('status', sql.NVarChar, 'confirmed')
     .query(`UPDATE Bookings SET Status = @status, UpdatedAt = GETDATE() OUTPUT INSERTED.* WHERE BookingID = @bookingID`);
   
   return { booking: result.recordset[0] };
 }
 
-module.exports = { createBooking, getBookingsByUser, getBookingById, updateBookingStatus, acceptBooking };
+async function rejectBooking(bookingID, userID) {
+  const pool = await poolPromise;
+  
+  // Verify booking exists and user is the lender
+  const booking = await getBookingById(bookingID);
+  if (!booking) return { error: 'booking not found', code: 404 };
+  if (booking.LenderID !== userID) {
+    return { error: 'only lender can reject bookings', code: 403 };
+  }
+  if (booking.Status !== 'pending') {
+    return { error: `cannot reject booking with status ${booking.Status}`, code: 400 };
+  }
+
+  // Update status to 'cancelled'
+  const result = await pool.request()
+    .input('bookingID', sql.Int, parseInt(bookingID))
+    .input('status', sql.NVarChar, 'cancelled')
+    .query(`UPDATE Bookings SET Status = @status, UpdatedAt = GETDATE() OUTPUT INSERTED.* WHERE BookingID = @bookingID`);
+  
+  return { booking: result.recordset[0] };
+}
+
+module.exports = { createBooking, getBookingsByUser, getBookingById, updateBookingStatus, acceptBooking, rejectBooking };

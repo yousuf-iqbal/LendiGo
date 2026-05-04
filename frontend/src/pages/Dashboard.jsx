@@ -1,40 +1,90 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
 import API from '../api/axios';
 
-export default function DashboardPage() {
+export default function Dashboard() {
   const navigate = useNavigate();
-  const [view, setView] = useState('borrower');
+  const { user } = useAuth();
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
   useEffect(() => {
     fetchDashboard();
-  }, [view]);
+    // Refresh dashboard every 15 seconds for real-time data (silent refresh)
+    const interval = setInterval(() => {
+      silentRefreshDashboard();
+    }, 15000);
+    return () => clearInterval(interval);
+  }, []);
 
   const fetchDashboard = async () => {
     setLoading(true);
     setError(null);
     try {
-      const endpoint = view === 'borrower' ? '/dashboard/borrower' : '/dashboard/lender';
-      const res = await API.get(endpoint);
-      setData(res.data);
+      const res = await API.get('/dashboard/comprehensive');
+      console.log('✅ Dashboard data fetched:', res.data);
+      setData(res.data.data || res.data);
     } catch (err) {
-      console.error('Failed to load dashboard:', err);
-      setError(err.response?.data?.error || 'Failed to load dashboard data');
+      console.error('❌ Failed to load dashboard:', err);
+      setError(err.response?.data?.error || 'Failed to load dashboard');
     } finally {
       setLoading(false);
     }
   };
 
+  const silentRefreshDashboard = async () => {
+    try {
+      const res = await API.get('/dashboard/comprehensive');
+      console.log('🔄 Dashboard refreshed silently:', res.data);
+      setData(res.data.data || res.data);
+    } catch (err) {
+      console.warn('Silent refresh failed:', err.message);
+      // Don't show error for silent refreshes
+    }
+  };
+
+  const getActivityIcon = (type) => {
+    const icons = {
+      booking_received: '📅',
+      offer_received: '🤝',
+      booking_confirmed: '✅',
+      payment_received: '💰',
+    };
+    return icons[type] || '📌';
+  };
+
+  const getActivityColor = (type) => {
+    const colors = {
+      booking_received: '#f59e0b',
+      offer_received: '#3b82f6',
+      booking_confirmed: '#10b981',
+      payment_received: '#059669',
+    };
+    return colors[type] || '#6b7280';
+  };
+
+  const getActivityLabel = (type) => {
+    const labels = {
+      booking_received: 'Booking Received',
+      offer_received: 'Offer Received',
+      booking_confirmed: 'Booking Confirmed',
+      payment_received: 'Payment Received',
+    };
+    return labels[type] || 'Activity';
+  };
+
   if (loading) {
     return (
-      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'linear-gradient(135deg, #f0fdf4 0%, #fff 100%)' }}>
+      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'linear-gradient(135deg, #f0fdf4 0%, #f9fafb 100%)' }}>
+        <style>{`
+          @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+          @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+        `}</style>
         <div style={{ textAlign: 'center' }}>
-          <div style={{ width: '56px', height: '56px', border: '4px solid #e5e7eb', borderTop: '4px solid #059669', borderRadius: '50%', animation: 'spin 1s linear infinite', margin: '0 auto 1rem' }} />
-          <p style={{ color: '#059669', fontSize: '1rem', fontWeight: 600 }}>Loading dashboard...</p>
-          <style>{`@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }`}</style>
+          <div style={{ width: '64px', height: '64px', border: '4px solid #e5e7eb', borderTop: '4px solid #059669', borderRadius: '50%', animation: 'spin 1s linear infinite', margin: '0 auto 1rem' }} />
+          <p style={{ color: '#6b7280', fontSize: '1rem', fontWeight: 500 }}>Loading your dashboard...</p>
         </div>
       </div>
     );
@@ -42,315 +92,241 @@ export default function DashboardPage() {
 
   if (error) {
     return (
-      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#f9fafb' }}>
-        <div style={{ textAlign: 'center', padding: '3rem', background: '#fff', borderRadius: '16px', boxShadow: '0 4px 12px rgba(0,0,0,0.1)', maxWidth: '450px' }}>
-          <div style={{ fontSize: '4rem', marginBottom: '1rem' }}>⚠️</div>
-          <h2 style={{ fontSize: '1.5rem', fontWeight: 700, color: '#1f2937', marginBottom: '0.5rem' }}>Failed to Load Dashboard</h2>
-          <p style={{ color: '#6b7280', marginBottom: '1.5rem' }}>{error}</p>
-          <button onClick={fetchDashboard} style={{ padding: '0.875rem 2rem', background: '#059669', color: '#fff', border: 'none', borderRadius: '12px', fontWeight: 600, cursor: 'pointer', fontSize: '1rem', transition: 'all 0.2s' }} onMouseEnter={(e) => e.target.style.background = '#047857'} onMouseLeave={(e) => e.target.style.background = '#059669'}>Try Again</button>
+      <div style={{ minHeight: '100vh', padding: '2rem', background: 'linear-gradient(135deg, #fef2f2 0%, #f9fafb 100%)' }}>
+        <div style={{ maxWidth: '600px', margin: '0 auto' }}>
+          <div style={{ background: '#fff', borderRadius: '16px', boxShadow: '0 4px 12px rgba(0,0,0,0.08)', border: '1px solid #fee2e2', padding: '3rem', textAlign: 'center' }}>
+            <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>⚠️</div>
+            <h3 style={{ fontSize: '1.5rem', fontWeight: 700, color: '#1f2937', marginBottom: '0.5rem' }}>Unable to Load Dashboard</h3>
+            <p style={{ color: '#dc2626', fontSize: '1rem', marginBottom: '2rem' }}>{error}</p>
+            <button onClick={fetchDashboard} style={{ padding: '0.75rem 2rem', background: 'linear-gradient(135deg, #059669 0%, #10b981 100%)', color: '#fff', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 700, fontSize: '1rem', transition: 'all 0.2s' }} onMouseEnter={(e) => { e.target.style.transform = 'translateY(-2px)'; e.target.style.boxShadow = '0 8px 16px rgba(5,150,105,0.3)'; }} onMouseLeave={(e) => { e.target.style.transform = 'translateY(0)'; e.target.style.boxShadow = 'none'; }}>
+              🔄 Try Again
+            </button>
+          </div>
         </div>
       </div>
     );
   }
 
-  if (!data) return null;
-
-  // ✅ SAFER data extraction with fallbacks
-  const stats = data.stats || {};
-  const history = data.history || [];
-  const reviews = data.reviews || [];
-  const earnings = data.earnings || [];
-
-  const getStatusBadge = (status) => {
-    const styles = {
-      pending: { background: '#fff7ed', color: '#c2410c', border: '1px solid #fed7aa' },
-      approved: { background: '#f0fdf4', color: '#15803d', border: '1px solid #86efac' },
-      rejected: { background: '#fef2f2', color: '#dc2626', border: '1px solid #fca5a5' },
-      completed: { background: '#f0fdf4', color: '#15803d', border: '1px solid #86efac' },
-      cancelled: { background: '#fef2f2', color: '#dc2626', border: '1px solid #fca5a5' },
-      ongoing: { background: '#eff6ff', color: '#1d4ed8', border: '1px solid #93c5fd' },
-      available: { background: '#f0fdf4', color: '#15803d', border: '1px solid #86efac' },
-      unavailable: { background: '#fef2f2', color: '#dc2626', border: '1px solid #fca5a5' }
-    };
-    const style = styles[status] || styles.pending;
-    return (
-      <span style={{ padding: '6px 14px', borderRadius: '20px', fontSize: '13px', fontWeight: 600, textTransform: 'capitalize', ...style }}>
-        {status}
-      </span>
-    );
-  };
-
-  const getAvailabilityBadge = (isActive) => {
-    return isActive ? (
-      <span style={{ padding: '6px 14px', borderRadius: '20px', fontSize: '13px', fontWeight: 600, background: '#f0fdf4', color: '#15803d', border: '1px solid #86efac', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
-        <span>✓</span> Available
-      </span>
-    ) : (
-      <span style={{ padding: '6px 14px', borderRadius: '20px', fontSize: '13px', fontWeight: 600, background: '#fef2f2', color: '#dc2626', border: '1px solid #fca5a5', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
-        <span>✗</span> Unavailable
-      </span>
-    );
-  };
-
-  const getInitials = (name) => {
-    if (!name) return 'U';
-    const parts = name.split(' ');
-    return parts.length >= 2 ? `${parts[0][0]}${parts[1][0]}`.toUpperCase() : name.slice(0, 2).toUpperCase();
-  };
-
-  // ✅ SAFER COLOR FUNCTION (Prevents crashes if name is missing)
-  const getRandomColor = (name) => {
-    if (!name) return '#059669';
-    const colors = ['#059669', '#3b82f6', '#8b5cf6', '#f59e0b', '#ef4444', '#10b981'];
-    let hash = 0;
-    for (let i = 0; i < name.length; i++) {
-      hash = name.charCodeAt(i) + ((hash << 5) - hash);
-    }
-    return colors[Math.abs(hash) % colors.length];
-  };
+  const stats = data?.stats || {};
+  const activity = data?.activity || [];
+  const earnings = data?.earnings || [];
 
   return (
-    <div style={{ minHeight: '100vh', background: 'linear-gradient(135deg, #f0fdf4 0%, #fff 50%, #eff6ff 100%)', padding: '2rem' }}>
-      <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
-        
-        {/* Header with Gradient */}
-        <div style={{ background: 'linear-gradient(135deg, #059669 0%, #10b981 100%)', borderRadius: '16px', padding: '2rem', marginBottom: '2rem', boxShadow: '0 4px 12px rgba(5, 150, 105, 0.3)', color: '#fff' }}>
-          <h1 style={{ fontSize: '2.5rem', fontWeight: 800, margin: 0, textShadow: '0 2px 4px rgba(0,0,0,0.1)' }}>
-            {view === 'borrower' ? '👤 Borrower Dashboard' : '🏪 Lender Dashboard'}
-          </h1>
-          <p style={{ fontSize: '1.1rem', opacity: 0.9, margin: '0.5rem 0 0 0' }}>
-            {view === 'borrower' ? 'Track your rentals and spending' : 'Monitor your earnings and asset performance'}
-          </p>
+    <div style={{ minHeight: '100vh', background: 'linear-gradient(135deg, #f0fdf4 0%, #f8f9fa 50%, #eff6ff 100%)', padding: '2rem 1rem' }}>
+      <style>{`
+        @keyframes slideInUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        .dashboard-container > * { animation: slideInUp 0.5s ease-out forwards; }
+        .stat-card:hover { box-shadow: 0 12px 32px rgba(5, 150, 105, 0.15); }
+      `}</style>
+      
+      <div style={{ maxWidth: '1600px', margin: '0 auto' }} className="dashboard-container">
+        {/* 🎨 HEADER SECTION */}
+        <div style={{ marginBottom: '3rem' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '2rem' }}>
+            <div>
+              <h1 style={{ fontSize: '3.5rem', fontWeight: 900, background: 'linear-gradient(135deg, #059669 0%, #0891b2 100%)', backgroundClip: 'text', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', marginBottom: '0.5rem' }}>Dashboard</h1>
+              <p style={{ color: '#6b7280', fontSize: '1.1rem', fontWeight: 500 }}>Welcome back, <strong style={{ color: '#059669' }}>{user?.fullName || user?.FullName || 'User'}</strong>! 👋</p>
+            </div>
+            <button onClick={fetchDashboard} style={{ padding: '0.75rem 1.5rem', background: '#fff', border: '2px solid #e5e7eb', borderRadius: '10px', cursor: 'pointer', fontWeight: 600, color: '#6b7280', fontSize: '0.95rem', transition: 'all 0.2s', display: 'flex', alignItems: 'center', gap: '0.5rem' }} onMouseEnter={(e) => { e.currentTarget.style.borderColor = '#059669'; e.currentTarget.style.color = '#059669'; }} onMouseLeave={(e) => { e.currentTarget.style.borderColor = '#e5e7eb'; e.currentTarget.style.color = '#6b7280'; }}>
+              🔄 Refresh
+            </button>
+          </div>
         </div>
 
-        {/* View Toggle */}
-        <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '2.5rem', background: '#fff', padding: '0.5rem', borderRadius: '16px', boxShadow: '0 2px 8px rgba(0,0,0,0.08)', width: 'fit-content', margin: '0 auto 2.5rem' }}>
-          <button onClick={() => setView('borrower')} style={{ padding: '1rem 2.5rem', background: view === 'borrower' ? 'linear-gradient(135deg, #059669 0%, #10b981 100%)' : 'transparent', color: view === 'borrower' ? '#fff' : '#374151', border: 'none', borderRadius: '12px', fontWeight: 700, cursor: 'pointer', transition: 'all 0.3s', boxShadow: view === 'borrower' ? '0 4px 12px rgba(5, 150, 105, 0.4)' : 'none', fontSize: '1rem' }} onMouseEnter={(e) => { if (view !== 'borrower') e.target.style.background = '#f3f4f6'; }} onMouseLeave={(e) => { if (view !== 'borrower') e.target.style.background = 'transparent'; }}>
-            👤 Borrower View
-          </button>
-          <button onClick={() => setView('lender')} style={{ padding: '1rem 2.5rem', background: view === 'lender' ? 'linear-gradient(135deg, #059669 0%, #10b981 100%)' : 'transparent', color: view === 'lender' ? '#fff' : '#374151', border: 'none', borderRadius: '12px', fontWeight: 700, cursor: 'pointer', transition: 'all 0.3s', boxShadow: view === 'lender' ? '0 4px 12px rgba(5, 150, 105, 0.4)' : 'none', fontSize: '1rem' }} onMouseEnter={(e) => { if (view !== 'lender') e.target.style.background = '#f3f4f6'; }} onMouseLeave={(e) => { if (view !== 'lender') e.target.style.background = 'transparent'; }}>
-            🏪 Lender View
-          </button>
-        </div>
-
-        {/* Quick Actions */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1.25rem', marginBottom: '2.5rem' }}>
-          {view === 'borrower' ? (
-            <>
-              <button onClick={() => navigate('/browse')} style={{ padding: '1.25rem', background: 'linear-gradient(135deg, #059669 0%, #10b981 100%)', color: '#fff', border: 'none', borderRadius: '12px', fontWeight: 700, cursor: 'pointer', transition: 'all 0.3s', fontSize: '1rem', boxShadow: '0 4px 12px rgba(5, 150, 105, 0.3)' }} onMouseEnter={(e) => { e.target.style.transform = 'translateY(-4px)'; e.target.style.boxShadow = '0 8px 20px rgba(5, 150, 105, 0.4)'; }} onMouseLeave={(e) => { e.target.style.transform = 'translateY(0)'; e.target.style.boxShadow = '0 4px 12px rgba(5, 150, 105, 0.3)'; }}>🔍 Browse Items</button>
-              <button onClick={() => navigate('/bookings')} style={{ padding: '1.25rem', background: 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)', color: '#fff', border: 'none', borderRadius: '12px', fontWeight: 700, cursor: 'pointer', transition: 'all 0.3s', fontSize: '1rem', boxShadow: '0 4px 12px rgba(59, 130, 246, 0.3)' }} onMouseEnter={(e) => { e.target.style.transform = 'translateY(-4px)'; e.target.style.boxShadow = '0 8px 20px rgba(59, 130, 246, 0.4)'; }} onMouseLeave={(e) => { e.target.style.transform = 'translateY(0)'; e.target.style.boxShadow = '0 4px 12px rgba(59, 130, 246, 0.3)'; }}>📋 My Bookings</button>
-              <button onClick={() => navigate('/requests')} style={{ padding: '1.25rem', background: 'linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%)', color: '#fff', border: 'none', borderRadius: '12px', fontWeight: 700, cursor: 'pointer', transition: 'all 0.3s', fontSize: '1rem', boxShadow: '0 4px 12px rgba(139, 92, 246, 0.3)' }} onMouseEnter={(e) => { e.target.style.transform = 'translateY(-4px)'; e.target.style.boxShadow = '0 8px 20px rgba(139, 92, 246, 0.4)'; }} onMouseLeave={(e) => { e.target.style.transform = 'translateY(0)'; e.target.style.boxShadow = '0 4px 12px rgba(139, 92, 246, 0.3)'; }}>📝 My Requests</button>
-            </>
-          ) : (
-            <>
-              <button onClick={() => navigate('/my-assets/add')} style={{ padding: '1.25rem', background: 'linear-gradient(135deg, #059669 0%, #10b981 100%)', color: '#fff', border: 'none', borderRadius: '12px', fontWeight: 700, cursor: 'pointer', transition: 'all 0.3s', fontSize: '1rem', boxShadow: '0 4px 12px rgba(5, 150, 105, 0.3)' }} onMouseEnter={(e) => { e.target.style.transform = 'translateY(-4px)'; e.target.style.boxShadow = '0 8px 20px rgba(5, 150, 105, 0.4)'; }} onMouseLeave={(e) => { e.target.style.transform = 'translateY(0)'; e.target.style.boxShadow = '0 4px 12px rgba(5, 150, 105, 0.3)'; }}>➕ Add Asset</button>
-              <button onClick={() => navigate('/my-assets')} style={{ padding: '1.25rem', background: 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)', color: '#fff', border: 'none', borderRadius: '12px', fontWeight: 700, cursor: 'pointer', transition: 'all 0.3s', fontSize: '1rem', boxShadow: '0 4px 12px rgba(59, 130, 246, 0.3)' }} onMouseEnter={(e) => { e.target.style.transform = 'translateY(-4px)'; e.target.style.boxShadow = '0 8px 20px rgba(59, 130, 246, 0.4)'; }} onMouseLeave={(e) => { e.target.style.transform = 'translateY(0)'; e.target.style.boxShadow = '0 4px 12px rgba(59, 130, 246, 0.3)'; }}>📦 My Assets</button>
-              <button onClick={() => navigate('/bookings')} style={{ padding: '1.25rem', background: 'linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%)', color: '#fff', border: 'none', borderRadius: '12px', fontWeight: 700, cursor: 'pointer', transition: 'all 0.3s', fontSize: '1rem', boxShadow: '0 4px 12px rgba(139, 92, 246, 0.3)' }} onMouseEnter={(e) => { e.target.style.transform = 'translateY(-4px)'; e.target.style.boxShadow = '0 8px 20px rgba(139, 92, 246, 0.4)'; }} onMouseLeave={(e) => { e.target.style.transform = 'translateY(0)'; e.target.style.boxShadow = '0 4px 12px rgba(139, 92, 246, 0.3)'; }}>📋 Booking Requests</button>
-            </>
-          )}
-        </div>
-
-        {/* BORROWER DASHBOARD */}
-        {view === 'borrower' && (
-          <>
-            {/* Stats Cards with Enhanced Design */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1.75rem', marginBottom: '2.5rem' }}>
-              <div style={{ background: '#fff', padding: '2rem', borderRadius: '16px', boxShadow: '0 4px 12px rgba(0,0,0,0.08)', border: '2px solid #e5e7eb', transition: 'all 0.3s' }} onMouseEnter={(e) => { e.currentTarget.style.boxShadow = '0 8px 24px rgba(0,0,0,0.12)'; e.currentTarget.style.transform = 'translateY(-4px)'; }} onMouseLeave={(e) => { e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.08)'; e.currentTarget.style.transform = 'translateY(0)'; }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-                  <p style={{ color: '#6b7280', fontSize: '0.95rem', fontWeight: 600, margin: 0 }}>Total Bookings</p>
-                  <span style={{ fontSize: '2.5rem' }}>📦</span>
-                </div>
-                <p style={{ fontSize: '3rem', fontWeight: 800, color: '#1f2937', margin: '0.5rem 0', lineHeight: 1 }}>{stats?.TotalBookings || 0}</p>
-                <div style={{ marginTop: '1rem', paddingTop: '1rem', borderTop: '2px solid #e5e7eb', display: 'flex', gap: '1rem', fontSize: '0.95rem', flexWrap: 'wrap' }}>
-                  <span style={{ color: '#15803d', fontWeight: 600 }}>{stats?.CompletedBookings || 0} completed</span>
-                  <span style={{ color: '#6b7280' }}>•</span>
-                  <span style={{ color: '#1d4ed8', fontWeight: 600 }}>{stats?.OngoingBookings || 0} ongoing</span>
-                </div>
+        {/* 👤 USER PROFILE BANNER */}
+        <div style={{ display: 'flex', gap: '2rem', marginBottom: '3rem', alignItems: 'center', background: 'linear-gradient(135deg, #059669 0%, #10b981 100%)', padding: '3rem', borderRadius: '20px', color: '#fff', boxShadow: '0 12px 32px rgba(5, 150, 105, 0.25)', border: '1px solid rgba(255,255,255,0.1)' }}>
+          <div style={{ width: '120px', height: '120px', borderRadius: '16px', background: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, overflow: 'hidden', boxShadow: '0 8px 16px rgba(0,0,0,0.1)' }}>
+            {user?.profilePic || user?.ProfilePic ? (
+              <img src={user?.profilePic || user?.ProfilePic} alt="Profile" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+            ) : (
+              <span style={{ fontSize: '4rem', fontWeight: 900, color: '#059669' }}>{(user?.fullName || user?.FullName || 'U')[0]?.toUpperCase()}</span>
+            )}
+          </div>
+          <div style={{ flex: 1 }}>
+            <h2 style={{ fontSize: '2rem', fontWeight: 800, marginBottom: '0.5rem' }}>{user?.fullName || user?.FullName || 'User'}</h2>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, auto)', gap: '2rem', marginTop: '1rem' }}>
+              <div>
+                <p style={{ opacity: 0.85, fontSize: '0.9rem', marginBottom: '0.25rem' }}>📍 Location</p>
+                <p style={{ fontWeight: 700, fontSize: '1rem' }}>{user?.city || user?.City || 'Not specified'}</p>
               </div>
-              
-              <div style={{ background: '#fff', padding: '2rem', borderRadius: '16px', boxShadow: '0 4px 12px rgba(0,0,0,0.08)', border: '2px solid #e5e7eb', transition: 'all 0.3s' }} onMouseEnter={(e) => { e.currentTarget.style.boxShadow = '0 8px 24px rgba(0,0,0,0.12)'; e.currentTarget.style.transform = 'translateY(-4px)'; }} onMouseLeave={(e) => { e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.08)'; e.currentTarget.style.transform = 'translateY(0)'; }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-                  <p style={{ color: '#6b7280', fontSize: '0.95rem', fontWeight: 600, margin: 0 }}>Total Spent</p>
-                  <span style={{ fontSize: '2.5rem' }}>💰</span>
-                </div>
-                <p style={{ fontSize: '3rem', fontWeight: 800, color: '#059669', margin: '0.5rem 0', lineHeight: 1 }}>Rs. {parseFloat(stats?.TotalSpent || 0).toLocaleString()}</p>
-                <p style={{ fontSize: '0.95rem', color: '#6b7280', marginTop: '1rem', fontWeight: 500 }}>All time spending</p>
+              <div>
+                <p style={{ opacity: 0.85, fontSize: '0.9rem', marginBottom: '0.25rem' }}>📧 Email</p>
+                <p style={{ fontWeight: 700, fontSize: '1rem', wordBreak: 'break-all' }}>{user?.email || user?.Email || 'N/A'}</p>
               </div>
-
-              <div style={{ background: '#fff', padding: '2rem', borderRadius: '16px', boxShadow: '0 4px 12px rgba(0,0,0,0.08)', border: '2px solid #e5e7eb', transition: 'all 0.3s' }} onMouseEnter={(e) => { e.currentTarget.style.boxShadow = '0 8px 24px rgba(0,0,0,0.12)'; e.currentTarget.style.transform = 'translateY(-4px)'; }} onMouseLeave={(e) => { e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.08)'; e.currentTarget.style.transform = 'translateY(0)'; }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-                  <p style={{ color: '#6b7280', fontSize: '0.95rem', fontWeight: 600, margin: 0 }}>Cancelled</p>
-                  <span style={{ fontSize: '2.5rem' }}>❌</span>
-                </div>
-                <p style={{ fontSize: '3rem', fontWeight: 800, color: '#dc2626', margin: '0.5rem 0', lineHeight: 1 }}>{stats?.CancelledBookings || 0}</p>
-                <p style={{ fontSize: '0.95rem', color: '#6b7280', marginTop: '1rem', fontWeight: 500 }}>Cancelled bookings</p>
+              <div>
+                <p style={{ opacity: 0.85, fontSize: '0.9rem', marginBottom: '0.25rem' }}>📅 Member Since</p>
+                <p style={{ fontWeight: 700, fontSize: '1rem' }}>{new Date(user?.createdAt || new Date()).toLocaleDateString('en-US', { year: 'numeric', month: 'short' })}</p>
               </div>
             </div>
+          </div>
+        </div>
 
-            {/* Recent Bookings with Enhanced UI */}
-            <div style={{ background: '#fff', padding: '2rem', borderRadius: '16px', boxShadow: '0 4px 12px rgba(0,0,0,0.08)', marginBottom: '2.5rem', border: '2px solid #e5e7eb' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '1rem' }}>
-                <h2 style={{ fontSize: '1.5rem', fontWeight: 700, color: '#1f2937', margin: 0 }}>Recent Bookings</h2>
-                <button onClick={() => navigate('/bookings')} style={{ color: '#059669', background: 'none', border: '2px solid #059669', padding: '0.625rem 1.5rem', borderRadius: '12px', cursor: 'pointer', fontWeight: 600, fontSize: '0.95rem', transition: 'all 0.2s' }} onMouseEnter={(e) => { e.target.style.background = '#059669'; e.target.style.color = '#fff'; }} onMouseLeave={(e) => { e.target.style.background = 'none'; e.target.style.color = '#059669'; }}>View All →</button>
-              </div>
-              {history?.length === 0 ? (
-                <div style={{ textAlign: 'center', padding: '4rem', color: '#6b7280', background: 'linear-gradient(135deg, #f0fdf4 0%, #fff 100%)', borderRadius: '12px', border: '2px dashed #86efac' }}>
-                  <div style={{ fontSize: '4rem', marginBottom: '1.5rem' }}>📭</div>
-                  <p style={{ marginBottom: '1.5rem', fontWeight: 600, fontSize: '1.1rem', color: '#374151' }}>No bookings yet</p>
-                  <p style={{ marginBottom: '2rem', fontSize: '0.95rem' }}>Start exploring items to rent!</p>
-                  <button onClick={() => navigate('/browse')} style={{ padding: '1rem 2.5rem', background: 'linear-gradient(135deg, #059669 0%, #10b981 100%)', color: '#fff', border: 'none', borderRadius: '12px', cursor: 'pointer', fontWeight: 700, fontSize: '1rem', boxShadow: '0 4px 12px rgba(5, 150, 105, 0.3)', transition: 'all 0.3s' }} onMouseEnter={(e) => { e.target.style.transform = 'translateY(-2px)'; e.target.style.boxShadow = '0 6px 16px rgba(5, 150, 105, 0.4)'; }} onMouseLeave={(e) => { e.target.style.transform = 'translateY(0)'; e.target.style.boxShadow = '0 4px 12px rgba(5, 150, 105, 0.3)'; }}>Browse Items</button>
-                </div>
-              ) : (
-                <div style={{ display: 'grid', gap: '1.25rem' }}>
-                  {history?.slice(0, 5).map(b => (
-                    <div key={b.BookingID} style={{ display: 'grid', gridTemplateColumns: '1fr auto auto', gap: '1.5rem', alignItems: 'center', padding: '1.5rem', background: '#fff', borderRadius: '12px', border: '2px solid #e5e7eb', transition: 'all 0.3s' }} onMouseEnter={(e) => { e.currentTarget.style.boxShadow = '0 6px 20px rgba(0,0,0,0.1)'; e.currentTarget.style.borderColor = '#d1d5db'; e.currentTarget.style.transform = 'translateY(-2px)'; }} onMouseLeave={(e) => { e.currentTarget.style.boxShadow = 'none'; e.currentTarget.style.borderColor = '#e5e7eb'; e.currentTarget.style.transform = 'translateY(0)'; }}>
-                      <div>
-                        <p style={{ fontWeight: 700, color: '#1f2937', marginBottom: '0.5rem', fontSize: '1.1rem' }}>{b.AssetTitle || 'Unknown Asset'}</p>
-                        <p style={{ fontSize: '0.95rem', color: '#6b7280', marginBottom: '0.375rem' }}>
-                          <strong style={{ color: '#374151' }}>Dates:</strong> {b.StartDate ? new Date(b.StartDate).toLocaleDateString() : 'N/A'} to {b.EndDate ? new Date(b.EndDate).toLocaleDateString() : 'N/A'}
-                        </p>
-                        <p style={{ fontSize: '0.875rem', color: '#6b7280' }}>Lender: {b.LenderName || 'Unknown'}</p>
-                      </div>
-                      <div style={{ textAlign: 'right' }}>
-                        <p style={{ fontWeight: 700, color: '#059669', marginBottom: '0.75rem', fontSize: '1.25rem' }}>Rs. {parseFloat(b.TotalPrice || 0).toLocaleString()}</p>
-                        {getStatusBadge(b.Status)}
-                      </div>
-                      <button onClick={() => navigate(`/assets/${b.AssetID}`)} style={{ padding: '0.75rem 1.5rem', background: '#f3f4f6', border: 'none', borderRadius: '8px', cursor: 'pointer', fontSize: '0.95rem', fontWeight: 600, color: '#374151', transition: 'all 0.2s' }} onMouseEnter={(e) => { e.target.style.background = '#e5e7eb'; }} onMouseLeave={(e) => { e.target.style.background = '#f3f4f6'; }}>View Asset</button>
-                    </div>
-                  ))}
-                </div>
-              )}
+        {/* 📊 MAIN STATS GRID (2x3) */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '2rem', marginBottom: '3rem' }}>
+          {/* Card 1: Total Assets */}
+          <div className="stat-card" style={{ background: 'linear-gradient(135deg, #f0fdf4 0%, #fff 100%)', padding: '2.5rem', borderRadius: '18px', boxShadow: '0 4px 12px rgba(0,0,0,0.06)', border: '1px solid rgba(5,150,105,0.1)', cursor: 'pointer', transition: 'all 0.3s', backgroundImage: 'radial-gradient(circle at top right, rgba(5,150,105,0.08), transparent)' }} onClick={() => navigate('/my-assets')} onMouseEnter={(e) => { e.currentTarget.style.transform = 'translateY(-8px)'; }} onMouseLeave={(e) => { e.currentTarget.style.transform = 'translateY(0)'; }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', marginBottom: '2rem' }}>
+              <div style={{ fontSize: '3.5rem', background: 'linear-gradient(135deg, #059669 0%, #10b981 100%)', borderRadius: '14px', padding: '1.2rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>🏠</div>
+              <span style={{ padding: '0.5rem 1.2rem', background: 'linear-gradient(135deg, #dcfce7 0%, #f0fdf4 100%)', color: '#059669', borderRadius: '20px', fontSize: '0.8rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Assets</span>
             </div>
+            <p style={{ color: '#9ca3af', fontSize: '0.95rem', marginBottom: '0.5rem', fontWeight: 500 }}>Total Assets Owned</p>
+            <p style={{ fontSize: '3rem', fontWeight: 900, color: '#059669', marginBottom: '0.75rem' }}>{stats.TotalAssets || 0}</p>
+            <p style={{ color: '#d1d5db', fontSize: '0.9rem' }}>Tap to manage your assets</p>
+          </div>
 
-            {/* Reviews Received */}
-            <div style={{ background: '#fff', padding: '2rem', borderRadius: '16px', boxShadow: '0 4px 12px rgba(0,0,0,0.08)', border: '2px solid #e5e7eb' }}>
-              <h2 style={{ fontSize: '1.5rem', fontWeight: 700, color: '#1f2937', marginBottom: '1.5rem' }}>Reviews You Received</h2>
-              {reviews?.length === 0 ? (
-                <p style={{ color: '#6b7280', textAlign: 'center', padding: '3rem', fontSize: '1rem' }}>Complete bookings to receive reviews.</p>
-              ) : (
-                reviews?.slice(0, 3).map(r => (
-                  <div key={r.ReviewID} style={{ padding: '1.25rem', background: '#f9fafb', borderRadius: '12px', marginBottom: '1rem', border: '2px solid #e5e7eb', transition: 'all 0.2s' }} onMouseEnter={(e) => { e.currentTarget.style.boxShadow = '0 2px 8px rgba(0,0,0,0.08)'; }} onMouseLeave={(e) => { e.currentTarget.style.boxShadow = 'none'; }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.75rem' }}>
-                      <span style={{ fontWeight: 700, color: '#1f2937', fontSize: '1.05rem' }}>{r.ReviewerName || 'Anonymous'}</span>
-                      <span style={{ color: '#f59e0b', fontSize: '1.25rem' }}>{'⭐'.repeat(r.Rating || 0)}</span>
+          {/* Card 2: Pending Approvals */}
+          <div className="stat-card" style={{ background: 'linear-gradient(135deg, #fffbeb 0%, #fff 100%)', padding: '2.5rem', borderRadius: '18px', boxShadow: '0 4px 12px rgba(0,0,0,0.06)', border: '1px solid rgba(217,119,6,0.1)', cursor: 'pointer', transition: 'all 0.3s', backgroundImage: 'radial-gradient(circle at top right, rgba(217,119,6,0.08), transparent)' }} onClick={() => navigate('/bookings')} onMouseEnter={(e) => { e.currentTarget.style.transform = 'translateY(-8px)'; }} onMouseLeave={(e) => { e.currentTarget.style.transform = 'translateY(0)'; }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', marginBottom: '2rem' }}>
+              <div style={{ fontSize: '3.5rem', background: 'linear-gradient(135deg, #d97706 0%, #f59e0b 100%)', borderRadius: '14px', padding: '1.2rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>⏳</div>
+              <span style={{ padding: '0.5rem 1.2rem', background: 'linear-gradient(135deg, #fef3c7 0%, #fffbeb 100%)', color: '#d97706', borderRadius: '20px', fontSize: '0.8rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Action</span>
+            </div>
+            <p style={{ color: '#9ca3af', fontSize: '0.95rem', marginBottom: '0.5rem', fontWeight: 500 }}>Pending Approvals</p>
+            <p style={{ fontSize: '3rem', fontWeight: 900, color: '#d97706', marginBottom: '0.75rem' }}>{stats.PendingBookings || 0}</p>
+            <p style={{ color: '#d1d5db', fontSize: '0.9rem' }}>Awaiting your decision</p>
+          </div>
+
+          {/* Card 3: Active Requests */}
+          <div className="stat-card" style={{ background: 'linear-gradient(135deg, #eff6ff 0%, #fff 100%)', padding: '2.5rem', borderRadius: '18px', boxShadow: '0 4px 12px rgba(0,0,0,0.06)', border: '1px solid rgba(2,132,199,0.1)', cursor: 'pointer', transition: 'all 0.3s', backgroundImage: 'radial-gradient(circle at top right, rgba(2,132,199,0.08), transparent)' }} onClick={() => navigate('/my-requests')} onMouseEnter={(e) => { e.currentTarget.style.transform = 'translateY(-8px)'; }} onMouseLeave={(e) => { e.currentTarget.style.transform = 'translateY(0)'; }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', marginBottom: '2rem' }}>
+              <div style={{ fontSize: '3.5rem', background: 'linear-gradient(135deg, #0284c7 0%, #0891b2 100%)', borderRadius: '14px', padding: '1.2rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>📋</div>
+              <span style={{ padding: '0.5rem 1.2rem', background: 'linear-gradient(135deg, #dbeafe 0%, #eff6ff 100%)', color: '#0284c7', borderRadius: '20px', fontSize: '0.8rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Active</span>
+            </div>
+            <p style={{ color: '#9ca3af', fontSize: '0.95rem', marginBottom: '0.5rem', fontWeight: 500 }}>Active Requests</p>
+            <p style={{ fontSize: '3rem', fontWeight: 900, color: '#0284c7', marginBottom: '0.75rem' }}>{stats.ActiveRequests || 0}</p>
+            <p style={{ color: '#d1d5db', fontSize: '0.9rem' }}>Browse and manage requests</p>
+          </div>
+
+          {/* Card 4: Pending Offers */}
+          <div className="stat-card" style={{ background: 'linear-gradient(135deg, #faf5ff 0%, #fff 100%)', padding: '2.5rem', borderRadius: '18px', boxShadow: '0 4px 12px rgba(0,0,0,0.06)', border: '1px solid rgba(147,51,234,0.1)', cursor: 'pointer', transition: 'all 0.3s', backgroundImage: 'radial-gradient(circle at top right, rgba(147,51,234,0.08), transparent)' }} onClick={() => navigate('/my-offers-made')} onMouseEnter={(e) => { e.currentTarget.style.transform = 'translateY(-8px)'; }} onMouseLeave={(e) => { e.currentTarget.style.transform = 'translateY(0)'; }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', marginBottom: '2rem' }}>
+              <div style={{ fontSize: '3.5rem', background: 'linear-gradient(135deg, #9333ea 0%, #a855f7 100%)', borderRadius: '14px', padding: '1.2rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>🤝</div>
+              <span style={{ padding: '0.5rem 1.2rem', background: 'linear-gradient(135deg, #f3e8ff 0%, #faf5ff 100%)', color: '#9333ea', borderRadius: '20px', fontSize: '0.8rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Offers</span>
+            </div>
+            <p style={{ color: '#9ca3af', fontSize: '0.95rem', marginBottom: '0.5rem', fontWeight: 500 }}>Pending Offers</p>
+            <p style={{ fontSize: '3rem', fontWeight: 900, color: '#9333ea', marginBottom: '0.75rem' }}>{stats.PendingOffers || 0}</p>
+            <p style={{ color: '#d1d5db', fontSize: '0.9rem' }}>Offers awaiting response</p>
+          </div>
+
+          {/* Card 5: Wallet Balance - HIGHLIGHTED */}
+          <div className="stat-card" style={{ background: 'linear-gradient(135deg, #16a34a 0%, #22c55e 100%)', padding: '2.5rem', borderRadius: '18px', boxShadow: '0 8px 24px rgba(22,163,74,0.25)', border: '1px solid rgba(255,255,255,0.2)', cursor: 'pointer', transition: 'all 0.3s', color: '#fff' }} onClick={() => navigate('/wallet')} onMouseEnter={(e) => { e.currentTarget.style.transform = 'translateY(-8px)'; e.currentTarget.style.boxShadow = '0 12px 32px rgba(22,163,74,0.35)'; }} onMouseLeave={(e) => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 8px 24px rgba(22,163,74,0.25)'; }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', marginBottom: '2rem' }}>
+              <div style={{ fontSize: '3.5rem', background: 'rgba(255,255,255,0.2)', borderRadius: '14px', padding: '1.2rem', display: 'flex', alignItems: 'center', justifyContent: 'center', backdropFilter: 'blur(10px)' }}>💰</div>
+              <span style={{ padding: '0.5rem 1.2rem', background: 'rgba(255,255,255,0.25)', color: '#fff', borderRadius: '20px', fontSize: '0.8rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px', backdropFilter: 'blur(10px)' }}>Balance</span>
+            </div>
+            <p style={{ color: 'rgba(255,255,255,0.85)', fontSize: '0.95rem', marginBottom: '0.5rem', fontWeight: 500 }}>Available Balance</p>
+            <p style={{ fontSize: '3rem', fontWeight: 900, marginBottom: '0.75rem' }}>Rs. {(stats.WalletBalance || 0).toLocaleString()}</p>
+            <p style={{ color: 'rgba(255,255,255,0.75)', fontSize: '0.9rem' }}>Ready to use</p>
+          </div>
+
+          {/* Card 6: Completed Bookings */}
+          <div className="stat-card" style={{ background: 'linear-gradient(135deg, #f0fdfa 0%, #fff 100%)', padding: '2.5rem', borderRadius: '18px', boxShadow: '0 4px 12px rgba(0,0,0,0.06)', border: '1px solid rgba(16,185,129,0.1)', cursor: 'pointer', transition: 'all 0.3s', backgroundImage: 'radial-gradient(circle at top right, rgba(16,185,129,0.08), transparent)' }} onMouseEnter={(e) => { e.currentTarget.style.transform = 'translateY(-8px)'; }} onMouseLeave={(e) => { e.currentTarget.style.transform = 'translateY(0)'; }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', marginBottom: '2rem' }}>
+              <div style={{ fontSize: '3.5rem', background: 'linear-gradient(135deg, #16a34a 0%, #22c55e 100%)', borderRadius: '14px', padding: '1.2rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>✅</div>
+              <span style={{ padding: '0.5rem 1.2rem', background: 'linear-gradient(135deg, #dcfce7 0%, #f0fdf4 100%)', color: '#16a34a', borderRadius: '20px', fontSize: '0.8rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Success</span>
+            </div>
+            <p style={{ color: '#9ca3af', fontSize: '0.95rem', marginBottom: '0.5rem', fontWeight: 500 }}>Completed Bookings</p>
+            <p style={{ fontSize: '3rem', fontWeight: 900, color: '#16a34a', marginBottom: '0.75rem' }}>{stats.CompletedBookings || 0}</p>
+            <p style={{ color: '#d1d5db', fontSize: '0.9rem' }}>Successfully completed</p>
+          </div>
+        </div>
+
+        {/* 📈 TWO COLUMN SECTION: Activity & Earnings */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(480px, 1fr))', gap: '2.5rem', marginBottom: '3rem' }}>
+          {/* Recent Activity */}
+          <div style={{ background: '#fff', padding: '2.5rem', borderRadius: '18px', boxShadow: '0 4px 12px rgba(0,0,0,0.06)', border: '1px solid #e5e7eb' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '2rem', paddingBottom: '1.5rem', borderBottom: '2px solid #e5e7eb' }}>
+              <h3 style={{ fontSize: '1.5rem', fontWeight: 800, color: '#1f2937', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>📌 <span>Recent Activity</span></h3>
+              {activity.length > 0 && <span style={{ padding: '0.4rem 1rem', background: '#f0fdf4', color: '#059669', borderRadius: '20px', fontSize: '0.85rem', fontWeight: 700 }}>{activity.length} events</span>}
+            </div>
+            {activity.length === 0 ? (
+              <div style={{ textAlign: 'center', padding: '3rem 1rem', color: '#9ca3af' }}>
+                <p style={{ fontSize: '3rem', marginBottom: '0.5rem' }}>🌟</p>
+                <p style={{ fontSize: '1rem', fontWeight: 500 }}>No activity yet</p>
+                <p style={{ fontSize: '0.9rem', marginTop: '0.5rem' }}>Your recent activities will appear here</p>
+              </div>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', maxHeight: '500px', overflowY: 'auto' }}>
+                {activity.slice(0, 10).map((item, idx) => (
+                  <div key={idx} style={{ display: 'flex', gap: '1rem', padding: '1.2rem', background: '#f9fafb', borderRadius: '12px', borderLeft: `4px solid ${getActivityColor(item.ActivityType)}`, transition: 'all 0.2s' }} onMouseEnter={(e) => { e.currentTarget.style.background = '#f0fdf4'; e.currentTarget.style.transform = 'translateX(4px)'; }} onMouseLeave={(e) => { e.currentTarget.style.background = '#f9fafb'; e.currentTarget.style.transform = 'translateX(0)'; }}>
+                    <div style={{ fontSize: '1.75rem', flexShrink: 0, minWidth: '32px' }}>{getActivityIcon(item.ActivityType)}</div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <p style={{ color: '#1f2937', fontSize: '0.95rem', fontWeight: 700, marginBottom: '0.25rem' }}>{getActivityLabel(item.ActivityType)}</p>
+                      <p style={{ color: '#6b7280', fontSize: '0.85rem', marginBottom: '0.3rem', whiteSpace: 'normal', wordBreak: 'break-word' }}>{item.Description}</p>
+                      <p style={{ color: '#9ca3af', fontSize: '0.8rem' }}>
+                        <strong>{item.UserName}</strong> • {new Date(item.Timestamp).toLocaleDateString()} {new Date(item.Timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                      </p>
                     </div>
-                    <p style={{ color: '#374151', fontSize: '0.95rem', marginBottom: '0.5rem', lineHeight: 1.5 }}>"{r.Comment}"</p>
-                    <p style={{ fontSize: '0.875rem', color: '#6b7280', fontWeight: 500 }}>For: {r.AssetTitle || 'Unknown Asset'}</p>
                   </div>
-                ))
-              )}
-            </div>
-          </>
-        )}
+                ))}
+              </div>
+            )}
+          </div>
 
-        {/* LENDER DASHBOARD */}
-        {view === 'lender' && (
-          <>
-            {/* Stats Cards with Enhanced Design */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1.75rem', marginBottom: '2.5rem' }}>
-              <div style={{ background: '#fff', padding: '2rem', borderRadius: '16px', boxShadow: '0 4px 12px rgba(0,0,0,0.08)', border: '2px solid #e5e7eb', transition: 'all 0.3s' }} onMouseEnter={(e) => { e.currentTarget.style.boxShadow = '0 8px 24px rgba(0,0,0,0.12)'; e.currentTarget.style.transform = 'translateY(-4px)'; }} onMouseLeave={(e) => { e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.08)'; e.currentTarget.style.transform = 'translateY(0)'; }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-                  <p style={{ color: '#6b7280', fontSize: '0.95rem', fontWeight: 600, margin: 0 }}>Total Earnings</p>
-                  <span style={{ fontSize: '2.5rem' }}>💵</span>
-                </div>
-                <p style={{ fontSize: '3rem', fontWeight: 800, color: '#059669', margin: '0.5rem 0', lineHeight: 1 }}>Rs. {parseFloat(stats?.TotalEarned || 0).toLocaleString()}</p>
-                <p style={{ fontSize: '0.95rem', color: '#6b7280', marginTop: '1rem', fontWeight: 500 }}>{stats?.CompletedBookings || 0} rentals completed</p>
-              </div>
-              
-              <div style={{ background: '#fff', padding: '2rem', borderRadius: '16px', boxShadow: '0 4px 12px rgba(0,0,0,0.08)', border: '2px solid #e5e7eb', transition: 'all 0.3s' }} onMouseEnter={(e) => { e.currentTarget.style.boxShadow = '0 8px 24px rgba(0,0,0,0.12)'; e.currentTarget.style.transform = 'translateY(-4px)'; }} onMouseLeave={(e) => { e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.08)'; e.currentTarget.style.transform = 'translateY(0)'; }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-                  <p style={{ color: '#6b7280', fontSize: '0.95rem', fontWeight: 600, margin: 0 }}>Active Rentals</p>
-                  <span style={{ fontSize: '2.5rem' }}>🔄</span>
-                </div>
-                <p style={{ fontSize: '3rem', fontWeight: 800, color: '#3b82f6', margin: '0.5rem 0', lineHeight: 1 }}>{stats?.OngoingBookings || 0}</p>
-                <p style={{ fontSize: '0.95rem', color: '#6b7280', marginTop: '1rem', fontWeight: 500 }}>Currently ongoing</p>
-              </div>
-
-              <div style={{ background: '#fff', padding: '2rem', borderRadius: '16px', boxShadow: '0 4px 12px rgba(0,0,0,0.08)', border: '2px solid #e5e7eb', transition: 'all 0.3s' }} onMouseEnter={(e) => { e.currentTarget.style.boxShadow = '0 8px 24px rgba(0,0,0,0.12)'; e.currentTarget.style.transform = 'translateY(-4px)'; }} onMouseLeave={(e) => { e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.08)'; e.currentTarget.style.transform = 'translateY(0)'; }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-                  <p style={{ color: '#6b7280', fontSize: '0.95rem', fontWeight: 600, margin: 0 }}>Unique Renters</p>
-                  <span style={{ fontSize: '2.5rem' }}>👥</span>
-                </div>
-                <p style={{ fontSize: '3rem', fontWeight: 800, color: '#1f2937', margin: '0.5rem 0', lineHeight: 1 }}>{stats?.UniqueRenters || 0}</p>
-                <p style={{ fontSize: '0.95rem', color: '#6b7280', marginTop: '1rem', fontWeight: 500 }}>Total renters served</p>
-              </div>
+          {/* Earnings Summary */}
+          <div style={{ background: '#fff', padding: '2.5rem', borderRadius: '18px', boxShadow: '0 4px 12px rgba(0,0,0,0.06)', border: '1px solid #e5e7eb' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '2rem', paddingBottom: '1.5rem', borderBottom: '2px solid #e5e7eb' }}>
+              <h3 style={{ fontSize: '1.5rem', fontWeight: 800, color: '#1f2937', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>📊 <span>This Year's Earnings</span></h3>
+              {earnings.length > 0 && <span style={{ padding: '0.4rem 1rem', background: '#f0fdf4', color: '#059669', borderRadius: '20px', fontSize: '0.85rem', fontWeight: 700 }}>{earnings.length} months</span>}
             </div>
-
-            {/* Top Earning Assets with Thumbnails & Availability */}
-            <div style={{ background: '#fff', padding: '2rem', borderRadius: '16px', boxShadow: '0 4px 12px rgba(0,0,0,0.08)', marginBottom: '2.5rem', border: '2px solid #e5e7eb' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '1rem' }}>
-                <h2 style={{ fontSize: '1.5rem', fontWeight: 700, color: '#1f2937', margin: 0 }}>Your Assets Performance</h2>
-                <button onClick={() => navigate('/my-assets')} style={{ color: '#059669', background: 'none', border: '2px solid #059669', padding: '0.625rem 1.5rem', borderRadius: '12px', cursor: 'pointer', fontWeight: 600, fontSize: '0.95rem', transition: 'all 0.2s' }} onMouseEnter={(e) => { e.target.style.background = '#059669'; e.target.style.color = '#fff'; }} onMouseLeave={(e) => { e.target.style.background = 'none'; e.target.style.color = '#059669'; }}>Manage Assets →</button>
+            {earnings.length === 0 ? (
+              <div style={{ textAlign: 'center', padding: '3rem 1rem', color: '#9ca3af' }}>
+                <p style={{ fontSize: '3rem', marginBottom: '0.5rem' }}>💸</p>
+                <p style={{ fontSize: '1rem', fontWeight: 500 }}>No earnings yet</p>
+                <p style={{ fontSize: '0.9rem', marginTop: '0.5rem' }}>Your earnings will appear as you complete bookings</p>
               </div>
-              {earnings?.length === 0 ? (
-                <div style={{ textAlign: 'center', padding: '4rem', color: '#6b7280', background: 'linear-gradient(135deg, #f0fdf4 0%, #fff 100%)', borderRadius: '12px', border: '2px dashed #86efac' }}>
-                  <div style={{ fontSize: '4rem', marginBottom: '1.5rem' }}>📦</div>
-                  <p style={{ marginBottom: '1.5rem', fontWeight: 600, fontSize: '1.1rem', color: '#374151' }}>No assets listed yet</p>
-                  <p style={{ marginBottom: '2rem', fontSize: '0.95rem' }}>Start earning by listing your first asset!</p>
-                  <button onClick={() => navigate('/my-assets/add')} style={{ padding: '1rem 2.5rem', background: 'linear-gradient(135deg, #059669 0%, #10b981 100%)', color: '#fff', border: 'none', borderRadius: '12px', cursor: 'pointer', fontWeight: 700, fontSize: '1rem', boxShadow: '0 4px 12px rgba(5, 150, 105, 0.3)', transition: 'all 0.3s' }} onMouseEnter={(e) => { e.target.style.transform = 'translateY(-2px)'; e.target.style.boxShadow = '0 6px 16px rgba(5, 150, 105, 0.4)'; }} onMouseLeave={(e) => { e.target.style.transform = 'translateY(0)'; e.target.style.boxShadow = '0 4px 12px rgba(5, 150, 105, 0.3)'; }}>List Your First Asset</button>
+            ) : (
+              <>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginBottom: '2rem', maxHeight: '350px', overflowY: 'auto' }}>
+                  {earnings.map((month, idx) => {
+                    const maxEarning = Math.max(...earnings.map(e => e.Earnings), 1);
+                    const percentage = (month.Earnings / maxEarning) * 100;
+                    return (
+                      <div key={idx} style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+                        <span style={{ fontSize: '0.9rem', color: '#6b7280', minWidth: '70px', fontWeight: 600 }}>
+                          {new Date(month.Month).toLocaleDateString('en-US', { month: 'short', year: '2-digit' })}
+                        </span>
+                        <div style={{ flex: 1, height: '28px', background: '#e5e7eb', borderRadius: '6px', overflow: 'hidden', position: 'relative' }}>
+                          <div style={{ height: '100%', width: `${percentage}%`, background: 'linear-gradient(90deg, #059669 0%, #10b981 100%)', transition: 'width 0.5s ease-out', borderRadius: '6px' }} />
+                        </div>
+                        <span style={{ fontSize: '0.95rem', fontWeight: 800, color: '#1f2937', minWidth: '100px', textAlign: 'right' }}>Rs. {month.Earnings.toLocaleString()}</span>
+                      </div>
+                    );
+                  })}
                 </div>
-              ) : (
-                <div style={{ display: 'grid', gap: '1.25rem' }}>
-                  {earnings?.slice(0, 5).map(e => (
-                    <div key={e.AssetID} style={{ display: 'grid', gridTemplateColumns: 'auto 1fr auto auto auto', gap: '1.25rem', alignItems: 'center', padding: '1.5rem', background: '#fff', borderRadius: '12px', border: '2px solid #e5e7eb', transition: 'all 0.3s' }} onMouseEnter={(e) => { e.currentTarget.style.boxShadow = '0 6px 20px rgba(0,0,0,0.1)'; e.currentTarget.style.borderColor = '#d1d5db'; e.currentTarget.style.transform = 'translateY(-2px)'; }} onMouseLeave={(e) => { e.currentTarget.style.boxShadow = 'none'; e.currentTarget.style.borderColor = '#e5e7eb'; e.currentTarget.style.transform = 'translateY(0)'; }}>
-                      <div style={{ width: '80px', height: '80px', background: `linear-gradient(135deg, ${getRandomColor(e.AssetTitle)}20 0%, ${getRandomColor(e.AssetTitle)}40 100%)`, borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '2.5rem', border: `2px solid ${getRandomColor(e.AssetTitle)}` }}>
-                        📦
-                      </div>
-                      <div>
-                        <p style={{ fontWeight: 700, color: '#1f2937', marginBottom: '0.375rem', fontSize: '1.1rem' }}>{e.AssetTitle || 'Unknown Asset'}</p>
-                        <p style={{ fontSize: '0.95rem', color: '#6b7280' }}>{e.CategoryName || 'Uncategorized'}</p>
-                      </div>
-                      <div style={{ textAlign: 'center', minWidth: '80px' }}>
-                        <p style={{ fontSize: '0.875rem', color: '#6b7280', marginBottom: '0.25rem', fontWeight: 600 }}>Bookings</p>
-                        <p style={{ fontWeight: 700, color: '#1f2937', fontSize: '1.25rem' }}>{e.TotalBookings || 0}</p>
-                      </div>
-                      <div style={{ textAlign: 'right', minWidth: '120px' }}>
-                        <p style={{ fontSize: '0.875rem', color: '#6b7280', marginBottom: '0.25rem', fontWeight: 600 }}>Earnings</p>
-                        <p style={{ fontWeight: 700, color: '#059669', fontSize: '1.25rem' }}>Rs. {parseFloat(e.TotalEarned || 0).toLocaleString()}</p>
-                      </div>
-                      <div>{getAvailabilityBadge(e.IsActive)}</div>
-                    </div>
-                  ))}
+                <div style={{ padding: '1.5rem', background: 'linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%)', borderRadius: '12px', border: '1px solid #bbf7d0' }}>
+                  <p style={{ color: '#6b7280', fontSize: '0.9rem', marginBottom: '0.5rem', fontWeight: 500 }}>💰 Total Earned (All Time)</p>
+                  <p style={{ fontSize: '2rem', fontWeight: 900, color: '#059669' }}>Rs. {(stats.TotalEarned || 0).toLocaleString()}</p>
                 </div>
-              )}
-            </div>
+              </>
+            )}
+          </div>
+        </div>
 
-            {/* Recent Rental History with Avatars */}
-            <div style={{ background: '#fff', padding: '2rem', borderRadius: '16px', boxShadow: '0 4px 12px rgba(0,0,0,0.08)', border: '2px solid #e5e7eb' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '1rem' }}>
-                <h2 style={{ fontSize: '1.5rem', fontWeight: 700, color: '#1f2937', margin: 0 }}>Recent Rentals</h2>
-                <button onClick={() => navigate('/bookings')} style={{ color: '#059669', background: 'none', border: '2px solid #059669', padding: '0.625rem 1.5rem', borderRadius: '12px', cursor: 'pointer', fontWeight: 600, fontSize: '0.95rem', transition: 'all 0.2s' }} onMouseEnter={(e) => { e.target.style.background = '#059669'; e.target.style.color = '#fff'; }} onMouseLeave={(e) => { e.target.style.background = 'none'; e.target.style.color = '#059669'; }}>View All →</button>
-              </div>
-              {history?.length === 0 ? (
-                <p style={{ color: '#6b7280', textAlign: 'center', padding: '3rem', fontSize: '1rem' }}>No rental history yet.</p>
-              ) : (
-                <div style={{ display: 'grid', gap: '1.25rem' }}>
-                  {history?.slice(0, 5).map(b => (
-                    <div key={b.BookingID} style={{ display: 'grid', gridTemplateColumns: 'auto 1fr auto auto', gap: '1.25rem', alignItems: 'center', padding: '1.5rem', background: '#fff', borderRadius: '12px', border: '2px solid #e5e7eb', transition: 'all 0.3s' }} onMouseEnter={(e) => { e.currentTarget.style.boxShadow = '0 6px 20px rgba(0,0,0,0.1)'; e.currentTarget.style.borderColor = '#d1d5db'; e.currentTarget.style.transform = 'translateY(-2px)'; }} onMouseLeave={(e) => { e.currentTarget.style.boxShadow = 'none'; e.currentTarget.style.borderColor = '#e5e7eb'; e.currentTarget.style.transform = 'translateY(0)'; }}>
-                      <div style={{ width: '56px', height: '56px', borderRadius: '50%', background: `linear-gradient(135deg, ${getRandomColor(b.RenterName)} 0%, ${getRandomColor(b.RenterName)}cc 100%)`, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 700, fontSize: '1.25rem', boxShadow: '0 2px 8px rgba(0,0,0,0.15)' }}>
-                        {getInitials(b.RenterName)}
-                      </div>
-                      <div>
-                        <p style={{ fontWeight: 700, color: '#1f2937', marginBottom: '0.375rem', fontSize: '1.1rem' }}>{b.AssetTitle || 'Unknown Asset'}</p>
-                        <p style={{ fontSize: '0.95rem', color: '#6b7280', marginBottom: '0.25rem' }}>
-                          <strong style={{ color: '#374151' }}>Rented by:</strong> {b.RenterName || 'Unknown'}
-                        </p>
-                        <p style={{ fontSize: '0.875rem', color: '#6b7280' }}>
-                          <strong style={{ color: '#374151' }}>Dates:</strong> {b.StartDate ? new Date(b.StartDate).toLocaleDateString() : 'N/A'} - {b.EndDate ? new Date(b.EndDate).toLocaleDateString() : 'N/A'}
-                        </p>
-                      </div>
-                      <div style={{ textAlign: 'right' }}>
-                        <p style={{ fontWeight: 700, color: '#059669', marginBottom: '0.75rem', fontSize: '1.25rem' }}>Rs. {parseFloat(b.TotalPrice || 0).toLocaleString()}</p>
-                        {getStatusBadge(b.Status)}
-                      </div>
-                      <button onClick={() => navigate(`/assets/${b.AssetID}`)} style={{ padding: '0.75rem 1.5rem', background: '#f3f4f6', border: 'none', borderRadius: '8px', cursor: 'pointer', fontSize: '0.95rem', fontWeight: 600, color: '#374151', transition: 'all 0.2s' }} onMouseEnter={(e) => { e.target.style.background = '#e5e7eb'; }} onMouseLeave={(e) => { e.target.style.background = '#f3f4f6'; }}>View Asset</button>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          </>
-        )}
+        {/* 💻 QUICK ACTIONS */}
+        <div style={{ background: '#fff', padding: '2.5rem', borderRadius: '18px', boxShadow: '0 4px 12px rgba(0,0,0,0.06)', border: '1px solid #e5e7eb', marginBottom: '2rem' }}>
+          <h3 style={{ fontSize: '1.5rem', fontWeight: 800, color: '#1f2937', marginBottom: '2rem', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>⚡ <span>Quick Actions</span></h3>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: '1.5rem' }}>
+            <button onClick={() => navigate('/my-assets/add')} style={{ padding: '1.5rem 1rem', background: 'linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%)', border: '2px solid #86efac', borderRadius: '12px', color: '#059669', fontWeight: 700, cursor: 'pointer', transition: 'all 0.2s', fontSize: '1rem', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.5rem' }} onMouseEnter={(e) => { e.currentTarget.style.transform = 'translateY(-4px)'; e.currentTarget.style.boxShadow = '0 8px 16px rgba(5,150,105,0.15)'; }} onMouseLeave={(e) => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = 'none'; }}>
+              <span style={{ fontSize: '1.75rem' }}>➕</span> Add Asset
+            </button>
+            <button onClick={() => navigate('/post-request')} style={{ padding: '1.5rem 1rem', background: 'linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%)', border: '2px solid #60a5fa', borderRadius: '12px', color: '#0284c7', fontWeight: 700, cursor: 'pointer', transition: 'all 0.2s', fontSize: '1rem', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.5rem' }} onMouseEnter={(e) => { e.currentTarget.style.transform = 'translateY(-4px)'; e.currentTarget.style.boxShadow = '0 8px 16px rgba(2,132,199,0.15)'; }} onMouseLeave={(e) => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = 'none'; }}>
+              <span style={{ fontSize: '1.75rem' }}>📝</span> Post Request
+            </button>
+            <button onClick={() => navigate('/bookings')} style={{ padding: '1.5rem 1rem', background: 'linear-gradient(135deg, #fef3c7 0%, #fde68a 100%)', border: '2px solid #fcd34d', borderRadius: '12px', color: '#d97706', fontWeight: 700, cursor: 'pointer', transition: 'all 0.2s', fontSize: '1rem', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.5rem' }} onMouseEnter={(e) => { e.currentTarget.style.transform = 'translateY(-4px)'; e.currentTarget.style.boxShadow = '0 8px 16px rgba(217,119,6,0.15)'; }} onMouseLeave={(e) => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = 'none'; }}>
+              <span style={{ fontSize: '1.75rem' }}>📅</span> My Bookings
+            </button>
+            <button onClick={() => navigate('/my-offers-made')} style={{ padding: '1.5rem 1rem', background: 'linear-gradient(135deg, #f3e8ff 0%, #ede9fe 100%)', border: '2px solid #d8b4fe', borderRadius: '12px', color: '#9333ea', fontWeight: 700, cursor: 'pointer', transition: 'all 0.2s', fontSize: '1rem', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.5rem' }} onMouseEnter={(e) => { e.currentTarget.style.transform = 'translateY(-4px)'; e.currentTarget.style.boxShadow = '0 8px 16px rgba(147,51,234,0.15)'; }} onMouseLeave={(e) => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = 'none'; }}>
+              <span style={{ fontSize: '1.75rem' }}>🤝</span> My Offers
+            </button>
+            <button onClick={() => navigate('/wallet')} style={{ padding: '1.5rem 1rem', background: 'linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%)', border: '2px solid #86efac', borderRadius: '12px', color: '#059669', fontWeight: 700, cursor: 'pointer', transition: 'all 0.2s', fontSize: '1rem', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.5rem' }} onMouseEnter={(e) => { e.currentTarget.style.transform = 'translateY(-4px)'; e.currentTarget.style.boxShadow = '0 8px 16px rgba(5,150,105,0.15)'; }} onMouseLeave={(e) => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = 'none'; }}>
+              <span style={{ fontSize: '1.75rem' }}>💳</span> Wallet
+            </button>
+            <button onClick={() => navigate('/browse')} style={{ padding: '1.5rem 1rem', background: 'linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%)', border: '2px solid #60a5fa', borderRadius: '12px', color: '#0284c7', fontWeight: 700, cursor: 'pointer', transition: 'all 0.2s', fontSize: '1rem', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.5rem' }} onMouseEnter={(e) => { e.currentTarget.style.transform = 'translateY(-4px)'; e.currentTarget.style.boxShadow = '0 8px 16px rgba(2,132,199,0.15)'; }} onMouseLeave={(e) => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = 'none'; }}>
+              <span style={{ fontSize: '1.75rem' }}>🔍</span> Browse
+            </button>
+          </div>
+        </div>
       </div>
     </div>
   );

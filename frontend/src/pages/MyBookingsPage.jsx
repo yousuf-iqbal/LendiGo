@@ -51,9 +51,24 @@ export default function MyBookingsPage() {
     }
   };
 
+  const rejectBooking = async (bookingId) => {
+    if (!window.confirm("Reject this booking? The borrower will be notified.")) return;
+    setProcessing(bookingId);
+    try {
+      await API.patch(`/bookings/${bookingId}/reject`);
+      fetchBookings();
+      alert("Booking rejected.");
+    } catch (err) {
+      alert(err.response?.data?.error || "Could not reject booking");
+    } finally {
+      setProcessing(null);
+    }
+  };
+
   const getStatusBadge = (status) => {
     const styles = {
       pending: { background: "#fff7ed", color: "#c2410c", border: "1px solid #fed7aa" },
+      confirmed: { background: "#dcfce7", color: "#166534", border: "1px solid #86efac" },
       accepted: { background: "#dbeafe", color: "#1e40af", border: "1px solid #93c5fd" },
       approved: { background: "#dcfce7", color: "#166534", border: "1px solid #86efac" },
       rejected: { background: "#fee2e2", color: "#dc2626", border: "1px solid #fca5a5" },
@@ -252,7 +267,7 @@ export default function MyBookingsPage() {
                         {processing === b.booking_id ? 'Processing...' : '✓ Accept Booking'}
                       </button>
                       <button 
-                        onClick={() => updateStatus(b.booking_id, "rejected")} 
+                        onClick={() => rejectBooking(b.booking_id)} 
                         disabled={processing === b.booking_id}
                         style={{ 
                           padding: '0.625rem 1.5rem', 
@@ -288,8 +303,8 @@ export default function MyBookingsPage() {
                     </button>
                   )}
                   
-                  {/* Proceed to Payment - for borrower when booking is accepted */}
-                  {role === "borrower" && b.status === "accepted" && (
+                  {/* Proceed to Payment - for borrower when booking is confirmed by lender */}
+                  {role === "borrower" && b.status === "confirmed" && (
                     <button 
                       onClick={() => navigate(`/bookings/${b.booking_id}/payment`)}
                       style={{ 

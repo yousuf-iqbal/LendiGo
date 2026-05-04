@@ -11,7 +11,7 @@ export default function AssetDetailPage() {
   const [selectedImage, setSelectedImage] = useState(0);
   const [booking, setBooking] = useState({ start_date: "", end_date: "", message: "" });
   const [submitting, setSubmitting] = useState(false);
-  const [booked, setBooked] = useState(false);
+  const [bookingSuccess, setBookingSuccess] = useState(null);
   const user = JSON.parse(localStorage.getItem("udhaari_user") || "null");
   const token = localStorage.getItem("token");
 
@@ -51,16 +51,20 @@ export default function AssetDetailPage() {
     setSubmitting(true);
     setError("");
     try {
-      await API.post("/bookings", {
+      const res = await API.post("/bookings", {
         asset_id: id,
         borrower_id: user.UserID || user.id,
         start_date: booking.start_date,
         end_date: booking.end_date,
         message: booking.message,
       });
-      setBooked(true);
+      // Show success and let user navigate manually
+      setBookingSuccess({
+        bookingId: res.data.bookingId,
+        message: "Booking request sent successfully! Waiting for owner approval..."
+      });
     } catch (err) {
-      setError(err.response?.data?.message || "Booking failed. Please try again.");
+      setError(err.response?.data?.message || err.response?.data?.error || "Booking failed. Please try again.");
     } finally {
       setSubmitting(false);
     }
@@ -162,7 +166,7 @@ export default function AssetDetailPage() {
             <p><strong>Category:</strong> {asset.category || "Uncategorised"}</p>
           </div>
 
-          {!isOwner && isAvailable && !booked && (
+          {!isOwner && isAvailable && !bookingSuccess && (
             <div style={{ marginTop: "32px", padding: "24px", background: "#f9f9f9", borderRadius: "16px" }}>
               <h3 style={{ marginBottom: "16px" }}>Request this item</h3>
               <div style={{ marginBottom: "12px" }}>
@@ -185,9 +189,30 @@ export default function AssetDetailPage() {
               </div>
               {error && <p style={{ color: "red", marginBottom: "12px" }}>{error}</p>}
               <button onClick={handleBook} disabled={submitting}
-                style={{ width: "100%", padding: "12px", background: "#1a1a1a", color: "white", border: "none", borderRadius: "30px", cursor: "pointer" }}>
+                style={{ width: "100%", padding: "12px", background: "#1a1a1a", color: "white", border: "none", borderRadius: "30px", cursor: "pointer", opacity: submitting ? 0.6 : 1 }}>
                 {submitting ? "Sending..." : "Send Request"}
               </button>
+            </div>
+          )}
+
+          {bookingSuccess && (
+            <div style={{ marginTop: "32px", padding: "24px", background: "#e6f7ee", borderRadius: "16px", textAlign: "center", border: "2px solid #059669" }}>
+              <div style={{ fontSize: "3rem", marginBottom: "1rem" }}>✓</div>
+              <h3 style={{ color: "#059669", marginBottom: "0.5rem" }}>Booking Request Sent!</h3>
+              <p style={{ color: "#166534", marginBottom: "1.5rem" }}>
+                {bookingSuccess.message}<br/>
+                Booking ID: #{bookingSuccess.bookingId}
+              </p>
+              <div style={{ display: "flex", gap: "1rem", justifyContent: "center" }}>
+                <button onClick={() => navigate("/bookings?role=borrower")} 
+                  style={{ padding: "10px 20px", background: "#059669", color: "white", border: "none", borderRadius: "8px", cursor: "pointer", fontWeight: 600 }}>
+                  View My Bookings
+                </button>
+                <button onClick={() => navigate("/")} 
+                  style={{ padding: "10px 20px", background: "white", color: "#059669", border: "2px solid #059669", borderRadius: "8px", cursor: "pointer", fontWeight: 600 }}>
+                  Continue Shopping
+                </button>
+              </div>
             </div>
           )}
 

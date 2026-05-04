@@ -49,6 +49,39 @@ router.get('/my', verifyToken, async (req, res) => {
   }
 });
 
+// ✅ GET /requests/my-requests — Get current user's requests for My Requests Page (formatted for frontend)
+router.get('/my-requests', verifyToken, async (req, res) => {
+  try {
+    const pool = await poolPromise;
+    const result = await pool.request()
+      .input('UserID', sql.Int, req.userID)
+      .query(`
+        SELECT 
+          r.RequestID,
+          r.Title,
+          r.Description,
+          r.Status,
+          r.CategoryID,
+          c.Name as CategoryName,
+          r.MaxBudget as BudgetPerDay,
+          r.StartDate,
+          r.EndDate,
+          r.CreatedAt,
+          (SELECT COUNT(*) FROM Offers o WHERE o.RequestID = r.RequestID) as OffersCount
+        FROM Requests r
+        LEFT JOIN Categories c ON r.CategoryID = c.CategoryID
+        WHERE r.RequesterID = @UserID
+        ORDER BY r.CreatedAt DESC
+      `);
+    
+    console.log(`✅ [GET /my-requests] UserID: ${req.userID}, Found ${result.recordset.length} requests`);
+    res.json({ data: result.recordset });
+  } catch (err) {
+    console.error('❌ Error fetching my requests:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // Get all open requests
 router.get('/', async (req, res) => {
   try {

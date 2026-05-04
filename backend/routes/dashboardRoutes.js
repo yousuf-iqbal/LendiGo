@@ -1,10 +1,11 @@
 const express  = require('express');
 const router   = express.Router();
 const verifyToken = require('../middleware/verifyToken');
-const { getBorrowerDashboard, getLenderDashboard } = require('../controllers/dashboardController');
+const { getBorrowerDashboard, getLenderDashboard, getComprehensiveDashboard } = require('../controllers/dashboardController');
 
 // Both routes require auth
 router.get('/borrower', verifyToken, getBorrowerDashboard);
 router.get('/lender',   verifyToken, getLenderDashboard);
+router.get('/comprehensive', verifyToken, getComprehensiveDashboard);
 
 module.exports = router;

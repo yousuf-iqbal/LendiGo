@@ -8,7 +8,7 @@ export default function RequestDetailPage() {
   const [request, setRequest] = useState(null);
   const [loading, setLoading] = useState(true);
   const [showOfferForm, setShowOfferForm] = useState(false);
-  const [offerForm, setOfferForm] = useState({ offeredPrice: '', message: '', assetId: '' });
+  const [offerForm, setOfferForm] = useState({ offeredPrice: '', message: '', assetId: '', startDate: '', endDate: '' });
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
   const user = JSON.parse(localStorage.getItem('udhaari_user') || 'null');
@@ -43,9 +43,11 @@ export default function RequestDetailPage() {
         assetId: offerForm.assetId || null,
         offeredPrice: parseFloat(offerForm.offeredPrice),
         message: offerForm.message?.trim(),
+        startDate: offerForm.startDate || null,
+        endDate: offerForm.endDate || null,
       });
       setShowOfferForm(false);
-      setOfferForm({ offeredPrice: '', message: '', assetId: '' });
+      setOfferForm({ offeredPrice: '', message: '', assetId: '', startDate: '', endDate: '' });
       alert('Offer submitted successfully! The requester will review it in My Requests.');
     } catch (err) {
       setError(err.response?.data?.error || 'Failed to submit offer');
@@ -106,10 +108,23 @@ export default function RequestDetailPage() {
                 <form onSubmit={handleMakeOffer} style={{ background: '#f9fafb', padding: '1.5rem', borderRadius: '12px', border: '1px solid #e5e7eb' }}>
                   <h3 style={{ fontSize: '1.1rem', fontWeight: 700, color: '#1f2937', marginBottom: '1rem' }}>Submit Your Offer</h3>
                   {error && <p style={{ color: '#dc2626', marginBottom: '1rem' }}>{error}</p>}
+                  
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
                     <input type="number" placeholder="Your Price (Rs)" value={offerForm.offeredPrice} onChange={e => setOfferForm({...offerForm, offeredPrice: e.target.value})} style={{ padding: '0.75rem', borderRadius: '8px', border: '1px solid #d1d5db' }} required />
                     <input type="text" placeholder="Asset Name (Optional)" value={offerForm.assetId} onChange={e => setOfferForm({...offerForm, assetId: e.target.value})} style={{ padding: '0.75rem', borderRadius: '8px', border: '1px solid #d1d5db' }} />
                   </div>
+
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
+                    <div>
+                      <label style={{ fontSize: '0.875rem', color: '#374151', marginBottom: '0.25rem', display: 'block', fontWeight: 500 }}>Start Date</label>
+                      <input type="date" value={offerForm.startDate} onChange={e => setOfferForm({...offerForm, startDate: e.target.value})} style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid #d1d5db' }} />
+                    </div>
+                    <div>
+                      <label style={{ fontSize: '0.875rem', color: '#374151', marginBottom: '0.25rem', display: 'block', fontWeight: 500 }}>End Date</label>
+                      <input type="date" value={offerForm.endDate} onChange={e => setOfferForm({...offerForm, endDate: e.target.value})} style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid #d1d5db' }} />
+                    </div>
+                  </div>
+
                   <textarea placeholder="Message to requester..." rows="3" value={offerForm.message} onChange={e => setOfferForm({...offerForm, message: e.target.value})} style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid #d1d5db', marginBottom: '1rem' }} />
                   <div style={{ display: 'flex', gap: '0.75rem' }}>
                     <button type="submit" disabled={submitting} style={{ flex: 1, padding: '0.75rem', background: submitting ? '#9ca3af' : '#059669', color: '#fff', border: 'none', borderRadius: '8px', fontWeight: 600, cursor: submitting ? 'not-allowed' : 'pointer' }}>Submit Offer</button>

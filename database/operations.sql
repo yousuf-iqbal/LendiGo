@@ -2,6 +2,15 @@
 use UdhaariDB;
 
 go
+--------- ADD COLUMNS TO OFFERS TABLE FOR DATE SUPPORT ---------
+-- Check if columns don't exist before adding them
+if not exists (select 1 from information_schema.COLUMNS where TABLE_NAME = 'Offers' and COLUMN_NAME = 'StartDate')
+begin
+    alter table Offers add StartDate date null;
+    alter table Offers add EndDate date null;
+end;
+go
+
 -- all select queries for all table
 select * from Users;
 select * from Wallets;
@@ -12,7 +21,6 @@ select * from AssetImages;
 select * from Bookings;
 select * from Requests;
 select * from Reviews;
-
 
 
 

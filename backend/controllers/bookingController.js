@@ -49,7 +49,7 @@ async function acceptBooking(req, res) {
     }
     
     res.json({ 
-      message: 'Booking accepted', 
+      message: 'Booking confirmed', 
       booking: result.booking,
       nextStep: 'payment',
       paymentUrl: `/bookings/${bookingID}/payment`
@@ -60,4 +60,25 @@ async function acceptBooking(req, res) {
   }
 }
 
-module.exports = { getMyBookings, getBookingById, updateStatus, acceptBooking };
+async function rejectBooking(req, res) {
+  try {
+    const bookingID = req.params.id;
+    const userID = req.userID;
+    
+    const result = await bookingModel.rejectBooking(bookingID, userID);
+    
+    if (result.error) {
+      return res.status(result.code).json({ error: result.error });
+    }
+    
+    res.json({ 
+      message: 'Booking rejected',
+      booking: result.booking
+    });
+  } catch (err) {
+    console.error('Reject booking error:', err);
+    res.status(500).json({ error: 'server error' });
+  }
+}
+
+module.exports = { getMyBookings, getBookingById, updateStatus, acceptBooking, rejectBooking };

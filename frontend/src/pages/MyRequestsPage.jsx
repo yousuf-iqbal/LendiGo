@@ -1,315 +1,329 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
 import API from '../api/axios';
-
-// This page still exists as a standalone route /my-requests
-// It redirects users to the Requests page with the My Requests tab active,
-// OR you can keep it as a full standalone page — both work.
-// This version is a full standalone page with inline offer management.
 
 export default function MyRequestsPage() {
   const navigate = useNavigate();
-  const [myRequests, setMyRequests] = useState([]);
+  const { user } = useAuth();
+  const [requests, setRequests] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [expandedRequest, setExpandedRequest] = useState(null);
-  const [offersMap, setOffersMap] = useState({});
-  const [loadingOffers, setLoadingOffers] = useState({});
-  const [processingOffer, setProcessingOffer] = useState(null);
-  const user = JSON.parse(localStorage.getItem('udhaari_user') || 'null');
+  const [error, setError] = useState(null);
+  const [activeFilter, setActiveFilter] = useState('all');
+  const [searchTerm, setSearchTerm] = useState('');
 
   useEffect(() => {
-    fetchMyRequests();
+    fetchRequests();
+    const interval = setInterval(fetchRequests, 20000);
+    return () => clearInterval(interval);
   }, []);
 
-  const fetchMyRequests = async () => {
+  const fetchRequests = async () => {
     setLoading(true);
+    setError(null);
     try {
-      const res = await API.get('/requests/my');
-      setMyRequests(res.data);
+      const res = await API.get('/requests/my-requests');
+      console.log('✅ Requests fetched:', res.data);
+      setRequests(res.data.data || res.data || []);
     } catch (err) {
-      console.error('Error fetching my requests:', err);
+      console.error('❌ Failed to load requests:', err);
+      setError(err.response?.data?.error || 'Failed to load requests');
     } finally {
       setLoading(false);
     }
   };
 
-  const fetchOffersForRequest = async (requestId) => {
-    if (offersMap[requestId]) return;
-    setLoadingOffers(prev => ({ ...prev, [requestId]: true }));
-    try {
-      const res = await API.get(`/offers/request/${requestId}`);
-      setOffersMap(prev => ({ ...prev, [requestId]: res.data }));
-    } catch (err) {
-      console.error('Error fetching offers:', err);
-    } finally {
-      setLoadingOffers(prev => ({ ...prev, [requestId]: false }));
-    }
-  };
+  const filteredRequests = requests.filter(req => {
+    const matchesFilter = activeFilter === 'all' || req.Status?.toLowerCase() === activeFilter;
+    const matchesSearch = req.Title?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         req.Description?.toLowerCase().includes(searchTerm.toLowerCase());
+    return matchesFilter && matchesSearch;
+  });
 
-  const toggleExpand = (requestId) => {
-    if (expandedRequest === requestId) {
-      setExpandedRequest(null);
-    } else {
-      setExpandedRequest(requestId);
-      fetchOffersForRequest(requestId);
-    }
-  };
-
-  const handleAcceptOffer = async (offerId, requestId) => {
-    if (!window.confirm('Accept this offer? A booking will be created and the lender will be notified to pay.')) return;
-    setProcessingOffer(offerId);
-    try {
-      const res = await API.patch(`/offers/${offerId}/accept`);
-      setOffersMap(prev => ({ ...prev, [requestId]: undefined }));
-      fetchOffersForRequest(requestId);
-      fetchMyRequests();
-      navigate(`/bookings/${res.data.bookingId}/payment`);
-    } catch (err) {
-      alert(err.response?.data?.error || 'Failed to accept offer');
-    } finally {
-      setProcessingOffer(null);
-    }
-  };
-
-  const handleRejectOffer = async (offerId, requestId) => {
-    if (!window.confirm('Reject this offer?')) return;
-    setProcessingOffer(offerId);
-    try {
-      await API.patch(`/offers/${offerId}/reject`);
-      setOffersMap(prev => ({ ...prev, [requestId]: undefined }));
-      fetchOffersForRequest(requestId);
-    } catch (err) {
-      alert(err.response?.data?.error || 'Failed to reject offer');
-    } finally {
-      setProcessingOffer(null);
-    }
-  };
-
-  const handleDelete = async (requestId) => {
-    if (!window.confirm('Delete this request permanently?')) return;
-    try {
-      await API.delete(`/requests/${requestId}`);
-      fetchMyRequests();
-      if (expandedRequest === requestId) setExpandedRequest(null);
-    } catch (err) {
-      alert(err.response?.data?.error || 'Failed to delete request');
-    }
-  };
-
-  const handleClose = async (requestId) => {
-    if (!window.confirm('Close this request?')) return;
-    try {
-      await API.patch(`/requests/${requestId}/status`, { status: 'closed' });
-      fetchMyRequests();
-    } catch (err) {
-      alert(err.response?.data?.error || 'Failed to close request');
-    }
-  };
-
-  const statusBadge = (status) => {
-    const map = {
-      open:      { bg: '#dbeafe', color: '#1e40af' },
-      fulfilled: { bg: '#dcfce7', color: '#166534' },
-      closed:    { bg: '#f3f4f6', color: '#374151' },
-      expired:   { bg: '#fee2e2', color: '#991b1b' },
-      pending:   { bg: '#fff7ed', color: '#c2410c' },
-      accepted:  { bg: '#dcfce7', color: '#166534' },
-      declined:  { bg: '#fee2e2', color: '#991b1b' },
+  const getStatusColor = (status) => {
+    const colors = {
+      open: '#10b981',
+      closed: '#6b7280',
+      expired: '#dc2626',
     };
-    const s = map[status] || map.open;
-    return (
-      <span style={{ padding: '3px 10px', borderRadius: '20px', fontSize: '11px', fontWeight: 700, textTransform: 'capitalize', background: s.bg, color: s.color }}>
-        {status}
-      </span>
-    );
+    return colors[status?.toLowerCase()] || '#6b7280';
   };
 
-  const avatar = (name, pic, size = 40) => (
-    <div style={{
-      width: size, height: size, borderRadius: '50%', flexShrink: 0,
-      background: pic ? `url(${pic}) center/cover` : 'linear-gradient(135deg, #059669 0%, #10b981 100%)',
-      display: 'flex', alignItems: 'center', justifyContent: 'center',
-      color: pic ? 'transparent' : '#fff', fontWeight: 700, fontSize: size * 0.38,
-    }}>
-      {pic ? '' : name?.[0]?.toUpperCase() || 'U'}
-    </div>
-  );
+  const getStatusBadge = (status) => {
+    const badges = {
+      open: { text: 'Open', color: '#d1fae5', textColor: '#059669' },
+      closed: { text: 'Closed', color: '#f3f4f6', textColor: '#6b7280' },
+      expired: { text: 'Expired', color: '#fee2e2', textColor: '#dc2626' },
+    };
+    return badges[status?.toLowerCase()] || { text: status, color: '#f3f4f6', textColor: '#6b7280' };
+  };
 
-  if (loading) {
+  const formatDate = (date) => {
+    return new Date(date).toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+    });
+  };
+
+  const formatCurrency = (amount) => {
+    return `Rs. ${(amount || 0).toLocaleString()}`;
+  };
+
+  if (loading && requests.length === 0) {
     return (
-      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#f9fafb' }}>
-        <div style={{ textAlign: 'center', color: '#6b7280' }}>
-          <div style={{ width: '48px', height: '48px', border: '4px solid #e5e7eb', borderTop: '4px solid #059669', borderRadius: '50%', animation: 'spin 1s linear infinite', margin: '0 auto 1rem' }} />
-          <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
-          Loading your requests...
+      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'linear-gradient(135deg, #f0fdf4 0%, #f9fafb 100%)' }}>
+        <style>{`@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }`}</style>
+        <div style={{ textAlign: 'center' }}>
+          <div style={{ width: '64px', height: '64px', border: '4px solid #e5e7eb', borderTop: '4px solid #059669', borderRadius: '50%', animation: 'spin 1s linear infinite', margin: '0 auto 1rem' }} />
+          <p style={{ color: '#6b7280', fontSize: '1rem', fontWeight: 500 }}>Loading your requests...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div style={{ minHeight: '100vh', padding: '2rem', background: 'linear-gradient(135deg, #fef2f2 0%, #f9fafb 100%)' }}>
+        <div style={{ maxWidth: '600px', margin: '0 auto' }}>
+          <div style={{ background: '#fff', borderRadius: '16px', boxShadow: '0 4px 12px rgba(0,0,0,0.08)', border: '1px solid #fee2e2', padding: '3rem', textAlign: 'center' }}>
+            <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>⚠️</div>
+            <h3 style={{ fontSize: '1.5rem', fontWeight: 700, color: '#1f2937', marginBottom: '0.5rem' }}>Unable to Load Requests</h3>
+            <p style={{ color: '#dc2626', fontSize: '1rem', marginBottom: '2rem' }}>{error}</p>
+            <button onClick={fetchRequests} style={{ padding: '0.75rem 2rem', background: 'linear-gradient(135deg, #059669 0%, #10b981 100%)', color: '#fff', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 700, fontSize: '1rem', transition: 'all 0.2s' }} onMouseEnter={(e) => { e.target.style.transform = 'translateY(-2px)'; e.target.style.boxShadow = '0 8px 16px rgba(5,150,105,0.3)'; }} onMouseLeave={(e) => { e.target.style.transform = 'translateY(0)'; e.target.style.boxShadow = 'none'; }}>
+              🔄 Try Again
+            </button>
+          </div>
         </div>
       </div>
     );
   }
 
   return (
-    <div style={{ minHeight: '100vh', background: '#f9fafb', padding: '2rem' }}>
-      <div style={{ maxWidth: '1000px', margin: '0 auto' }}>
-
+    <div style={{ minHeight: '100vh', background: 'linear-gradient(135deg, #f0fdf4 0%, #f8f9fa 50%, #eff6ff 100%)', padding: '2rem 1rem' }}>
+      <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
         {/* Header */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem', flexWrap: 'wrap', gap: '1rem' }}>
+        <div style={{ marginBottom: '3rem', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
           <div>
-            <h1 style={{ fontSize: '2rem', fontWeight: 800, color: '#1f2937', margin: '0 0 0.25rem 0' }}>My Requests</h1>
-            <p style={{ color: '#6b7280', margin: 0 }}>Manage your requests and review incoming offers</p>
+            <h1 style={{ fontSize: '3.5rem', fontWeight: 900, background: 'linear-gradient(135deg, #059669 0%, #0891b2 100%)', backgroundClip: 'text', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', marginBottom: '0.5rem' }}>My Requests</h1>
+            <p style={{ color: '#6b7280', fontSize: '1.1rem', fontWeight: 500 }}>Items you're looking to borrow</p>
           </div>
-          <div style={{ display: 'flex', gap: '0.75rem' }}>
-            <button
-              onClick={() => navigate('/requests')}
-              style={{ padding: '0.625rem 1.25rem', background: '#f3f4f6', color: '#374151', border: 'none', borderRadius: '10px', fontWeight: 600, cursor: 'pointer', fontSize: '0.875rem' }}
-            >
-              ← Browse Requests
-            </button>
-            <button
-              onClick={() => navigate('/post-request')}
-              style={{ padding: '0.625rem 1.25rem', background: 'linear-gradient(135deg, #059669, #10b981)', color: '#fff', border: 'none', borderRadius: '10px', fontWeight: 600, cursor: 'pointer', fontSize: '0.875rem', boxShadow: '0 2px 8px rgba(5,150,105,0.3)' }}
-            >
-              + Post New Request
-            </button>
+          <button onClick={() => navigate('/post-request')} style={{ padding: '0.75rem 2rem', background: 'linear-gradient(135deg, #059669 0%, #10b981 100%)', color: '#fff', border: 'none', borderRadius: '10px', cursor: 'pointer', fontWeight: 700, fontSize: '1rem', transition: 'all 0.2s', display: 'flex', alignItems: 'center', gap: '0.5rem' }} onMouseEnter={(e) => { e.target.style.transform = 'translateY(-2px)'; e.target.style.boxShadow = '0 8px 16px rgba(5,150,105,0.3)'; }} onMouseLeave={(e) => { e.target.style.transform = 'translateY(0)'; e.target.style.boxShadow = 'none'; }}>
+            📝 Post New Request
+          </button>
+        </div>
+
+        {/* Search and Filter */}
+        <div style={{ background: '#fff', padding: '2rem', borderRadius: '16px', boxShadow: '0 2px 8px rgba(0,0,0,0.06)', border: '1px solid #e5e7eb', marginBottom: '2rem' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '1.5rem', marginBottom: '1.5rem' }}>
+            <input
+              type="text"
+              placeholder="🔍 Search by title or description..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              style={{ padding: '0.75rem 1.2rem', border: '2px solid #e5e7eb', borderRadius: '10px', fontSize: '1rem', transition: 'all 0.2s' }}
+              onFocus={(e) => { e.target.style.borderColor = '#059669'; e.target.style.boxShadow = '0 0 0 3px rgba(5,150,105,0.1)'; }}
+              onBlur={(e) => { e.target.style.borderColor = '#e5e7eb'; e.target.style.boxShadow = 'none'; }}
+            />
+          </div>
+
+          {/* Filter Tabs */}
+          <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
+            {[
+              { id: 'all', label: '📋 All Requests', count: requests.length },
+              { id: 'open', label: '🟢 Open', count: requests.filter(r => r.Status?.toLowerCase() === 'open').length },
+              { id: 'closed', label: '⚫ Closed', count: requests.filter(r => r.Status?.toLowerCase() === 'closed').length },
+              { id: 'expired', label: '🔴 Expired', count: requests.filter(r => r.Status?.toLowerCase() === 'expired').length },
+            ].map(filter => (
+              <button
+                key={filter.id}
+                onClick={() => setActiveFilter(filter.id)}
+                style={{
+                  padding: '0.5rem 1.2rem',
+                  background: activeFilter === filter.id ? 'linear-gradient(135deg, #059669 0%, #10b981 100%)' : '#f3f4f6',
+                  color: activeFilter === filter.id ? '#fff' : '#6b7280',
+                  border: 'none',
+                  borderRadius: '20px',
+                  cursor: 'pointer',
+                  fontWeight: 700,
+                  fontSize: '0.9rem',
+                  transition: 'all 0.2s',
+                }}
+                onMouseEnter={(e) => {
+                  if (activeFilter !== filter.id) {
+                    e.target.style.background = '#e5e7eb';
+                  }
+                }}
+                onMouseLeave={(e) => {
+                  if (activeFilter !== filter.id) {
+                    e.target.style.background = '#f3f4f6';
+                  }
+                }}
+              >
+                {filter.label} ({filter.count})
+              </button>
+            ))}
           </div>
         </div>
 
-        {/* Empty State */}
-        {myRequests.length === 0 ? (
-          <div style={{ textAlign: 'center', padding: '5rem 2rem', background: '#fff', borderRadius: '16px', border: '1px solid #e5e7eb' }}>
+        {/* Requests Grid */}
+        {filteredRequests.length === 0 ? (
+          <div style={{ background: '#fff', padding: '4rem 2rem', borderRadius: '16px', boxShadow: '0 2px 8px rgba(0,0,0,0.06)', border: '1px solid #e5e7eb', textAlign: 'center' }}>
             <div style={{ fontSize: '4rem', marginBottom: '1rem' }}>📭</div>
-            <h3 style={{ fontSize: '1.25rem', fontWeight: 700, color: '#1f2937', marginBottom: '0.5rem' }}>No requests yet</h3>
-            <p style={{ color: '#6b7280', marginBottom: '2rem' }}>Post a request and lenders in your area will make offers.</p>
-            <button onClick={() => navigate('/post-request')} style={{ padding: '0.75rem 2rem', background: '#059669', color: '#fff', border: 'none', borderRadius: '10px', fontWeight: 600, cursor: 'pointer', fontSize: '1rem' }}>
-              Post Your First Request
-            </button>
+            <h3 style={{ fontSize: '1.5rem', fontWeight: 700, color: '#1f2937', marginBottom: '0.5rem' }}>No Requests Found</h3>
+            <p style={{ color: '#6b7280', marginBottom: '2rem' }}>
+              {searchTerm ? 'Try adjusting your search terms' : 'Start by posting your first request!'}
+            </p>
+            {!searchTerm && (
+              <button
+                onClick={() => navigate('/post-request')}
+                style={{ padding: '0.75rem 2rem', background: 'linear-gradient(135deg, #059669 0%, #10b981 100%)', color: '#fff', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 700, fontSize: '1rem', transition: 'all 0.2s' }}
+                onMouseEnter={(e) => { e.target.style.transform = 'translateY(-2px)'; e.target.style.boxShadow = '0 8px 16px rgba(5,150,105,0.3)'; }}
+                onMouseLeave={(e) => { e.target.style.transform = 'translateY(0)'; e.target.style.boxShadow = 'none'; }}
+              >
+                ➕ Post Your First Request
+              </button>
+            )}
           </div>
         ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-            {myRequests.map(req => {
-              // ✅ Fields come back lowercase from the fixed query
-              const isExpanded = expandedRequest === req.id;
-              const offers = offersMap[req.id] || [];
-              const isLoadingOffers = loadingOffers[req.id];
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '2rem' }}>
+            {filteredRequests.map((request) => (
+              <div
+                key={request.RequestID}
+                onClick={() => navigate(`/request/${request.RequestID}`)}
+                style={{
+                  background: '#fff',
+                  borderRadius: '16px',
+                  boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
+                  border: '1px solid #e5e7eb',
+                  overflow: 'hidden',
+                  cursor: 'pointer',
+                  transition: 'all 0.3s',
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.transform = 'translateY(-8px)';
+                  e.currentTarget.style.boxShadow = '0 12px 24px rgba(0,0,0,0.12)';
+                  e.currentTarget.style.borderColor = '#059669';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.transform = 'translateY(0)';
+                  e.currentTarget.style.boxShadow = '0 2px 8px rgba(0,0,0,0.06)';
+                  e.currentTarget.style.borderColor = '#e5e7eb';
+                }}
+              >
+                {/* Card Header */}
+                <div style={{ background: `linear-gradient(135deg, ${getStatusColor(request.Status)} 0%, ${getStatusColor(request.Status)}dd 100%)`, padding: '1.5rem', color: '#fff' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', marginBottom: '1rem' }}>
+                    <h3 style={{ fontSize: '1.25rem', fontWeight: 800, margin: 0, maxWidth: '80%' }}>{request.Title}</h3>
+                    <span style={{ padding: '0.3rem 0.8rem', background: 'rgba(255,255,255,0.3)', color: '#fff', borderRadius: '12px', fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', backdropFilter: 'blur(10px)' }}>
+                      {getStatusBadge(request.Status).text}
+                    </span>
+                  </div>
+                  <p style={{ margin: 0, opacity: 0.9, fontSize: '0.9rem' }}>📌 {request.CategoryName || 'General'}</p>
+                </div>
 
-              return (
-                <div key={req.id} style={{ background: '#fff', borderRadius: '14px', border: '1px solid #e5e7eb', overflow: 'hidden', boxShadow: '0 1px 4px rgba(0,0,0,0.07)' }}>
+                {/* Card Body */}
+                <div style={{ padding: '1.5rem' }}>
+                  {/* Description */}
+                  <p style={{ color: '#6b7280', fontSize: '0.9rem', marginBottom: '1.5rem', lineHeight: '1.5', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
+                    {request.Description}
+                  </p>
 
-                  {/* Request Row */}
-                  <div style={{ padding: '1.25rem 1.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
-                    <div style={{ flex: 1, minWidth: '200px' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.4rem', flexWrap: 'wrap' }}>
-                        <h3 style={{ fontSize: '1.1rem', fontWeight: 700, color: '#1f2937', margin: 0 }}>{req.title}</h3>
-                        {statusBadge(req.status)}
-                      </div>
-                      <p style={{ color: '#6b7280', fontSize: '0.875rem', margin: '0 0 0.25rem 0' }}>
-                        {req.categoryName || 'Uncategorized'}{req.city ? ` • ${req.city}` : ''}
-                      </p>
-                      <p style={{ color: '#9ca3af', fontSize: '0.8rem', margin: 0 }}>
-                        📅 {new Date(req.startDate).toLocaleDateString()} – {new Date(req.endDate).toLocaleDateString()}
-                        &nbsp;&nbsp;💰 Rs. {req.maxBudget?.toLocaleString() || 'Negotiable'}
-                      </p>
+                  {/* Stats Grid */}
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1.5rem', paddingBottom: '1.5rem', borderBottom: '1px solid #e5e7eb' }}>
+                    <div>
+                      <p style={{ color: '#9ca3af', fontSize: '0.8rem', fontWeight: 500, marginBottom: '0.25rem' }}>Budget</p>
+                      <p style={{ fontSize: '1.25rem', fontWeight: 800, color: '#059669' }}>{formatCurrency(request.BudgetPerDay)}</p>
+                      <p style={{ color: '#d1d5db', fontSize: '0.75rem' }}>per day</p>
                     </div>
-
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', flexWrap: 'wrap' }}>
-                      <button
-                        onClick={() => toggleExpand(req.id)}
-                        style={{ padding: '0.5rem 1rem', background: isExpanded ? '#059669' : '#f0fdf4', color: isExpanded ? '#fff' : '#059669', border: `1px solid ${isExpanded ? '#059669' : '#86efac'}`, borderRadius: '8px', fontWeight: 600, cursor: 'pointer', fontSize: '0.875rem', transition: 'all 0.2s' }}
-                      >
-                        {isExpanded ? 'Hide Offers' : `${req.offerCount || 0} Offer${req.offerCount !== 1 ? 's' : ''} ▾`}
-                      </button>
-                      <button onClick={() => navigate(`/edit-request/${req.id}`)} style={{ padding: '0.5rem 1rem', background: '#eff6ff', color: '#3b82f6', border: '1px solid #bfdbfe', borderRadius: '8px', fontWeight: 600, cursor: 'pointer', fontSize: '0.875rem' }}>
-                        Edit
-                      </button>
-                      {req.status === 'open' && (
-                        <button onClick={() => handleClose(req.id)} style={{ padding: '0.5rem 1rem', background: '#fff7ed', color: '#c2410c', border: '1px solid #fdba74', borderRadius: '8px', fontWeight: 600, cursor: 'pointer', fontSize: '0.875rem' }}>
-                          Close
-                        </button>
-                      )}
-                      <button onClick={() => handleDelete(req.id)} style={{ padding: '0.5rem 1rem', background: '#fef2f2', color: '#dc2626', border: '1px solid #fca5a5', borderRadius: '8px', fontWeight: 600, cursor: 'pointer', fontSize: '0.875rem' }}>
-                        Delete
-                      </button>
+                    <div>
+                      <p style={{ color: '#9ca3af', fontSize: '0.8rem', fontWeight: 500, marginBottom: '0.25rem' }}>Duration</p>
+                      <p style={{ fontSize: '1.25rem', fontWeight: 800, color: '#0284c7' }}>
+                        {Math.ceil((new Date(request.EndDate) - new Date(request.StartDate)) / (1000 * 60 * 60 * 24))} days
+                      </p>
+                      <p style={{ color: '#d1d5db', fontSize: '0.75rem' }}>requested</p>
                     </div>
                   </div>
 
-                  {/* Offers Panel */}
-                  {isExpanded && (
-                    <div style={{ borderTop: '1px solid #f3f4f6', background: '#fafafa', padding: '1.25rem 1.5rem' }}>
-                      <h4 style={{ fontSize: '0.95rem', fontWeight: 700, color: '#374151', marginBottom: '1rem' }}>Offers Received</h4>
+                  {/* Offers Count */}
+                  <div style={{ background: '#f0fdf4', padding: '1rem', borderRadius: '10px', border: '1px solid #bbf7d0', marginBottom: '1rem', textAlign: 'center' }}>
+                    <p style={{ margin: 0, fontSize: '1.5rem', fontWeight: 800, color: '#059669' }}>{request.OffersCount || 0}</p>
+                    <p style={{ margin: 0, color: '#6b7280', fontSize: '0.85rem', fontWeight: 500 }}>{(request.OffersCount || 0) === 1 ? 'Offer received' : 'Offers received'}</p>
+                  </div>
 
-                      {isLoadingOffers ? (
-                        <p style={{ color: '#6b7280', fontSize: '0.9rem' }}>Loading offers...</p>
-                      ) : offers.length === 0 ? (
-                        <div style={{ textAlign: 'center', padding: '2rem', color: '#9ca3af' }}>
-                          <div style={{ fontSize: '2.5rem', marginBottom: '0.5rem' }}>📬</div>
-                          No offers yet for this request.
-                        </div>
-                      ) : (
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.875rem' }}>
-                          {offers.map(offer => (
-                            <div key={offer.OfferID} style={{
-                              background: '#fff',
-                              borderRadius: '12px',
-                              padding: '1rem 1.25rem',
-                              border: offer.Status === 'accepted' ? '2px solid #059669' : '1px solid #e5e7eb',
-                              display: 'flex',
-                              justifyContent: 'space-between',
-                              alignItems: 'center',
-                              flexWrap: 'wrap',
-                              gap: '1rem'
-                            }}>
-                              {/* Lender */}
-                              <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flex: 1, minWidth: '180px' }}>
-                                {avatar(offer.LenderName, offer.LenderPic, 42)}
-                                <div>
-                                  <p style={{ fontWeight: 600, color: '#1f2937', margin: '0 0 0.2rem 0', fontSize: '0.95rem' }}>{offer.LenderName}</p>
-                                  {offer.Message && (
-                                    <p style={{ color: '#6b7280', fontSize: '0.85rem', margin: '0 0 0.15rem 0', fontStyle: 'italic' }}>
-                                      "{offer.Message.length > 80 ? offer.Message.substring(0, 80) + '...' : offer.Message}"
-                                    </p>
-                                  )}
-                                  <p style={{ color: '#9ca3af', fontSize: '0.78rem', margin: 0 }}>{new Date(offer.CreatedAt).toLocaleDateString()}</p>
-                                </div>
-                              </div>
-
-                              {/* Price + Actions */}
-                              <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
-                                <div style={{ textAlign: 'right' }}>
-                                  <p style={{ fontSize: '1.2rem', fontWeight: 800, color: '#059669', margin: '0 0 0.25rem 0' }}>Rs. {parseFloat(offer.OfferedPrice).toLocaleString()}</p>
-                                  {statusBadge(offer.Status)}
-                                </div>
-
-                                {offer.Status === 'pending' && req.status === 'open' && (
-                                  <div style={{ display: 'flex', gap: '0.5rem' }}>
-                                    <button
-                                      onClick={() => handleAcceptOffer(offer.OfferID, req.id)}
-                                      disabled={processingOffer === offer.OfferID}
-                                      style={{ padding: '0.5rem 1rem', background: processingOffer === offer.OfferID ? '#9ca3af' : '#059669', color: '#fff', border: 'none', borderRadius: '8px', fontWeight: 600, cursor: processingOffer === offer.OfferID ? 'not-allowed' : 'pointer', fontSize: '0.875rem', whiteSpace: 'nowrap' }}
-                                    >
-                                      {processingOffer === offer.OfferID ? '...' : '✓ Accept'}
-                                    </button>
-                                    <button
-                                      onClick={() => handleRejectOffer(offer.OfferID, req.id)}
-                                      disabled={processingOffer === offer.OfferID}
-                                      style={{ padding: '0.5rem 1rem', background: '#fef2f2', color: '#dc2626', border: '1px solid #fca5a5', borderRadius: '8px', fontWeight: 600, cursor: processingOffer === offer.OfferID ? 'not-allowed' : 'pointer', fontSize: '0.875rem' }}
-                                    >
-                                      ✗ Reject
-                                    </button>
-                                  </div>
-                                )}
-
-                                {offer.Status === 'accepted' && (
-                                  <span style={{ fontSize: '0.875rem', color: '#059669', fontWeight: 600 }}>✓ Accepted</span>
-                                )}
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      )}
+                  {/* Dates */}
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem', fontSize: '0.85rem' }}>
+                    <div>
+                      <p style={{ color: '#9ca3af', margin: '0 0 0.25rem 0' }}>📅 Start</p>
+                      <p style={{ color: '#1f2937', fontWeight: 600, margin: 0 }}>{formatDate(request.StartDate)}</p>
                     </div>
-                  )}
+                    <div>
+                      <p style={{ color: '#9ca3af', margin: '0 0 0.25rem 0' }}>📅 End</p>
+                      <p style={{ color: '#1f2937', fontWeight: 600, margin: 0 }}>{formatDate(request.EndDate)}</p>
+                    </div>
+                  </div>
+
+                  {/* Posted Date */}
+                  <p style={{ color: '#d1d5db', fontSize: '0.75rem', margin: '1rem 0 0 0' }}>
+                    Posted {new Date(request.CreatedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                  </p>
                 </div>
-              );
-            })}
+
+                {/* Card Footer - Action Buttons */}
+                <div style={{ padding: '1rem', background: '#f9fafb', borderTop: '1px solid #e5e7eb', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      navigate(`/request/${request.RequestID}`);
+                    }}
+                    style={{
+                      padding: '0.6rem 1rem',
+                      background: '#fff',
+                      border: '2px solid #059669',
+                      color: '#059669',
+                      borderRadius: '8px',
+                      cursor: 'pointer',
+                      fontWeight: 700,
+                      fontSize: '0.85rem',
+                      transition: 'all 0.2s',
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.background = '#f0fdf4';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.background = '#fff';
+                    }}
+                  >
+                    👁️ View
+                  </button>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      navigate(`/request/${request.RequestID}/edit`);
+                    }}
+                    style={{
+                      padding: '0.6rem 1rem',
+                      background: '#fff',
+                      border: '2px solid #0284c7',
+                      color: '#0284c7',
+                      borderRadius: '8px',
+                      cursor: 'pointer',
+                      fontWeight: 700,
+                      fontSize: '0.85rem',
+                      transition: 'all 0.2s',
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.background = '#eff6ff';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.background = '#fff';
+                    }}
+                  >
+                    ✏️ Edit
+                  </button>
+                </div>
+              </div>
+            ))}
           </div>
         )}
       </div>

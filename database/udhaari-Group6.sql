@@ -113,6 +113,7 @@ create table Bookings
     PaymentScreenshot nvarchar(255),
     IsPaid            bit default 0,
     CreatedAt         datetime default getdate(),
+    UpdatedAt         datetime default getdate(),
     check (EndDate >= StartDate)
 );
 go
@@ -442,11 +443,15 @@ begin
         update Wallets set Balance = Balance + @Amount, UpdatedAt = getdate()
         where WalletID = @LenderWalletID;
 
+        --------- Update booking as paid and change status to confirmed ---------
+        update Bookings set IsPaid = 1, Status = 'confirmed', UpdatedAt = getdate()
+        where BookingID = @BookingID;
+
         insert into Transactions (BookingID, FromWalletID, ToWalletID, Amount, Type, CreatedAt)
         values (@BookingID, @PayerWalletID, @LenderWalletID, @Amount, 'payment', getdate());
 
         commit transaction;
-        select 'payment deducted successfully' as Message, @Amount as AmountDeducted;
+        select 'payment deducted successfully' as Message, @Amount as AmountDeducted, @BookingID as BookingID;
 
     end try
     begin catch

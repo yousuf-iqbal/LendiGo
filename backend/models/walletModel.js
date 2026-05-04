@@ -33,6 +33,12 @@ const walletModel = {
       .input('userID', sql.Int, userID)
       .input('amount', sql.Decimal(10, 2), amount)
       .query(`UPDATE Wallets SET Balance = Balance + @amount, UpdatedAt = GETDATE() WHERE UserID = @userID`);
+    
+    // Return updated wallet
+    const result = await pool.request()
+      .input('userID', sql.Int, userID)
+      .query(`SELECT Balance, UpdatedAt FROM Wallets WHERE UserID = @userID`);
+    return result.recordset[0];
   },
 
   // ✅ New: Updates wallet to a specific balance (Safety net)

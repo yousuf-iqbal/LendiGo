@@ -21,10 +21,12 @@ async function createOffer(data, lenderID) {
     .input('AssetID', sql.Int, data.assetId ? Number(data.assetId) : null)
     .input('OfferedPrice', sql.Decimal(10, 2), parseFloat(data.offeredPrice))
     .input('Message', sql.NVarChar, data.message || '')
+    .input('StartDate', sql.Date, data.startDate || null)
+    .input('EndDate', sql.Date, data.endDate || null)
     .query(`
-      INSERT INTO Offers (RequestID, LenderID, AssetID, OfferedPrice, Message, Status)
+      INSERT INTO Offers (RequestID, LenderID, AssetID, OfferedPrice, Message, StartDate, EndDate, Status)
       OUTPUT INSERTED.OfferID
-      VALUES (@RequestID, @LenderID, @AssetID, @OfferedPrice, @Message, 'pending')
+      VALUES (@RequestID, @LenderID, @AssetID, @OfferedPrice, @Message, @StartDate, @EndDate, 'pending')
     `);
   return result.recordset[0].OfferID;
 }
@@ -37,6 +39,8 @@ async function getOffersByRequest(requestId) {
     .query(`
       SELECT
         o.OfferID, o.OfferedPrice, o.Message, o.Status, o.CreatedAt,
+        ISNULL(o.StartDate, NULL) AS StartDate,
+        ISNULL(o.EndDate, NULL) AS EndDate,
         u.FullName AS LenderName, u.UserID AS LenderID, u.ProfilePic AS LenderPic, u.Phone AS LenderPhone,
         a.Title AS AssetTitle, a.AssetID, a.PricePerDay,
         (SELECT TOP 1 ImageURL FROM AssetImages WHERE AssetID = a.AssetID AND IsPrimary = 1) AS AssetImage
@@ -56,7 +60,9 @@ async function getOffersByLender(lenderID) {
     .query(`
       SELECT
         o.OfferID, o.OfferedPrice, o.Message, o.Status, o.CreatedAt,
-        r.Title AS RequestTitle, r.RequestID, r.StartDate, r.EndDate,
+        ISNULL(o.StartDate, r.StartDate) AS StartDate,
+        ISNULL(o.EndDate, r.EndDate) AS EndDate,
+        r.Title AS RequestTitle, r.RequestID, r.StartDate AS RequestStartDate, r.EndDate AS RequestEndDate,
         u.FullName AS RequesterName, u.UserID AS RequesterID
       FROM Offers o
       JOIN Requests r ON o.RequestID = r.RequestID
@@ -74,8 +80,10 @@ async function getOfferById(offerId) {
     .query(`
       SELECT
         o.OfferID, o.OfferedPrice, o.Message, o.Status, o.CreatedAt,
-        r.Title AS RequestTitle, r.RequestID, r.StartDate, r.EndDate, r.MaxBudget,
-        u.FullName AS RequesterName, u.UserID AS RequesterID, u.ProfilePic AS RequesterPic,
+        ISNULL(o.StartDate, r.StartDate) AS OfferStartDate,
+        ISNULL(o.EndDate, r.EndDate) AS OfferEndDate,
+        r.Title AS RequestTitle, r.RequestID, r.StartDate AS RequestStartDate, r.EndDate AS RequestEndDate, r.MaxBudget,
+        u.FullName AS RequesterName, u.UserID AS RequesterID, u.ProfilePic AS RequesterPic, u.Phone AS RequesterPhone,
         a.Title AS AssetTitle, a.AssetID, a.PricePerDay,
         o.LenderID
       FROM Offers o
@@ -141,12 +149,14 @@ async function getIncomingOffersByRequester(requesterID) {
         o.Message,
         o.Status,
         o.CreatedAt,
+        ISNULL(o.StartDate, r.StartDate) AS OfferStartDate,
+        ISNULL(o.EndDate, r.EndDate) AS OfferEndDate,
         r.RequestID,
         r.Title AS RequestTitle,
         r.Description AS RequestDescription,
         r.MaxBudget,
-        r.StartDate,
-        r.EndDate,
+        r.StartDate AS RequestStartDate,
+        r.EndDate AS RequestEndDate,
         u.FullName AS LenderName,
         u.UserID AS LenderID,
         u.ProfilePic AS LenderPic

@@ -26,12 +26,13 @@ export default function MyOffersPage() {
   };
 
   const handleAccept = async (offerId) => {
-    if (!window.confirm('Accept this offer? This will create a booking and notify the lender to proceed to payment.')) return;
+    if (!window.confirm('Accept this offer? A booking will be created and you\'ll need to wait for the lender\'s confirmation before proceeding to payment.')) return;
     setProcessing(offerId);
     try {
       const res = await API.patch(`/offers/${offerId}/accept`);
-      alert('Offer accepted! The lender can now proceed to payment.');
-      navigate(`/bookings/${res.data.bookingId}/payment`); // Redirect to payment receipt
+      // Show success message instead of redirecting directly to payment
+      alert('Offer accepted! A booking has been created. The lender will confirm it shortly. You\'ll be able to proceed to payment once confirmed.');
+      fetchOffers();
     } catch (err) {
       alert(err.response?.data?.error || 'Failed to accept offer');
     } finally {
@@ -105,8 +106,22 @@ export default function MyOffersPage() {
                   <div style={{ flex: 1, minWidth: '250px' }}>
                     <h3 style={{ fontSize: '1.25rem', fontWeight: 700, color: '#1f2937', marginBottom: '0.5rem' }}>{offer.RequestTitle}</h3>
                     <p style={{ color: '#6b7280', fontSize: '0.95rem', lineHeight: 1.5 }}>{offer.RequestDescription?.length > 100 ? `${offer.RequestDescription.substring(0, 100)}...` : offer.RequestDescription}</p>
+                    
+                    {/* Show offer dates prominently */}
+                    <div style={{ display: 'flex', gap: '1rem', marginTop: '1rem', marginBottom: '0.75rem', fontSize: '0.9rem', color: '#1f2937', fontWeight: 600 }}>
+                      <span>📅 Offered Dates:</span>
+                      <span>{offer.OfferStartDate ? new Date(offer.OfferStartDate).toLocaleDateString() : offer.RequestStartDate ? new Date(offer.RequestStartDate).toLocaleDateString() : 'N/A'} - {offer.OfferEndDate ? new Date(offer.OfferEndDate).toLocaleDateString() : offer.RequestEndDate ? new Date(offer.RequestEndDate).toLocaleDateString() : 'N/A'}</span>
+                    </div>
+
+                    {/* Show if dates differ from requested */}
+                    {offer.OfferStartDate && offer.RequestStartDate && (new Date(offer.OfferStartDate).toDateString() !== new Date(offer.RequestStartDate).toDateString() || new Date(offer.OfferEndDate).toDateString() !== new Date(offer.RequestEndDate).toDateString()) && (
+                      <div style={{ display: 'flex', gap: '1rem', marginBottom: '0.75rem', fontSize: '0.85rem', color: '#6b7280' }}>
+                        <span>📋 Requested Dates:</span>
+                        <span>{new Date(offer.RequestStartDate).toLocaleDateString()} - {new Date(offer.RequestEndDate).toLocaleDateString()}</span>
+                      </div>
+                    )}
+
                     <div style={{ display: 'flex', gap: '1rem', marginTop: '0.75rem', fontSize: '0.9rem', color: '#6b7280' }}>
-                      <span>📅 {new Date(offer.StartDate).toLocaleDateString()} - {new Date(offer.EndDate).toLocaleDateString()}</span>
                       <span>💰 Budget: Rs. {offer.MaxBudget?.toLocaleString() || 'Negotiable'}</span>
                     </div>
                   </div>
@@ -141,7 +156,7 @@ export default function MyOffersPage() {
                         disabled={processing === offer.OfferID}
                         style={{ flex: 1, padding: '0.875rem', background: processing === offer.OfferID ? '#9ca3af' : '#059669', color: '#fff', border: 'none', borderRadius: '12px', fontWeight: 600, cursor: processing === offer.OfferID ? 'not-allowed' : 'pointer', transition: 'all 0.2s' }}
                       >
-                        {processing === offer.OfferID ? 'Processing...' : '✓ Accept & Create Booking'}
+                        {processing === offer.OfferID ? 'Processing...' : '✓ Accept Offer'}
                       </button>
                       <button 
                         onClick={() => handleReject(offer.OfferID)} 

@@ -36,6 +36,9 @@ export default function Navbar() {
       top: 0,
       zIndex: 100,
       boxShadow: '0 1px 2px rgba(0,0,0,0.05)',
+      flexWrap: 'wrap',
+      gap: '1rem',
+      minWidth: 0,
     }}>
 
       {/* Logo */}
@@ -47,7 +50,7 @@ export default function Navbar() {
       </Link>
 
       {/* Center Nav Links */}
-      <div style={{ display: 'flex', gap: '1.5rem', alignItems: 'center' }}>
+      <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', flexWrap: 'wrap', flex: 1, justifyContent: 'center', minWidth: 0 }}>
         {navLink('/browse', 'Baazar')}
         {navLink('/requests', 'Requests')}
 
@@ -56,6 +59,7 @@ export default function Navbar() {
             {navLink('/my-assets', 'My Assets')}
             {/* My Requests links to /requests with My Requests tab */}
             {navLink('/bookings', 'Bookings')}
+            {navLink('/my-offers-made', 'My Offers Made')}
             {navLink('/dashboard', 'Dashboard')}
           </>
         )}

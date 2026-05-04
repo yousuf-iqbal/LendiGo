@@ -82,7 +82,7 @@ router.get('/:id', verifyToken, async (req, res) => {
           b.EndDate,
           b.TotalPrice,
           b.Status,
-          a.Title AS AssetTitle,
+          ISNULL(a.Title, r.Title) AS AssetTitle,
           a.AssetID,
           c.Name AS CategoryName,
           uLender.FullName AS LenderName,
@@ -92,13 +92,15 @@ router.get('/:id', verifyToken, async (req, res) => {
           uRenter.FullName AS RenterName,
           uRenter.UserID AS RenterID,
           o.OfferedPrice,
-          o.Message AS OfferMessage
+          o.Message AS OfferMessage,
+          r.Title AS RequestTitle
         FROM Bookings b
-        JOIN Assets a ON b.AssetID = a.AssetID
+        LEFT JOIN Assets a ON b.AssetID = a.AssetID
         LEFT JOIN Categories c ON a.CategoryID = c.CategoryID
+        LEFT JOIN Offers o ON b.OfferID = o.OfferID
+        LEFT JOIN Requests r ON o.RequestID = r.RequestID
         JOIN Users uLender ON b.LenderID = uLender.UserID
         JOIN Users uRenter ON b.RenterID = uRenter.UserID
-        LEFT JOIN Offers o ON b.OfferID = o.OfferID
         WHERE b.BookingID = @BookingID
       `);
 
@@ -215,13 +217,24 @@ router.patch('/:id/status', verifyToken, async (req, res) => {
   }
 });
 
-// Accept a booking (lender only) - changes status to 'accepted' and enables payment
+// Accept a booking (lender only) - changes status to 'confirmed' and enables payment
 router.patch('/:id/accept', verifyToken, async (req, res) => {
   try {
     const { acceptBooking } = require('../controllers/bookingController');
     await acceptBooking(req, res);
   } catch (err) {
     console.error('Accept booking route error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Reject a booking (lender only) - changes status to 'cancelled'
+router.patch('/:id/reject', verifyToken, async (req, res) => {
+  try {
+    const { rejectBooking } = require('../controllers/bookingController');
+    await rejectBooking(req, res);
+  } catch (err) {
+    console.error('Reject booking route error:', err);
     res.status(500).json({ error: err.message });
   }
 });
