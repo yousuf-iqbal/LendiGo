@@ -5,6 +5,8 @@ const multer = require('multer');
 const { CloudinaryStorage } = require('multer-storage-cloudinary');
 const { cloudinary } = require('../config/cloudinary');
 const { register, login, googleAuth, checkProvider, checkUserStatus} = require('../controllers/authController');
+const verifyToken = require('../middleware/verifyToken');
+const { getMe } = require('../controllers/profileController');
 
 // cloudinary storage
 const storage = new CloudinaryStorage({
@@ -43,5 +45,6 @@ router.post('/google', googleAuth);
 // POST /api/auth/check-provider — check if user signed up with Google or email
 router.post('/check-provider', checkProvider);
 router.post('/check-user-status', checkUserStatus);
+router.get('/me', verifyToken, getMe);
 
 module.exports = router;

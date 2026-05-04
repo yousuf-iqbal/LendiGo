@@ -53,6 +53,28 @@ const walletModel = {
   // Deduct money for booking using stored procedure
   payForBooking: async (bookingID, amount, payerUserID) => {
     const pool = await poolPromise;
+    const bookingResult = await pool.request()
+      .input('BookingID', sql.Int, bookingID)
+      .input('PayerUserID', sql.Int, payerUserID)
+      .query(`
+        SELECT BookingID, RenterID, TotalPrice, Status, IsPaid
+        FROM Bookings
+        WHERE BookingID = @BookingID
+      `);
+
+    const booking = bookingResult.recordset[0];
+    if (!booking) throw new Error('booking not found');
+    if (Number(booking.RenterID) !== Number(payerUserID)) {
+      throw new Error('security error: you are not the renter for this booking');
+    }
+    if (booking.IsPaid) throw new Error('this booking has already been paid');
+    if (String(booking.Status).toLowerCase() !== 'confirmed') {
+      throw new Error('booking must be confirmed by the lender before payment');
+    }
+    if (Number(amount).toFixed(2) !== Number(booking.TotalPrice).toFixed(2)) {
+      throw new Error('payment amount must match the booking total');
+    }
+
     const result = await pool.request()
       .input('BookingID', sql.Int, bookingID)
       .input('Amount', sql.Decimal(10, 2), amount)

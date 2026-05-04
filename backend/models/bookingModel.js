@@ -1,7 +1,7 @@
 const { poolPromise, sql } = require('../config/db');
 
 async function createBooking({ assetID, offerID, renterID, lenderID, startDate, endDate, totalPrice }) {
-  const pool = await poolPromise();
+  const pool = await poolPromise;
   const result = await pool.request()
     .input('assetID', sql.Int, parseInt(assetID) || null)
     .input('offerID', sql.Int, parseInt(offerID))
@@ -19,7 +19,7 @@ async function createBooking({ assetID, offerID, renterID, lenderID, startDate, 
 }
 
 async function getBookingsByUser(userID) {
-  const pool = await poolPromise();
+  const pool = await poolPromise;
   const result = await pool.request()
     .input('userID', sql.Int, parseInt(userID))
     .query(`
@@ -45,7 +45,7 @@ async function getBookingsByUser(userID) {
 }
 
 async function getBookingById(bookingID) {
-  const pool = await poolPromise();
+  const pool = await poolPromise;
   const result = await pool.request()
     .input('bookingID', sql.Int, parseInt(bookingID))
     .query(`
@@ -76,7 +76,7 @@ const VALID_TRANSITIONS = {
 };
 
 async function updateBookingStatus(bookingID, userID, newStatus) {
-  const pool = await poolPromise();
+  const pool = await poolPromise;
   const booking = await getBookingById(bookingID);
   if (!booking) return { error: 'booking not found', code: 404 };
   if (booking.RenterID !== userID && booking.LenderID !== userID) {

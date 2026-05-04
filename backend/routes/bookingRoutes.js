@@ -18,10 +18,14 @@ router.get('/my', verifyToken, async (req, res) => {
       query = `
         SELECT 
           b.BookingID as booking_id,
+          b.BookingID as BookingID,
+          a.AssetID as asset_id,
           b.StartDate as start_date,
           b.EndDate as end_date,
           b.TotalPrice as total_price,
           b.Status,
+          b.Status as status,
+          b.IsPaid as is_paid,
           a.Title as asset_name,
           u.FullName as borrower_name,
           u.UserID as borrower_id
@@ -35,10 +39,14 @@ router.get('/my', verifyToken, async (req, res) => {
       query = `
         SELECT 
           b.BookingID as booking_id,
+          b.BookingID as BookingID,
+          a.AssetID as asset_id,
           b.StartDate as start_date,
           b.EndDate as end_date,
           b.TotalPrice as total_price,
           b.Status,
+          b.Status as status,
+          b.IsPaid as is_paid,
           a.Title as asset_name,
           u.FullName as lender_name,
           u.UserID as lender_id
@@ -130,14 +138,23 @@ router.get('/:id', verifyToken, async (req, res) => {
 // POST /bookings/
 router.post('/', verifyToken, async (req, res) => {
   try {
-    const { asset_id, borrower_id, start_date, end_date, message } = req.body;
+    const { asset_id, start_date, end_date } = req.body;
     const pool = await poolPromise;
+    const borrower_id = req.userID;
     
-    console.log('📝 Creating booking:', { asset_id, borrower_id, start_date, end_date });
+    if (!asset_id || !start_date || !end_date) {
+      return res.status(400).json({ error: 'asset_id, start_date and end_date are required' });
+    }
+
+    const start = new Date(start_date);
+    const end = new Date(end_date);
+    if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime()) || end <= start) {
+      return res.status(400).json({ error: 'End date must be after start date' });
+    }
     
     const assetResult = await pool.request()
       .input('AssetId', sql.Int, asset_id)
-      .query('SELECT OwnerID, PricePerDay FROM Assets WHERE AssetID = @AssetId');
+      .query('SELECT OwnerID, PricePerDay, IsActive FROM Assets WHERE AssetID = @AssetId');
 
     if (assetResult.recordset.length === 0) {
       return res.status(404).json({ error: 'Asset not found' });
@@ -145,9 +162,15 @@ router.post('/', verifyToken, async (req, res) => {
 
     const lender_id = assetResult.recordset[0].OwnerID;
     const pricePerDay = assetResult.recordset[0].PricePerDay;
+    const isActive = assetResult.recordset[0].IsActive;
 
-    const start = new Date(start_date);
-    const end = new Date(end_date);
+    if (!isActive) {
+      return res.status(400).json({ error: 'This asset is currently unavailable' });
+    }
+    if (Number(lender_id) === Number(req.userID)) {
+      return res.status(400).json({ error: 'You cannot book your own asset' });
+    }
+
     const days = Math.ceil((end - start) / (1000 * 60 * 60 * 24));
     const total_price = pricePerDay * days;
 
@@ -186,11 +209,16 @@ router.patch('/:id/status', verifyToken, async (req, res) => {
     const userId = req.userID;
     const pool = await poolPromise;
     
-    console.log('✏️ Updating booking', bookingId, 'to status', status, 'by user', userId);
+    const validTransitions = {
+      pending: ['confirmed', 'cancelled'],
+      confirmed: ['ongoing', 'completed', 'cancelled'],
+      ongoing: ['returned', 'completed'],
+      returned: ['completed'],
+    };
     
     const bookingResult = await pool.request()
       .input('BookingId', sql.Int, bookingId)
-      .query('SELECT LenderID, RenterID FROM Bookings WHERE BookingID = @BookingId');
+      .query('SELECT LenderID, RenterID, Status FROM Bookings WHERE BookingID = @BookingId');
     
     if (bookingResult.recordset.length === 0) {
       return res.status(404).json({ error: 'Booking not found' });
@@ -204,13 +232,24 @@ router.patch('/:id/status', verifyToken, async (req, res) => {
       return res.status(403).json({ error: 'Not authorized' });
     }
 
+    const currentStatus = String(booking.Status).toLowerCase();
+    const nextStatus = String(status || '').toLowerCase();
+    if (!validTransitions[currentStatus]?.includes(nextStatus)) {
+      return res.status(400).json({ error: `Cannot transition from ${currentStatus} to ${nextStatus}` });
+    }
+    if (nextStatus === 'confirmed' && !isLender) {
+      return res.status(403).json({ error: 'Only the lender can confirm a booking' });
+    }
+    if (['ongoing', 'returned', 'completed'].includes(nextStatus) && !isLender) {
+      return res.status(403).json({ error: 'Only the lender can update rental progress' });
+    }
+
     await pool.request()
       .input('BookingId', sql.Int, bookingId)
-      .input('Status', sql.NVarChar, status)
-      .query('UPDATE Bookings SET Status = @Status WHERE BookingID = @BookingId');
+      .input('Status', sql.NVarChar, nextStatus)
+      .query('UPDATE Bookings SET Status = @Status, UpdatedAt = GETDATE() WHERE BookingID = @BookingId');
 
-    console.log('✅ Booking status updated');
-    res.json({ message: `Booking ${status}` });
+    res.json({ message: `Booking ${nextStatus}` });
   } catch (err) {
     console.error('❌ Error updating booking:', err);
     res.status(500).json({ error: err.message });

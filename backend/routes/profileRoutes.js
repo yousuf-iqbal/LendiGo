@@ -1,18 +1,34 @@
-﻿const express = require('express');
-const router = express.Router();
+const express = require('express');
+const multer = require('multer');
+const { CloudinaryStorage } = require('multer-storage-cloudinary');
+const { cloudinary } = require('../config/cloudinary');
 const verifyToken = require('../middleware/verifyToken');
+const {
+  getMe,
+  updateMe,
+  uploadAvatar,
+  getPublicProfile,
+} = require('../controllers/profileController');
 
-// Temporary placeholder routes (no DB needed yet)
-router.get('/me', verifyToken, (req, res) => {
-res.json({ message: 'Profile endpoint', user: req.user });
+const router = express.Router();
+
+const storage = new CloudinaryStorage({
+  cloudinary,
+  params: {
+    folder: 'udhaari/profiles',
+    allowed_formats: ['jpg', 'jpeg', 'png', 'webp'],
+    transformation: [{ width: 400, height: 400, crop: 'fill' }],
+  },
 });
 
-router.put('/', verifyToken, (req, res) => {
-res.json({ message: 'Profile updated' });
+const upload = multer({
+  storage,
+  limits: { fileSize: 4 * 1024 * 1024 },
 });
 
-router.get('/:userId', (req, res) => {
-res.json({ message: `Public profile for user ${req.params.userId}` });
-});
+router.get('/me', verifyToken, getMe);
+router.put('/', verifyToken, updateMe);
+router.post('/avatar', verifyToken, upload.single('profilePic'), uploadAvatar);
+router.get('/:userId', getPublicProfile);
 
 module.exports = router;

@@ -17,6 +17,30 @@ router.get('/categories', async (req, res) => {
   }
 });
 
+// Get filter options for request forms/search
+router.get('/filters', async (req, res) => {
+  try {
+    const pool = await poolPromise;
+    const [categories, cities] = await Promise.all([
+      pool.request().query('SELECT CategoryID as id, Name as name FROM Categories ORDER BY Name'),
+      pool.request().query(`
+        SELECT DISTINCT City as city
+        FROM Requests
+        WHERE City IS NOT NULL AND City <> ''
+        ORDER BY City
+      `),
+    ]);
+
+    res.json({
+      categories: categories.recordset,
+      cities: cities.recordset.map(r => r.city),
+    });
+  } catch (err) {
+    console.error('Error fetching request filters:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // ✅ GET /requests/my — Get current user's own requests (MUST be before /:id)
 router.get('/my', verifyToken, async (req, res) => {
   try {
@@ -104,6 +128,7 @@ router.get('/', async (req, res) => {
         FROM Requests r
         LEFT JOIN Users u ON r.RequesterID = u.UserID
         LEFT JOIN Categories c ON r.CategoryID = c.CategoryID
+        WHERE r.Status = 'open'
         ORDER BY r.CreatedAt DESC
       `);
     res.json(result.recordset);
@@ -140,7 +165,8 @@ router.get('/:id', async (req, res) => {
           u.UserID as requesterId,
           u.ProfilePic as requesterPic,
           c.Name as categoryName,
-          c.CategoryID as categoryId
+          c.CategoryID as categoryId,
+          c.CategoryID as categoryID
         FROM Requests r
         LEFT JOIN Users u ON r.RequesterID = u.UserID
         LEFT JOIN Categories c ON r.CategoryID = c.CategoryID
@@ -154,6 +180,76 @@ router.get('/:id', async (req, res) => {
     res.json(result.recordset[0]);
   } catch (err) {
     console.error('Error fetching request:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Update a request (only owner can edit)
+router.put('/:id', verifyToken, async (req, res) => {
+  try {
+    const requestId = parseInt(req.params.id, 10);
+    if (!Number.isFinite(requestId)) {
+      return res.status(400).json({ error: 'Invalid request ID' });
+    }
+
+    const {
+      title,
+      description,
+      categoryId,
+      categoryID,
+      startDate,
+      endDate,
+      maxBudget,
+      city,
+      area,
+    } = req.body;
+
+    if (!title?.trim()) return res.status(400).json({ error: 'Title is required' });
+    if (!startDate || !endDate) return res.status(400).json({ error: 'Start and end dates are required' });
+    if (new Date(endDate) < new Date(startDate)) {
+      return res.status(400).json({ error: 'End date must be after start date' });
+    }
+    if (maxBudget !== undefined && maxBudget !== null && maxBudget !== '' && Number(maxBudget) < 0) {
+      return res.status(400).json({ error: 'Budget cannot be negative' });
+    }
+
+    const pool = await poolPromise;
+    const checkResult = await pool.request()
+      .input('RequestID', sql.Int, requestId)
+      .input('RequesterID', sql.Int, req.userID)
+      .query('SELECT RequestID FROM Requests WHERE RequestID = @RequestID AND RequesterID = @RequesterID');
+
+    if (checkResult.recordset.length === 0) {
+      return res.status(403).json({ error: 'You can only edit your own requests' });
+    }
+
+    await pool.request()
+      .input('RequestID', sql.Int, requestId)
+      .input('Title', sql.NVarChar, title.trim())
+      .input('Description', sql.NVarChar, description || '')
+      .input('CategoryID', sql.Int, categoryId || categoryID || null)
+      .input('StartDate', sql.Date, startDate)
+      .input('EndDate', sql.Date, endDate)
+      .input('MaxBudget', sql.Decimal(10, 2), maxBudget === '' ? null : maxBudget || null)
+      .input('City', sql.NVarChar, city || '')
+      .input('Area', sql.NVarChar, area || '')
+      .query(`
+        UPDATE Requests
+        SET Title = @Title,
+            Description = @Description,
+            CategoryID = @CategoryID,
+            StartDate = @StartDate,
+            EndDate = @EndDate,
+            MaxBudget = @MaxBudget,
+            City = @City,
+            Area = @Area,
+            UpdatedAt = GETDATE()
+        WHERE RequestID = @RequestID
+      `);
+
+    res.json({ message: 'Request updated successfully' });
+  } catch (err) {
+    console.error('Error updating request:', err);
     res.status(500).json({ error: err.message });
   }
 });
@@ -186,6 +282,10 @@ router.delete('/:id', verifyToken, async (req, res) => {
 router.patch('/:id/status', verifyToken, async (req, res) => {
   try {
     const { status } = req.body;
+    const validStatuses = ['open', 'fulfilled', 'closed', 'expired'];
+    if (!validStatuses.includes(status)) {
+      return res.status(400).json({ error: 'Invalid request status' });
+    }
     const pool = await poolPromise;
 
     const checkResult = await pool.request()

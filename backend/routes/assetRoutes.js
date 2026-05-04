@@ -253,12 +253,19 @@ router.post('/', verifyToken, upload, async (req, res) => {
   }
 });
 
-// PUT /api/assets/:id - Edit/Update asset details (owner only)
-router.put('/:id', verifyToken, async (req, res) => {
+// PUT /api/assets/:id - Edit/Update asset details and optional new images (owner only)
+router.put('/:id', verifyToken, upload, async (req, res) => {
   try {
     const { name, description, category, price_per_day, location } = req.body;
     const assetId = parseInt(req.params.id);
     const pool = global.pool;
+
+    if (isNaN(assetId)) return res.status(400).json({ error: 'Invalid asset ID' });
+    if (name !== undefined && !name.trim()) return res.status(400).json({ error: 'Asset name is required' });
+    if (price_per_day !== undefined && (Number.isNaN(Number(price_per_day)) || Number(price_per_day) < 0)) {
+      return res.status(400).json({ error: 'Valid price is required' });
+    }
+    if (location !== undefined && !location.trim()) return res.status(400).json({ error: 'Location is required' });
 
     // Check ownership
     const checkResult = await pool.request()
@@ -278,6 +285,11 @@ router.put('/:id', verifyToken, async (req, res) => {
         .query('SELECT CategoryID FROM Categories WHERE Name = @Name');
       if (catResult.recordset.length > 0) {
         categoryId = catResult.recordset[0].CategoryID;
+      } else {
+        const newCat = await pool.request()
+          .input('Name', sql.NVarChar, category)
+          .query('INSERT INTO Categories (Name) OUTPUT INSERTED.CategoryID VALUES (@Name)');
+        categoryId = newCat.recordset[0].CategoryID;
       }
     }
 
@@ -298,6 +310,25 @@ router.put('/:id', verifyToken, async (req, res) => {
             City = ISNULL(@City, City)
         WHERE AssetID = @AssetId
       `);
+
+    if (req.files && req.files.length > 0) {
+      const existingImages = await pool.request()
+        .input('AssetID', sql.Int, assetId)
+        .query('SELECT COUNT(*) as Count FROM AssetImages WHERE AssetID = @AssetID');
+      const existingCount = existingImages.recordset[0]?.Count || 0;
+      if (existingCount + req.files.length > 5) {
+        return res.status(400).json({ error: 'Maximum 5 images are allowed per asset' });
+      }
+
+      const imagePromises = req.files.map((file, index) =>
+        pool.request()
+          .input('AssetID', sql.Int, assetId)
+          .input('ImageURL', sql.NVarChar, file.path)
+          .input('IsPrimary', sql.Bit, existingCount === 0 && index === 0 ? 1 : 0)
+          .query('INSERT INTO AssetImages (AssetID, ImageURL, IsPrimary) VALUES (@AssetID, @ImageURL, @IsPrimary)')
+      );
+      await Promise.all(imagePromises);
+    }
 
     res.json({ message: 'Asset updated successfully' });
 
@@ -332,6 +363,10 @@ router.patch('/:id', verifyToken, async (req, res) => {
       inputs.IsActive = isActive;
     }
 
+    if (updates.length === 0) {
+      return res.status(400).json({ error: 'No valid asset fields provided' });
+    }
+
     const request = pool.request().input('AssetId', sql.Int, assetId);
     Object.entries(inputs).forEach(([key, value]) => {
       if (key !== 'AssetId') {
@@ -352,11 +387,77 @@ router.patch('/:id', verifyToken, async (req, res) => {
   }
 });
 
+// DELETE /api/assets/:id/images/:imageId - Remove an image from own asset
+router.delete('/:id/images/:imageId', verifyToken, async (req, res) => {
+  try {
+    const assetId = parseInt(req.params.id, 10);
+    const imageId = parseInt(req.params.imageId, 10);
+    if (!Number.isFinite(assetId) || !Number.isFinite(imageId)) {
+      return res.status(400).json({ error: 'Invalid asset or image ID' });
+    }
+
+    const pool = global.pool;
+    const checkResult = await pool.request()
+      .input('AssetID', sql.Int, assetId)
+      .input('ImageID', sql.Int, imageId)
+      .input('OwnerID', sql.Int, req.userID)
+      .query(`
+        SELECT ai.ImageID, ai.IsPrimary
+        FROM AssetImages ai
+        JOIN Assets a ON a.AssetID = ai.AssetID
+        WHERE ai.AssetID = @AssetID AND ai.ImageID = @ImageID AND a.OwnerID = @OwnerID
+      `);
+
+    if (checkResult.recordset.length === 0) {
+      return res.status(403).json({ error: 'You can only delete images from your own assets' });
+    }
+
+    const countResult = await pool.request()
+      .input('AssetID', sql.Int, assetId)
+      .query('SELECT COUNT(*) as Count FROM AssetImages WHERE AssetID = @AssetID');
+
+    if ((countResult.recordset[0]?.Count || 0) <= 1) {
+      return res.status(400).json({ error: 'An asset must keep at least one image' });
+    }
+
+    const wasPrimary = !!checkResult.recordset[0].IsPrimary;
+    await pool.request()
+      .input('ImageID', sql.Int, imageId)
+      .query('DELETE FROM AssetImages WHERE ImageID = @ImageID');
+
+    if (wasPrimary) {
+      await pool.request()
+        .input('AssetID', sql.Int, assetId)
+        .query(`
+          UPDATE AssetImages
+          SET IsPrimary = CASE WHEN ImageID = (
+            SELECT TOP 1 ImageID FROM AssetImages WHERE AssetID = @AssetID ORDER BY ImageID ASC
+          ) THEN 1 ELSE 0 END
+          WHERE AssetID = @AssetID
+        `);
+    }
+
+    res.json({ message: 'Image deleted' });
+  } catch (err) {
+    console.error('Error deleting asset image:', err);
+    res.status(500).json({ error: 'Failed to delete image' });
+  }
+});
+
 // DELETE /api/assets/:id - Delete asset (owner only)
 // DELETE /api/assets/:id
 router.delete('/:id', verifyToken, async (req, res) => {
   try {
     const pool = global.pool;
+    const checkResult = await pool.request()
+      .input('AssetId', sql.Int, req.params.id)
+      .input('OwnerId', sql.Int, req.userID)
+      .query('SELECT AssetID FROM Assets WHERE AssetID = @AssetId AND OwnerID = @OwnerId');
+
+    if (checkResult.recordset.length === 0) {
+      return res.status(403).json({ error: 'You can only delete your own assets' });
+    }
+
     await pool.request()
       .input('AssetId', sql.Int, req.params.id)
       .query('DELETE FROM Assets WHERE AssetID = @AssetId');

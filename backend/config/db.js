@@ -18,18 +18,68 @@ const config = {
   }
 };
 
-// ✅ Migration: Add StartDate and EndDate columns to Offers table if they don't exist
 async function runMigrations(pool) {
   try {
     const migrationQuery = `
-      IF NOT EXISTS (SELECT 1 FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME = 'Offers' AND COLUMN_NAME = 'StartDate')
+      IF OBJECT_ID('Offers', 'U') IS NOT NULL
+         AND NOT EXISTS (SELECT 1 FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME = 'Offers' AND COLUMN_NAME = 'StartDate')
       BEGIN
         ALTER TABLE Offers ADD StartDate DATE NULL;
       END
 
-      IF NOT EXISTS (SELECT 1 FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME = 'Offers' AND COLUMN_NAME = 'EndDate')
+      IF OBJECT_ID('Offers', 'U') IS NOT NULL
+         AND NOT EXISTS (SELECT 1 FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME = 'Offers' AND COLUMN_NAME = 'EndDate')
       BEGIN
         ALTER TABLE Offers ADD EndDate DATE NULL;
+      END
+
+      IF OBJECT_ID('Requests', 'U') IS NOT NULL
+         AND NOT EXISTS (SELECT 1 FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME = 'Requests' AND COLUMN_NAME = 'UpdatedAt')
+      BEGIN
+        ALTER TABLE Requests ADD UpdatedAt DATETIME NULL;
+      END
+
+      IF OBJECT_ID('Notifications', 'U') IS NOT NULL
+         AND NOT EXISTS (SELECT 1 FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME = 'Notifications' AND COLUMN_NAME = 'RelatedID')
+      BEGIN
+        ALTER TABLE Notifications ADD RelatedID INT NULL;
+      END
+
+      IF OBJECT_ID('Notifications', 'U') IS NOT NULL
+         AND NOT EXISTS (SELECT 1 FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME = 'Notifications' AND COLUMN_NAME = 'RelatedType')
+      BEGIN
+        ALTER TABLE Notifications ADD RelatedType NVARCHAR(50) NULL;
+      END
+
+      IF OBJECT_ID('Notifications', 'U') IS NOT NULL
+         AND NOT EXISTS (SELECT 1 FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME = 'Notifications' AND COLUMN_NAME = 'ReadAt')
+      BEGIN
+        ALTER TABLE Notifications ADD ReadAt DATETIME NULL;
+      END
+
+      IF OBJECT_ID('AuditLogs', 'U') IS NULL
+      BEGIN
+        CREATE TABLE AuditLogs (
+          AuditLogID INT PRIMARY KEY IDENTITY(1,1),
+          UserID INT NULL,
+          Action NVARCHAR(100) NOT NULL,
+          Details NVARCHAR(MAX) NULL,
+          IPAddress NVARCHAR(100) NULL,
+          CreatedAt DATETIME DEFAULT GETDATE()
+        );
+      END
+
+      IF OBJECT_ID('Messages', 'U') IS NULL
+      BEGIN
+        CREATE TABLE Messages (
+          MessageID INT PRIMARY KEY IDENTITY(1,1),
+          SenderID INT NOT NULL,
+          ReceiverID INT NOT NULL,
+          BookingID INT NULL,
+          Body NVARCHAR(2000) NOT NULL,
+          IsRead BIT DEFAULT 0,
+          SentAt DATETIME DEFAULT GETDATE()
+        );
       END
     `;
     await pool.request().query(migrationQuery);

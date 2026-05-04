@@ -1,13 +1,18 @@
-﻿import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import API from "../api/axios";
+import ChatPanel from "../components/ChatPanel";
+import ReviewModal from "../components/ReviewModal";
 
 export default function MyBookingsPage() {
   const [bookings, setBookings] = useState([]);
   const [loading, setLoading] = useState(true);
   const [role, setRole] = useState("borrower");
   const [processing, setProcessing] = useState(null);
+  const [chatBooking, setChatBooking] = useState(null);
+  const [reviewBooking, setReviewBooking] = useState(null);
   const navigate = useNavigate();
+  const currentUser = JSON.parse(localStorage.getItem("udhaari_user") || "null");
 
   useEffect(() => {
     fetchBookings();
@@ -17,9 +22,9 @@ export default function MyBookingsPage() {
     setLoading(true);
     try {
       const response = await API.get(`/bookings/my?role=${role}`);
-      setBookings(response.data);
+      setBookings(response.data || []);
     } catch (err) {
-      console.error(err);
+      alert(err.response?.data?.error || "Could not load bookings");
     } finally {
       setLoading(false);
     }
@@ -38,12 +43,12 @@ export default function MyBookingsPage() {
   };
 
   const acceptBooking = async (bookingId) => {
-    if (!window.confirm("Accept this booking? The borrower will be notified to proceed to payment.")) return;
+    if (!window.confirm("Accept this booking? The borrower will be able to proceed to payment.")) return;
     setProcessing(bookingId);
     try {
-      const res = await API.patch(`/bookings/${bookingId}/accept`);
+      await API.patch(`/bookings/${bookingId}/accept`);
       fetchBookings();
-      alert("Booking accepted! Borrower can now proceed to payment.");
+      alert("Booking accepted. The borrower can now pay from wallet.");
     } catch (err) {
       alert(err.response?.data?.error || "Could not accept booking");
     } finally {
@@ -52,7 +57,7 @@ export default function MyBookingsPage() {
   };
 
   const rejectBooking = async (bookingId) => {
-    if (!window.confirm("Reject this booking? The borrower will be notified.")) return;
+    if (!window.confirm("Reject this booking?")) return;
     setProcessing(bookingId);
     try {
       await API.patch(`/bookings/${bookingId}/reject`);
@@ -65,304 +70,197 @@ export default function MyBookingsPage() {
     }
   };
 
-  const getStatusBadge = (status) => {
-    const styles = {
-      pending: { background: "#fff7ed", color: "#c2410c", border: "1px solid #fed7aa" },
-      confirmed: { background: "#dcfce7", color: "#166534", border: "1px solid #86efac" },
-      accepted: { background: "#dbeafe", color: "#1e40af", border: "1px solid #93c5fd" },
-      approved: { background: "#dcfce7", color: "#166534", border: "1px solid #86efac" },
-      rejected: { background: "#fee2e2", color: "#dc2626", border: "1px solid #fca5a5" },
-      completed: { background: "#dcfce7", color: "#166534", border: "1px solid #86efac" },
-      cancelled: { background: "#fee2e2", color: "#dc2626", border: "1px solid #fca5a5" },
-      ongoing: { background: "#dbeafe", color: "#1e40af", border: "1px solid #93c5fd" }
+  const badge = (status) => {
+    const map = {
+      pending: ["#fff7ed", "#c2410c", "#fed7aa"],
+      confirmed: ["#dcfce7", "#166534", "#86efac"],
+      ongoing: ["#dbeafe", "#1e40af", "#93c5fd"],
+      returned: ["#fef3c7", "#92400e", "#fde68a"],
+      completed: ["#dcfce7", "#166534", "#86efac"],
+      cancelled: ["#fee2e2", "#dc2626", "#fca5a5"],
     };
-    const style = styles[status] || styles.pending;
+    const [background, color, border] = map[status] || map.pending;
     return (
       <span style={{
         padding: "6px 14px",
-        borderRadius: "20px",
-        fontSize: "13px",
-        fontWeight: 600,
+        borderRadius: 20,
+        fontSize: 13,
+        fontWeight: 700,
         textTransform: "capitalize",
-        ...style
+        background,
+        color,
+        border: `1px solid ${border}`,
       }}>
-        {status}
+        {status || "pending"}
       </span>
     );
   };
 
-  if (loading) return (
-    <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#f9fafb' }}>
-      <div style={{ textAlign: 'center' }}>
-        <div style={{ width: '48px', height: '48px', border: '4px solid #e5e7eb', borderTop: '4px solid #059669', borderRadius: '50%', animation: 'spin 1s linear infinite', margin: '0 auto 1rem' }} />
-        <p style={{ color: '#6b7280' }}>Loading bookings...</p>
-        <style>{`@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }`}</style>
+  if (loading) {
+    return (
+      <div style={styles.loading}>
+        <div style={styles.spinner} />
+        <p style={{ color: "#6b7280" }}>Loading bookings...</p>
+        <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
       </div>
-    </div>
-  );
+    );
+  }
 
   return (
-    <div style={{ minHeight: '100vh', background: '#f9fafb', padding: '2rem' }}>
-      <div style={{ maxWidth: '1000px', margin: '0 auto' }}>
-        <h1 style={{ fontSize: '2rem', fontWeight: 800, color: '#1f2937', marginBottom: '2rem' }}>My Bookings</h1>
-        
-        {/* Role Toggle */}
-        <div style={{ 
-          display: 'flex', 
-          gap: '1rem', 
-          marginBottom: '2rem',
-          background: '#fff',
-          padding: '0.5rem',
-          borderRadius: '12px',
-          boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
-          width: 'fit-content'
-        }}>
-          <button 
-            onClick={() => setRole("borrower")} 
-            style={{ 
-              padding: '0.75rem 2rem', 
-              background: role === "borrower" ? '#059669' : 'transparent', 
-              color: role === "borrower" ? '#fff' : '#374151', 
-              border: 'none', 
-              borderRadius: '8px', 
-              cursor: 'pointer',
-              fontWeight: 600,
-              transition: 'all 0.2s'
-            }}
-          >
+    <div style={styles.page}>
+      <div style={styles.inner}>
+        <div style={styles.header}>
+          <div>
+            <h1 style={styles.title}>My Bookings</h1>
+            <p style={styles.subtitle}>Track rentals, payments, chat, and reviews in one place.</p>
+          </div>
+          <button onClick={fetchBookings} style={styles.ghostButton}>Refresh</button>
+        </div>
+
+        <div style={styles.tabs}>
+          <button onClick={() => setRole("borrower")} style={role === "borrower" ? styles.activeTab : styles.tab}>
             Items I Requested
           </button>
-          <button 
-            onClick={() => setRole("lender")} 
-            style={{ 
-              padding: '0.75rem 2rem', 
-              background: role === "lender" ? '#059669' : 'transparent', 
-              color: role === "lender" ? '#fff' : '#374151', 
-              border: 'none', 
-              borderRadius: '8px', 
-              cursor: 'pointer',
-              fontWeight: 600,
-              transition: 'all 0.2s'
-            }}
-          >
+          <button onClick={() => setRole("lender")} style={role === "lender" ? styles.activeTab : styles.tab}>
             Requests for My Items
           </button>
         </div>
 
         {bookings.length === 0 ? (
-          <div style={{ 
-            textAlign: 'center', 
-            padding: '4rem', 
-            background: '#fff',
-            borderRadius: '12px',
-            boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
-          }}>
-            <div style={{ fontSize: '4rem', marginBottom: '1rem' }}>📭</div>
-            <p style={{ color: '#6b7280', fontSize: '1.1rem', marginBottom: '1.5rem' }}>No bookings found</p>
+          <div style={styles.empty}>
+            <div style={{ fontSize: "4rem", marginBottom: "1rem" }}>📭</div>
+            <h3 style={{ color: "#1f2937", marginBottom: "0.5rem" }}>No bookings found</h3>
+            <p style={{ color: "#6b7280", marginBottom: "1.5rem" }}>
+              {role === "borrower" ? "Browse items and send your first booking request." : "Incoming booking requests will appear here."}
+            </p>
             {role === "borrower" && (
-              <button 
-                onClick={() => navigate("/browse")} 
-                style={{ 
-                  padding: '0.75rem 2rem', 
-                  background: '#059669', 
-                  color: 'white', 
-                  border: 'none', 
-                  borderRadius: '8px', 
-                  cursor: 'pointer',
-                  fontWeight: 600
-                }}
-              >
-                Browse Items
-              </button>
+              <button onClick={() => navigate("/browse")} style={styles.primaryButton}>Browse Items</button>
             )}
           </div>
         ) : (
-          <div style={{ display: 'grid', gap: '1rem' }}>
-            {bookings.map((b) => (
-              <div 
-                key={b.booking_id} 
-                style={{ 
-                  background: '#fff', 
-                  borderRadius: '12px', 
-                  padding: '1.5rem',
-                  boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
-                  border: '1px solid #e5e7eb',
-                  transition: 'all 0.2s'
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.1)';
-                  e.currentTarget.style.transform = 'translateY(-2px)';
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.boxShadow = '0 1px 3px rgba(0,0,0,0.1)';
-                  e.currentTarget.style.transform = 'translateY(0)';
-                }}
-              >
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', flexWrap: 'wrap', gap: '1rem' }}>
-                  <h3 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 700, color: '#1f2937' }}>{b.asset_name}</h3>
-                  {getStatusBadge(b.status)}
-                </div>
-                
-                <div style={{ 
-                  display: 'grid', 
-                  gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', 
-                  gap: '1rem',
-                  marginBottom: '1rem',
-                  padding: '1rem',
-                  background: '#f9fafb',
-                  borderRadius: '8px'
-                }}>
-                  <div>
-                    <p style={{ margin: '0.25rem 0', color: '#6b7280', fontSize: '0.875rem' }}>
-                      <strong style={{ color: '#374151' }}>Dates:</strong> {new Date(b.start_date).toLocaleDateString()} to {new Date(b.end_date).toLocaleDateString()}
-                    </p>
-                    <p style={{ margin: '0.25rem 0', color: '#6b7280', fontSize: '0.875rem' }}>
-                      <strong style={{ color: '#374151' }}>Total:</strong> Rs {Number(b.total_price).toLocaleString()}
-                    </p>
-                  </div>
-                  <div>
-                    <p style={{ margin: '0.25rem 0', color: '#6b7280', fontSize: '0.875rem' }}>
-                      <strong style={{ color: '#374151' }}>{role === "borrower" ? 'Lender' : 'Borrower'}:</strong> {role === "borrower" ? b.lender_name : b.borrower_name}
-                    </p>
-                  </div>
-                </div>
+          <div style={styles.grid}>
+            {bookings.map((booking) => {
+              const status = String(booking.status || booking.Status || "pending").toLowerCase();
+              const bookingId = booking.booking_id || booking.BookingID;
+              const assetId = booking.asset_id || booking.AssetID;
 
-                {b.message && (
-                  <div style={{ 
-                    background: '#f0fdf4', 
-                    padding: '1rem', 
-                    borderRadius: '8px', 
-                    fontStyle: 'italic',
-                    marginBottom: '1rem',
-                    borderLeft: '4px solid #059669'
-                  }}>
-                    "{b.message}"
+              return (
+                <div key={bookingId} style={styles.card} className="animate-fade-up">
+                  <div style={styles.cardHeader}>
+                    <div>
+                      <h3 style={styles.cardTitle}>{booking.asset_name || booking.AssetTitle || booking.RequestTitle || "Booking"}</h3>
+                      <p style={styles.meta}>
+                        {new Date(booking.start_date || booking.StartDate).toLocaleDateString()} to {new Date(booking.end_date || booking.EndDate).toLocaleDateString()}
+                      </p>
+                    </div>
+                    {badge(status)}
                   </div>
-                )}
-                
-                <div style={{ 
-                  display: 'flex', 
-                  gap: '0.75rem', 
-                  marginTop: '1rem', 
-                  paddingTop: '1rem', 
-                  borderTop: '1px solid #e5e7eb',
-                  flexWrap: 'wrap'
-                }}>
-                  {/* Lender Actions */}
-                  {role === "lender" && b.status === "pending" && (
-                    <>
-                      <button 
-                        onClick={() => acceptBooking(b.booking_id)} 
-                        disabled={processing === b.booking_id}
-                        style={{ 
-                          padding: '0.625rem 1.5rem', 
-                          background: processing === b.booking_id ? '#9ca3af' : '#059669', 
-                          color: 'white', 
-                          border: 'none', 
-                          borderRadius: '8px', 
-                          cursor: processing === b.booking_id ? 'not-allowed' : 'pointer',
-                          fontWeight: 600
-                        }}
-                      >
-                        {processing === b.booking_id ? 'Processing...' : '✓ Accept Booking'}
+
+                  <div style={styles.infoGrid}>
+                    <div>
+                      <p style={styles.label}>Total</p>
+                      <p style={styles.value}>Rs. {Number(booking.total_price || booking.TotalPrice || 0).toLocaleString()}</p>
+                    </div>
+                    <div>
+                      <p style={styles.label}>{role === "borrower" ? "Lender" : "Borrower"}</p>
+                      <p style={styles.value}>{role === "borrower" ? booking.lender_name : booking.borrower_name}</p>
+                    </div>
+                    <div>
+                      <p style={styles.label}>Payment</p>
+                      <p style={styles.value}>{booking.is_paid ? "Paid" : "Unpaid"}</p>
+                    </div>
+                  </div>
+
+                  <div style={styles.actions}>
+                    {role === "lender" && status === "pending" && (
+                      <>
+                        <button disabled={processing === bookingId} onClick={() => acceptBooking(bookingId)} style={styles.primaryButton}>
+                          {processing === bookingId ? "Processing..." : "Accept"}
+                        </button>
+                        <button disabled={processing === bookingId} onClick={() => rejectBooking(bookingId)} style={styles.dangerButton}>
+                          Reject
+                        </button>
+                      </>
+                    )}
+
+                    {role === "borrower" && status === "pending" && (
+                      <button disabled={processing === bookingId} onClick={() => updateStatus(bookingId, "cancelled")} style={styles.dangerButton}>
+                        Cancel Request
                       </button>
-                      <button 
-                        onClick={() => rejectBooking(b.booking_id)} 
-                        disabled={processing === b.booking_id}
-                        style={{ 
-                          padding: '0.625rem 1.5rem', 
-                          background: 'transparent', 
-                          border: '1px solid #dc2626', 
-                          color: '#dc2626', 
-                          borderRadius: '8px', 
-                          cursor: processing === b.booking_id ? 'not-allowed' : 'pointer',
-                          fontWeight: 600
-                        }}
-                      >
-                        ✗ Reject
+                    )}
+
+                    {role === "borrower" && status === "confirmed" && !booking.is_paid && (
+                      <button onClick={() => navigate(`/bookings/${bookingId}/payment`)} style={styles.primaryButton}>
+                        Pay Now
                       </button>
-                    </>
-                  )}
-                  
-                  {/* Borrower Actions */}
-                  {role === "borrower" && b.status === "pending" && (
-                    <button 
-                      onClick={() => updateStatus(b.booking_id, "cancelled")} 
-                      disabled={processing === b.booking_id}
-                      style={{ 
-                        padding: '0.625rem 1.5rem', 
-                        background: 'transparent', 
-                        border: '1px solid #dc2626', 
-                        color: '#dc2626', 
-                        borderRadius: '8px', 
-                        cursor: processing === b.booking_id ? 'not-allowed' : 'pointer',
-                        fontWeight: 600
-                      }}
-                    >
-                      Cancel Request
-                    </button>
-                  )}
-                  
-                  {/* Proceed to Payment - for borrower when booking is confirmed by lender */}
-                  {role === "borrower" && b.status === "confirmed" && (
-                    <button 
-                      onClick={() => navigate(`/bookings/${b.booking_id}/payment`)}
-                      style={{ 
-                        padding: '0.625rem 1.5rem', 
-                        background: 'linear-gradient(135deg, #059669 0%, #10b981 100%)', 
-                        color: 'white', 
-                        border: 'none', 
-                        borderRadius: '8px', 
-                        cursor: 'pointer',
-                        fontWeight: 600,
-                        boxShadow: '0 2px 8px rgba(5, 150, 105, 0.3)'
-                      }}
-                    >
-                      💳 Proceed to Payment
-                    </button>
-                  )}
-                  
-                  {/* Lender: Mark Completed */}
-                  {role === "lender" && b.status === "approved" && (
-                    <button 
-                      onClick={() => updateStatus(b.booking_id, "completed")} 
-                      style={{ 
-                        padding: '0.625rem 1.5rem', 
-                        background: '#3b82f6', 
-                        color: 'white', 
-                        border: 'none', 
-                        borderRadius: '8px', 
-                        cursor: 'pointer',
-                        fontWeight: 600
-                      }}
-                    >
-                      ✓ Mark Completed
-                    </button>
-                  )}
-                  
-                  {/* View Asset */}
-                  {(b.status === "completed" || b.status === "ongoing") && (
-                    <button 
-                      onClick={() => navigate(`/assets/${b.asset_id}`)}
-                      style={{ 
-                        padding: '0.625rem 1.5rem', 
-                        background: '#f3f4f6', 
-                        border: 'none', 
-                        borderRadius: '8px', 
-                        cursor: 'pointer',
-                        fontWeight: 600,
-                        color: '#374151'
-                      }}
-                    >
-                      View Asset
-                    </button>
-                  )}
+                    )}
+
+                    {role === "lender" && ["confirmed", "ongoing", "returned"].includes(status) && (
+                      <button disabled={processing === bookingId} onClick={() => updateStatus(bookingId, "completed")} style={styles.primaryButton}>
+                        Mark Completed
+                      </button>
+                    )}
+
+                    <button onClick={() => setChatBooking(booking)} style={styles.blueButton}>Open Chat</button>
+
+                    {assetId && <button onClick={() => navigate(`/assets/${assetId}`)} style={styles.ghostButton}>View Asset</button>}
+
+                    {status === "completed" && (
+                      <button onClick={() => setReviewBooking(booking)} style={styles.orangeButton}>Leave Review</button>
+                    )}
+                  </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </div>
+
+      {chatBooking && (
+        <ChatPanel
+          bookingId={chatBooking.booking_id || chatBooking.BookingID}
+          currentUserId={currentUser?.id || currentUser?.UserID}
+          title={chatBooking.asset_name || chatBooking.AssetTitle || "Booking chat"}
+          onClose={() => setChatBooking(null)}
+        />
+      )}
+
+      {reviewBooking && (
+        <ReviewModal
+          booking={reviewBooking}
+          role={role}
+          onClose={() => setReviewBooking(null)}
+          onSubmitted={fetchBookings}
+        />
+      )}
     </div>
   );
 }
+
+const styles = {
+  page: { minHeight: "100vh", background: "#f9fafb", padding: "2rem" },
+  inner: { maxWidth: 1100, margin: "0 auto" },
+  loading: { minHeight: "100vh", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", background: "#f9fafb" },
+  spinner: { width: 48, height: 48, border: "4px solid #e5e7eb", borderTop: "4px solid #059669", borderRadius: "50%", animation: "spin 1s linear infinite", marginBottom: "1rem" },
+  header: { display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: "1rem", marginBottom: "1.5rem" },
+  title: { fontSize: "2.25rem", fontWeight: 900, color: "#111827", margin: 0 },
+  subtitle: { color: "#6b7280", margin: "0.35rem 0 0" },
+  tabs: { display: "flex", gap: "0.5rem", background: "#fff", padding: "0.5rem", borderRadius: 12, boxShadow: "0 1px 3px rgba(0,0,0,0.08)", width: "fit-content", marginBottom: "2rem" },
+  tab: { padding: "0.75rem 1.5rem", background: "transparent", color: "#374151", border: "none", borderRadius: 8, cursor: "pointer", fontWeight: 700 },
+  activeTab: { padding: "0.75rem 1.5rem", background: "#059669", color: "#fff", border: "none", borderRadius: 8, cursor: "pointer", fontWeight: 800 },
+  empty: { textAlign: "center", padding: "4rem", background: "#fff", borderRadius: 14, boxShadow: "0 1px 3px rgba(0,0,0,0.08)" },
+  grid: { display: "grid", gap: "1rem" },
+  card: { background: "#fff", borderRadius: 14, padding: "1.5rem", boxShadow: "0 1px 3px rgba(0,0,0,0.08)", border: "1px solid #e5e7eb" },
+  cardHeader: { display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: "1rem", marginBottom: "1rem" },
+  cardTitle: { margin: 0, fontSize: "1.25rem", fontWeight: 800, color: "#111827" },
+  meta: { color: "#6b7280", margin: "0.25rem 0 0", fontSize: "0.9rem" },
+  infoGrid: { display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: "1rem", background: "#f9fafb", borderRadius: 10, padding: "1rem", marginBottom: "1rem" },
+  label: { color: "#9ca3af", margin: 0, fontSize: "0.78rem", fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.06em" },
+  value: { color: "#111827", margin: "0.2rem 0 0", fontWeight: 800 },
+  actions: { display: "flex", flexWrap: "wrap", gap: "0.75rem", paddingTop: "1rem", borderTop: "1px solid #e5e7eb" },
+  primaryButton: { padding: "0.65rem 1rem", background: "#059669", color: "#fff", border: "none", borderRadius: 8, cursor: "pointer", fontWeight: 800 },
+  dangerButton: { padding: "0.65rem 1rem", background: "#fef2f2", color: "#dc2626", border: "1px solid #fca5a5", borderRadius: 8, cursor: "pointer", fontWeight: 800 },
+  blueButton: { padding: "0.65rem 1rem", background: "#eff6ff", color: "#1e40af", border: "1px solid #93c5fd", borderRadius: 8, cursor: "pointer", fontWeight: 800 },
+  orangeButton: { padding: "0.65rem 1rem", background: "#fff7ed", color: "#c2410c", border: "1px solid #fdba74", borderRadius: 8, cursor: "pointer", fontWeight: 800 },
+  ghostButton: { padding: "0.65rem 1rem", background: "#f3f4f6", color: "#374151", border: "none", borderRadius: 8, cursor: "pointer", fontWeight: 800 },
+};

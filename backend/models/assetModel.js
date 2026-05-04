@@ -1,7 +1,7 @@
 const { poolPromise, sql } = require('../config/db');
 
 async function getAllAssets({ search, category, city, minPrice, maxPrice } = {}) {
-  const pool = await poolPromise();
+  const pool = await poolPromise;
   const request = pool.request();
 
   let query = `
@@ -46,7 +46,7 @@ async function getAllAssets({ search, category, city, minPrice, maxPrice } = {})
 }
 
 async function getAssetById(assetID) {
-  const pool = await poolPromise();
+  const pool = await poolPromise;
   const [assetRes, imagesRes] = await Promise.all([
     pool.request()
       .input('assetID', sql.Int, parseInt(assetID))
@@ -74,7 +74,7 @@ async function getAssetById(assetID) {
 }
 
 async function getAssetsByOwner(ownerID) {
-  const pool = await poolPromise();
+  const pool = await poolPromise;
   const result = await pool.request()
     .input('ownerID', sql.Int, parseInt(ownerID))
     .query(`
@@ -92,7 +92,7 @@ async function getAssetsByOwner(ownerID) {
 }
 
 async function createAsset({ ownerID, categoryID, title, description, pricePerDay, deposit, city, area }) {
-  const pool = await poolPromise();
+  const pool = await poolPromise;
   const result = await pool.request()
     .input('ownerID', sql.Int, parseInt(ownerID))
     .input('categoryID', sql.Int, categoryID ? parseInt(categoryID) : null)
@@ -111,7 +111,7 @@ async function createAsset({ ownerID, categoryID, title, description, pricePerDa
 }
 
 async function addAssetImages(assetID, images) {
-  const pool = await poolPromise();
+  const pool = await poolPromise;
   for (let i = 0; i < images.length; i++) {
     await pool.request()
       .input('assetID', sql.Int, parseInt(assetID))
@@ -122,7 +122,7 @@ async function addAssetImages(assetID, images) {
 }
 
 async function updateAsset(assetID, ownerID, { categoryID, title, description, pricePerDay, deposit, city, area, isActive }) {
-  const pool = await poolPromise();
+  const pool = await poolPromise;
   const check = await pool.request()
     .input('assetID', sql.Int, parseInt(assetID))
     .input('ownerID', sql.Int, parseInt(ownerID))
@@ -150,7 +150,7 @@ async function updateAsset(assetID, ownerID, { categoryID, title, description, p
 }
 
 async function deleteAsset(assetID, ownerID) {
-  const pool = await poolPromise();
+  const pool = await poolPromise;
   const check = await pool.request()
     .input('assetID', sql.Int, parseInt(assetID))
     .input('ownerID', sql.Int, parseInt(ownerID))
@@ -164,7 +164,7 @@ async function deleteAsset(assetID, ownerID) {
 }
 
 async function getBlockedDates(assetID) {
-  const pool = await poolPromise();
+  const pool = await poolPromise;
   const result = await pool.request()
     .input('assetID', sql.Int, parseInt(assetID))
     .query(`SELECT BlockedDate FROM Availability WHERE AssetID = @assetID ORDER BY BlockedDate`);
@@ -172,7 +172,7 @@ async function getBlockedDates(assetID) {
 }
 
 async function blockDates(assetID, dates) {
-  const pool = await poolPromise();
+  const pool = await poolPromise;
   for (const date of dates) {
     try {
       await pool.request()

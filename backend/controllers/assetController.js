@@ -90,7 +90,7 @@ async function deleteAsset(req, res) {
 
 async function getFilterOptions(req, res) {
   try {
-    const pool = await poolPromise();
+    const pool = await poolPromise;
     const [cats, cities] = await Promise.all([
       pool.request().query(`SELECT DISTINCT c.CategoryID, c.Name FROM Categories c JOIN Assets a ON a.CategoryID = c.CategoryID WHERE a.IsActive = 1 ORDER BY c.Name`),
       pool.request().query(`SELECT DISTINCT City FROM Assets WHERE City IS NOT NULL AND IsActive = 1 ORDER BY City`),
