@@ -1,582 +1,436 @@
-import { useState, useEffect, useRef } from "react";
-import { useNavigate, Link } from "react-router-dom";
-import { signOut } from "firebase/auth";
-import { auth } from "../config/firebase";
-import API from "../api/axios";
-import "./ProfilePage.css";
+/* ═══════════════════════════════════════════════════════════
+   ProfilePage.jsx  — NEW
+   Place at: frontend/src/pages/ProfilePage.jsx
+   Replaces: existing ProfilePage.jsx
+   API routes used: GET /profile/me, PUT /profile/me, POST /profile/avatar
+   No extra deps needed.
+═══════════════════════════════════════════════════════════ */
 
-/* ── tiny spinner ── */
-function Spin() {
+import { useState, useEffect, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
+import API from '../api/axios';
+import FloatingBackground from '../components/FloatingBackground';
+
+/* ── Design tokens ─────────────────────────── */
+const C = {
+  saffron:    '#F4A020',
+  saffronPale:'#FFF0CC',
+  maroon:     '#800020',
+  maroonLight:'#B00030',
+  maroonDeep: '#5C0018',
+  brownLight: '#C4956A',
+  cream:      '#FDF6EC',
+  warmWhite:  '#FFF9F0',
+  textDark:   '#2C1810',
+  textMuted:  '#6B4C3B',
+  textFaint:  '#A68070',
+  border:     'rgba(128,0,32,0.12)',
+  borderStrong:'rgba(128,0,32,0.25)',
+};
+
+/* ── Sub-components ────────────────────────── */
+function InfoRow({ label, value, icon }) {
   return (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"
-      style={{ animation: "spin 0.7s linear infinite" }}>
-      <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" />
-    </svg>
+    <div style={{
+      display:'flex', alignItems:'center', gap:12,
+      padding:'1rem 1.25rem',
+      background:'rgba(253,246,236,0.7)',
+      border:`1px solid ${C.border}`,
+      borderRadius:12,
+      transition:'all 0.25s ease',
+    }}
+    onMouseEnter={e => { e.currentTarget.style.background = C.saffronPale; e.currentTarget.style.borderColor = 'rgba(244,160,32,0.35)'; }}
+    onMouseLeave={e => { e.currentTarget.style.background = 'rgba(253,246,236,0.7)'; e.currentTarget.style.borderColor = C.border; }}>
+      <span style={{ fontSize:'1.1rem', flexShrink:0 }}>{icon}</span>
+      <div>
+        <p style={{ margin:0, fontSize:'0.72rem', fontWeight:700, color:C.textFaint, textTransform:'uppercase', letterSpacing:'0.08em' }}>{label}</p>
+        <p style={{ margin:'2px 0 0', fontSize:'0.97rem', fontWeight:600, color:C.textDark }}>{value || <span style={{ color:C.textFaint, fontStyle:'italic', fontWeight:400 }}>Not set</span>}</p>
+      </div>
+    </div>
   );
 }
 
-/* ── Arrow icon for links ── */
-function Arrow() {
+function FloatField({ label, name, value, onChange, type='text', maxLength, placeholder }) {
+  const [focused, setFocused] = useState(false);
+  const active = focused || (value && String(value).length > 0);
   return (
-    <svg width="14" height="14" viewBox="0 0 14 14" fill="none" className="profile__link-arrow">
-      <path d="M3 7h8M8 4l3 3-3 3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
+    <div style={{ position:'relative', marginBottom:'1.1rem' }}>
+      <div style={{
+        position:'relative',
+        background: focused ? 'rgba(244,160,32,0.06)' : C.warmWhite,
+        border: `1.5px solid ${focused ? C.saffron : C.border}`,
+        borderRadius:12,
+        padding:'1rem 1rem 0.55rem',
+        transition:'all 0.25s ease',
+        boxShadow: focused ? '0 0 0 3px rgba(244,160,32,0.15)' : 'none',
+      }}>
+        <label style={{
+          position:'absolute', left:'1rem',
+          top: active ? '0.38rem' : '0.95rem',
+          fontSize: active ? '0.68rem' : '0.93rem',
+          fontWeight: active ? 700 : 500,
+          color: focused ? C.saffronDark || '#E08800' : C.textFaint,
+          letterSpacing: active ? '0.07em' : 'normal',
+          textTransform: active ? 'uppercase' : 'none',
+          transition:'all 0.2s ease',
+          pointerEvents:'none',
+        }}>{label}</label>
+        <input
+          name={name}
+          type={type}
+          value={value}
+          onChange={onChange}
+          maxLength={maxLength}
+          placeholder={focused ? placeholder : ''}
+          onFocus={() => setFocused(true)}
+          onBlur={() => setFocused(false)}
+          style={{
+            width:'100%', background:'transparent', border:'none', outline:'none',
+            color:C.textDark, fontSize:'0.97rem', fontFamily:"'Outfit', sans-serif",
+            paddingTop:'0.3rem',
+          }}
+        />
+      </div>
+    </div>
   );
 }
 
-/* ── Lock icon ── */
-function Lock() {
-  return (
-    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="profile__lock-icon">
-      <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
-      <path d="M7 11V7a5 5 0 0 1 10 0v4" />
-    </svg>
-  );
-}
-
-/* ── Camera icon for avatar overlay ── */
-function Camera() {
-  return (
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-      <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" />
-      <circle cx="12" cy="13" r="4" />
-    </svg>
-  );
-}
-
+/* ── Main ──────────────────────────────────── */
 export default function ProfilePage() {
   const navigate = useNavigate();
-  const fileInputRef = useRef(null);
+  const fileRef = useRef(null);
 
-  // ── auth ──
-  const fbUser = auth.currentUser;
-  const storedUser = JSON.parse(localStorage.getItem("udhaari_user") || "null");
-  const token = localStorage.getItem("token");
-
-  // ── state ──
-  const [profile, setProfile] = useState(null);
+  const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [editMode, setEditMode] = useState(false);
+  const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [saveMsg, setSaveMsg] = useState({ text: "", ok: true });
+  const [msg, setMsg] = useState({ type:'', text:'' });
   const [avatarUploading, setAvatarUploading] = useState(false);
-  const [avatarPreview, setAvatarPreview] = useState(null);
+  const [mounted, setMounted] = useState(false);
 
   const [form, setForm] = useState({
-    fullName: "",
-    phone: "",
-    city: "",
-    area: "",
-    cnic: "",
+    fullName:'', phone:'', city:'', area:'', cnic:'',
   });
-  const [errors, setErrors] = useState({});
 
-  // ── load profile ──
   useEffect(() => {
-    if (!fbUser && !storedUser) { navigate("/login"); return; }
+    setMounted(true);
     fetchProfile();
   }, []);
 
   const fetchProfile = async () => {
     try {
-      const res = await API.get("/auth/me", {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      const data = res.data.user || res.data;
-      setProfile(data);
+      const res = await API.get('/profile/me');
+      const u = res.data.user;
+      setUser(u);
       setForm({
-        fullName: data.FullName || data.fullName || storedUser?.fullName || "",
-        phone: data.Phone || data.phone || storedUser?.phone || "",
-        city: data.City || data.city || storedUser?.city || "",
-        area: data.Area || data.area || storedUser?.area || "",
-        cnic: data.CNIC || data.cnic || storedUser?.cnic || "",
+        fullName: u.FullName || '',
+        phone:    u.Phone    || '',
+        city:     u.City     || '',
+        area:     u.Area     || '',
+        cnic:     u.CNIC     || '',
       });
-      if (data.ProfilePic || data.profilePic) {
-        setAvatarPreview(data.ProfilePic || data.profilePic);
-      }
-    } catch {
-      // fallback to localStorage
-      const u = storedUser;
-      if (u) {
-        setProfile(u);
-        setForm({
-          fullName: u.fullName || u.FullName || "",
-          phone: u.phone || u.Phone || "",
-          city: u.city || u.City || "",
-          area: u.area || u.Area || "",
-          cnic: u.cnic || u.CNIC || "",
-        });
-        if (u.profilePic || u.ProfilePic) {
-          setAvatarPreview(u.profilePic || u.ProfilePic);
-        }
-      }
+    } catch (err) {
+      setMsg({ type:'error', text:'Failed to load profile.' });
     } finally {
       setLoading(false);
     }
   };
 
-  // ── avatar click triggers file input ──
-  const handleAvatarClick = () => {
-    if (fileInputRef.current) fileInputRef.current.click();
-  };
+  const handleChange = e => setForm(f => ({ ...f, [e.target.name]: e.target.value }));
 
-  // ── avatar file selected ──
-  const handleAvatarChange = async (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
-
-    // show preview immediately
-    const reader = new FileReader();
-    reader.onloadend = () => setAvatarPreview(reader.result);
-    reader.readAsDataURL(file);
-
-    // upload to backend
-    setAvatarUploading(true);
-    try {
-      const formData = new FormData();
-      formData.append("profilePic", file);
-      const res = await API.post("/profile/avatar", formData, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      const url = res.data?.profilePic || res.data?.url || reader.result;
-      setAvatarPreview(url);
-      flash("Profile picture updated", true);
-      // sync localStorage
-      const updated = { ...storedUser, profilePic: url };
-      localStorage.setItem("udhaari_user", JSON.stringify(updated));
-    } catch {
-      flash("Photo upload failed — try a smaller image", false);
-    } finally {
-      setAvatarUploading(false);
-    }
-  };
-
-  // ── validate ──
-  const validate = () => {
-    const errs = {};
-    if (!form.fullName.trim()) errs.fullName = "Full name is required";
-    if (form.phone && !/^03\d{9}$/.test(form.phone))
-      errs.phone = "Must be 11 digits starting with 03";
-    if (!form.cnic.trim()) errs.cnic = "CNIC is required";
-    else if (!/^\d{13}$/.test(form.cnic.replace(/-/g, "")))
-      errs.cnic = "Must be 13 digits (e.g. 3520112345671)";
-    return errs;
-  };
-
-  // ── save ──
   const handleSave = async () => {
-    const errs = validate();
-    if (Object.keys(errs).length) { setErrors(errs); return; }
-    setErrors({});
     setSaving(true);
+    setMsg({ type:'', text:'' });
     try {
-      await API.put("/profile", form, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      // also try the profile endpoint
-      try {
-        await API.put("/profile", form, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-      } catch {}
-      setProfile((p) => ({ ...p, ...form }));
-      const updated = { ...storedUser, ...form };
-      localStorage.setItem("udhaari_user", JSON.stringify(updated));
-      setEditMode(false);
-      flash("Changes saved", true);
+      const res = await API.put('/profile/me', form);
+      setUser(res.data.user);
+      localStorage.setItem('udhaari_user', JSON.stringify({ ...user, ...form }));
+      setEditing(false);
+      setMsg({ type:'success', text:'Profile updated successfully!' });
+      setTimeout(() => setMsg({ type:'', text:'' }), 3500);
     } catch (err) {
-      flash(err.response?.data?.error || "Could not save changes", false);
+      setMsg({ type:'error', text: err.response?.data?.error || 'Failed to save changes.' });
     } finally {
       setSaving(false);
     }
   };
 
-  const flash = (text, ok) => {
-    setSaveMsg({ text, ok });
-    setTimeout(() => setSaveMsg({ text: "", ok: true }), 3000);
+  const handleAvatarChange = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setAvatarUploading(true);
+    try {
+      const fd = new FormData();
+      fd.append('profilePic', file);
+      const res = await API.post('/profile/avatar', fd, { headers:{ 'Content-Type':'multipart/form-data' } });
+      setUser(u => ({ ...u, ProfilePic: res.data.profilePic }));
+      setMsg({ type:'success', text:'Profile picture updated!' });
+      setTimeout(() => setMsg({ type:'', text:'' }), 3000);
+    } catch {
+      setMsg({ type:'error', text:'Failed to upload image.' });
+    } finally {
+      setAvatarUploading(false);
+    }
   };
 
-  // ── logout ──
-  const handleLogout = async () => {
-    try { await signOut(auth); } catch {}
-    localStorage.removeItem("token");
-    localStorage.removeItem("udhaari_user");
-    navigate("/login");
-  };
-
-  // ── derived ──
-  const displayName =
-    form.fullName ||
-    profile?.FullName ||
-    profile?.fullName ||
-    storedUser?.fullName ||
-    "User";
-
-  const displayEmail =
-    fbUser?.email ||
-    storedUser?.email ||
-    profile?.Email ||
-    profile?.email ||
-    "";
-
-  const initials = displayName
-    .split(" ")
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((w) => w[0].toUpperCase())
-    .join("");
-
-  const memberSince = (profile?.CreatedAt || profile?.createdAt)
-    ? new Date(profile.CreatedAt || profile.createdAt).toLocaleDateString("en-PK", {
-        month: "long",
-        year: "numeric",
-      })
-    : null;
-
-  const isVerified = fbUser?.emailVerified;
-
-  // ── loading skeleton ──
-  if (loading) {
-    return (
-      <div className="profile-page">
-        <div className="profile__inner">
-          <div className="profile-skeleton">
-            <div className="skeleton" style={{ height: 160, borderRadius: 16 }} />
-            <div className="skeleton" style={{ height: 120, borderRadius: 16 }} />
-            <div className="skeleton" style={{ height: 200, borderRadius: 16 }} />
-          </div>
-        </div>
+  if (loading) return (
+    <div style={{ minHeight:'100vh', display:'flex', alignItems:'center', justifyContent:'center', background:C.cream }}>
+      <FloatingBackground variant="minimal" />
+      <div style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:16, position:'relative', zIndex:1 }}>
+        <div style={{ width:44, height:44, border:`3px solid ${C.border}`, borderTopColor:C.saffron, borderRadius:'50%', animation:'spin 0.8s linear infinite' }} />
+        <p style={{ color:C.textMuted, fontFamily:"'Outfit', sans-serif" }}>Loading profile…</p>
+        <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
       </div>
-    );
-  }
+    </div>
+  );
+
+  const initials = user?.FullName?.split(' ').map(w => w[0]).slice(0,2).join('').toUpperCase() || '?';
+  const joinDate = user?.CreatedAt ? new Date(user.CreatedAt).toLocaleDateString('en-PK', { month:'long', year:'numeric' }) : '';
 
   return (
-    <div className="profile-page">
-      {/* inject spin keyframe */}
-      <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+    <div style={{ background:C.cream, minHeight:'100vh', position:'relative', fontFamily:"'Outfit', system-ui, sans-serif" }}>
+      <FloatingBackground variant="minimal" />
+      <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,600;0,700;1,600&family=Outfit:wght@300;400;500;600;700;800&display=swap');
+        @keyframes spin { to { transform: rotate(360deg); } }
+        @keyframes fadeUp { from { opacity:0; transform:translateY(24px); } to { opacity:1; transform:translateY(0); } }
+        @keyframes pulse { 0%,100% { box-shadow: 0 0 0 0 rgba(244,160,32,0.4); } 50% { box-shadow: 0 0 0 12px rgba(244,160,32,0); } }
+        .profile-avatar-wrap:hover .avatar-overlay { opacity: 1 !important; }
+      `}</style>
 
-      <div className="profile__inner">
+      <div style={{ position:'relative', zIndex:1, maxWidth:1000, margin:'0 auto', padding:'2.5rem 1.5rem' }}>
 
-        {/* ── PAGE HEADER ── */}
-        <div className="profile__header animate-fade-up">
-          <div>
-            <p className="profile__eyebrow">Account</p>
-            <h1 className="profile__title">My Profile</h1>
+        {/* ── Toast ─── */}
+        {msg.text && (
+          <div style={{
+            position:'fixed', top:80, right:24, zIndex:100,
+            padding:'0.85rem 1.5rem',
+            background: msg.type === 'success' ? '#D1FAE5' : '#FEE2E2',
+            border: `1px solid ${msg.type === 'success' ? '#6EE7B7' : '#FCA5A5'}`,
+            color: msg.type === 'success' ? '#065F46' : '#991B1B',
+            borderRadius:12,
+            fontWeight:600, fontSize:'0.92rem',
+            boxShadow:'0 4px 24px rgba(0,0,0,0.12)',
+            animation:'fadeUp 0.4s ease both',
+          }}>
+            {msg.type === 'success' ? '✓ ' : '✕ '}{msg.text}
           </div>
-        </div>
+        )}
 
-        {/* ── HERO CARD ── */}
-        <div className="profile__hero animate-fade-up delay-1">
-
-          {/* Avatar block */}
-          <div className="profile__avatar-block">
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept="image/*"
-              className="profile__avatar-input"
-              onChange={handleAvatarChange}
-            />
-            <div
-              className="profile__avatar-wrap"
-              onClick={handleAvatarClick}
-              title="Click to change photo"
-            >
-              {avatarUploading ? (
-                <div className="profile__avatar-uploading">
-                  <Spin />
-                </div>
-              ) : avatarPreview ? (
-                <img src={avatarPreview} alt={displayName} className="profile__avatar-img" />
-              ) : (
-                <div className="profile__avatar-initials">{initials}</div>
-              )}
-              {!avatarUploading && (
-                <div className="profile__avatar-overlay">
-                  <Camera />
-                </div>
-              )}
+        {/* ── Profile Header Card ── */}
+        <div style={{
+          background:C.warmWhite,
+          border:`1px solid ${C.border}`,
+          borderRadius:20,
+          padding:'2.5rem',
+          marginBottom:'1.5rem',
+          boxShadow:'0 4px 24px rgba(128,0,32,0.08)',
+          animation: mounted ? 'fadeUp 0.55s ease both' : 'none',
+          display:'flex',
+          gap:'2rem',
+          flexWrap:'wrap',
+          alignItems:'flex-start',
+        }}>
+          {/* Avatar */}
+          <div className="profile-avatar-wrap" style={{ position:'relative', flexShrink:0 }}>
+            <div style={{
+              width:110, height:110, borderRadius:'50%',
+              background: user?.ProfilePic ? undefined : `linear-gradient(135deg, ${C.saffron} 0%, ${C.maroon} 100%)`,
+              backgroundImage: user?.ProfilePic ? `url(${user.ProfilePic})` : undefined,
+              backgroundSize:'cover', backgroundPosition:'center',
+              display:'flex', alignItems:'center', justifyContent:'center',
+              color:'#fff',
+              fontFamily:'Cormorant Garamond, serif', fontSize:'2.2rem', fontWeight:700,
+              border:`3px solid ${C.saffronPale || '#FFF0CC'}`,
+              boxShadow:`0 0 0 4px rgba(244,160,32,0.25), 0 8px 32px rgba(128,0,32,0.20)`,
+              cursor:'pointer',
+              position:'relative',
+              overflow:'hidden',
+            }}
+            onClick={() => fileRef.current?.click()}>
+              {!user?.ProfilePic && initials}
+              {/* Overlay */}
+              <div className="avatar-overlay" style={{
+                position:'absolute', inset:0,
+                background:'rgba(44,24,16,0.55)',
+                display:'flex', alignItems:'center', justifyContent:'center',
+                opacity:0, transition:'opacity 0.25s ease',
+                borderRadius:'50%',
+              }}>
+                {avatarUploading
+                  ? <div style={{ width:24, height:24, border:'2px solid #fff', borderTopColor:'transparent', borderRadius:'50%', animation:'spin 0.7s linear infinite' }} />
+                  : <span style={{ fontSize:'1.5rem' }}>📷</span>
+                }
+              </div>
             </div>
-            <span className="profile__avatar-label">Click to<br />change photo</span>
+            <input ref={fileRef} type="file" accept="image/*" style={{ display:'none' }} onChange={handleAvatarChange} />
+            {/* Verified dot */}
+            {user?.IsVerified && (
+              <div style={{
+                position:'absolute', bottom:4, right:4,
+                width:24, height:24, borderRadius:'50%',
+                background:'#059669', border:'3px solid #fff',
+                display:'flex', alignItems:'center', justifyContent:'center',
+                fontSize:'0.6rem', color:'#fff', fontWeight:800,
+              }}>✓</div>
+            )}
           </div>
 
-          {/* Name / email */}
-          <div className="profile__hero-info">
-            <h2 className="profile__name">{displayName}</h2>
-            <div className="profile__email-row">
-              <span className="profile__email">{displayEmail}</span>
-              {isVerified && (
-                <span className="profile__verified-badge">
-                  <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
-                    <polyline points="20 6 9 17 4 12" />
-                  </svg>
-                  Verified
+          {/* Name & meta */}
+          <div style={{ flex:1, minWidth:200 }}>
+            <div style={{ display:'flex', alignItems:'center', gap:10, flexWrap:'wrap' }}>
+              <h1 style={{ fontFamily:'Cormorant Garamond, serif', fontSize:'2rem', fontWeight:700, color:C.textDark, margin:0, letterSpacing:'-0.02em' }}>
+                {user?.FullName || 'Your Name'}
+              </h1>
+              {user?.IsVerified && (
+                <span style={{ padding:'3px 10px', borderRadius:999, background:'rgba(5,150,105,0.1)', color:'#047857', fontSize:'0.75rem', fontWeight:700, border:'1px solid rgba(5,150,105,0.2)' }}>
+                  ✓ Verified
+                </span>
+              )}
+              {user?.Role === 'admin' && (
+                <span style={{ padding:'3px 10px', borderRadius:999, background:'rgba(244,160,32,0.15)', color:C.maroon, fontSize:'0.75rem', fontWeight:700, border:`1px solid rgba(244,160,32,0.35)` }}>
+                  Admin
                 </span>
               )}
             </div>
-            {memberSince && (
-              <p className="profile__since">Member since {memberSince}</p>
-            )}
+            <p style={{ color:C.textMuted, margin:'4px 0 0', fontSize:'0.95rem' }}>{user?.Email}</p>
+            <p style={{ color:C.textFaint, margin:'2px 0 8px', fontSize:'0.85rem' }}>
+              {user?.City && user?.Area ? `${user.Area}, ${user.City}` : user?.City || 'Location not set'}
+              {joinDate && ` · Member since ${joinDate}`}
+            </p>
+            <p style={{ fontSize:'0.78rem', color:C.textFaint, fontStyle:'italic' }}>
+              Click avatar to change photo
+            </p>
           </div>
 
           {/* Action buttons */}
-          <div className="profile__hero-actions">
-            {saveMsg.text && (
-              <span className={`profile__save-toast ${saveMsg.ok ? "profile__save-toast--ok" : "profile__save-toast--err"}`}>
-                {saveMsg.text}
-              </span>
-            )}
-            {editMode ? (
+          <div style={{ display:'flex', flexDirection:'column', gap:8, flexShrink:0 }}>
+            {editing ? (
               <>
-                <button
-                  className="profile__btn profile__btn--primary"
-                  onClick={handleSave}
-                  disabled={saving}
-                >
-                  {saving ? <><Spin /> &nbsp;Saving…</> : "Save changes"}
+                <button onClick={handleSave} disabled={saving} style={{
+                  padding:'0.7rem 1.6rem', borderRadius:10, border:'none', cursor:'pointer',
+                  background: saving ? '#9ca3af' : C.maroon, color:'#fff',
+                  fontFamily:"'Outfit', sans-serif", fontWeight:700, fontSize:'0.9rem',
+                  transition:'all 0.25s ease', boxShadow:'0 4px 16px rgba(128,0,32,0.28)',
+                }}>
+                  {saving ? 'Saving…' : 'Save Changes'}
                 </button>
-                <button
-                  className="profile__btn profile__btn--ghost"
-                  onClick={() => { setEditMode(false); setErrors({}); }}
-                >
+                <button onClick={() => { setEditing(false); fetchProfile(); }} style={{
+                  padding:'0.7rem 1.6rem', borderRadius:10, border:`1.5px solid ${C.border}`,
+                  cursor:'pointer', background:'transparent', color:C.textMuted,
+                  fontFamily:"'Outfit', sans-serif", fontWeight:600, fontSize:'0.9rem',
+                }}>
                   Cancel
                 </button>
               </>
             ) : (
-              <button
-                className="profile__btn profile__btn--edit"
-                onClick={() => setEditMode(true)}
-              >
-                Edit profile
-              </button>
+              <>
+                <button onClick={() => setEditing(true)} style={{
+                  padding:'0.7rem 1.6rem', borderRadius:10, border:'none', cursor:'pointer',
+                  background:C.maroon, color:'#fff',
+                  fontFamily:"'Outfit', sans-serif", fontWeight:700, fontSize:'0.9rem',
+                  transition:'all 0.25s ease', boxShadow:'0 4px 16px rgba(128,0,32,0.25)',
+                }}
+                onMouseEnter={e => { e.currentTarget.style.background=C.maroonLight; e.currentTarget.style.transform='translateY(-2px)'; }}
+                onMouseLeave={e => { e.currentTarget.style.background=C.maroon; e.currentTarget.style.transform='translateY(0)'; }}>
+                  Edit Profile
+                </button>
+                <button onClick={() => navigate('/wallet')} style={{
+                  padding:'0.7rem 1.6rem', borderRadius:10, border:`1.5px solid ${C.border}`,
+                  cursor:'pointer', background:'transparent', color:C.textDark,
+                  fontFamily:"'Outfit', sans-serif", fontWeight:600, fontSize:'0.9rem',
+                  transition:'all 0.25s ease',
+                }}
+                onMouseEnter={e => { e.currentTarget.style.borderColor=C.saffron; e.currentTarget.style.background='rgba(244,160,32,0.06)'; }}
+                onMouseLeave={e => { e.currentTarget.style.borderColor=C.border; e.currentTarget.style.background='transparent'; }}>
+                  💰 My Wallet
+                </button>
+              </>
             )}
           </div>
         </div>
 
-        {/* ── BODY ── */}
-        <div className="profile__body animate-fade-up delay-2">
+        {/* ── Two column layout ── */}
+        <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'1.5rem', flexWrap:'wrap' }}>
 
-          {/* ── LEFT: MAIN PANELS ── */}
-          <div>
+          {/* Left: Info / Edit Form */}
+          <div style={{
+            background:C.warmWhite,
+            border:`1px solid ${C.border}`,
+            borderRadius:20, padding:'2rem',
+            boxShadow:'0 4px 24px rgba(128,0,32,0.07)',
+            animation: mounted ? 'fadeUp 0.55s ease 0.08s both' : 'none',
+          }}>
+            <h2 style={{ fontFamily:'Cormorant Garamond, serif', fontSize:'1.4rem', fontWeight:700, color:C.textDark, marginBottom:'1.4rem', paddingBottom:'0.8rem', borderBottom:`1px solid ${C.border}` }}>
+              {editing ? '✏️ Edit Details' : '👤 Profile Info'}
+            </h2>
 
-            {/* Personal Info Panel */}
-            <div className="profile__panel">
-              <div className="profile__panel-header">
-                <h3 className="profile__panel-title">Personal info</h3>
-                {editMode && (
-                  <span className="profile__required-note">
-                    <span className="profile__required-star">*</span> required
-                  </span>
-                )}
+            {editing ? (
+              <>
+                <FloatField label="Full Name" name="fullName" value={form.fullName} onChange={handleChange} placeholder="Your full name" />
+                <FloatField label="Phone" name="phone" value={form.phone} onChange={handleChange} type="tel" maxLength={11} placeholder="03xxxxxxxxx" />
+                <FloatField label="City" name="city" value={form.city} onChange={handleChange} placeholder="Lahore" />
+                <FloatField label="Area (optional)" name="area" value={form.area} onChange={handleChange} placeholder="DHA Phase 5" />
+                <FloatField label="CNIC" name="cnic" value={form.cnic} onChange={handleChange} type="text" maxLength={13} placeholder="13 digits, no dashes" />
+              </>
+            ) : (
+              <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
+                <InfoRow icon="📞" label="Phone"  value={user?.Phone} />
+                <InfoRow icon="🏙️" label="City"   value={user?.City} />
+                <InfoRow icon="📍" label="Area"   value={user?.Area} />
+                <InfoRow icon="🪪" label="CNIC"   value={user?.CNIC ? `${user.CNIC.slice(0,5)}-XXXXXXXX` : null} />
+                <InfoRow icon="🔑" label="Signup" value={user?.SignupMethod === 'google' ? 'Google' : 'Email'} />
               </div>
-
-              <div className="profile__fields">
-
-                {/* Full Name — required */}
-                <div className="profile__field">
-                  <label className="profile__field-label">
-                    Full Name {editMode && <span className="req">*</span>}
-                  </label>
-                  {editMode ? (
-                    <>
-                      <input
-                        className={`profile__input ${errors.fullName ? "profile__input--error" : ""}`}
-                        value={form.fullName}
-                        onChange={(e) => setForm((f) => ({ ...f, fullName: e.target.value }))}
-                        placeholder="Yousuf Ahmed"
-                      />
-                      {errors.fullName && <span className="profile__field-error">{errors.fullName}</span>}
-                    </>
-                  ) : (
-                    <p className={`profile__field-value ${!form.fullName ? "profile__field-value--empty" : ""}`}>
-                      {form.fullName || "Not set"}
-                    </p>
-                  )}
-                </div>
-
-                {/* Email — always read-only from Firebase */}
-                <div className="profile__field">
-                  <label className="profile__field-label">Email</label>
-                  <div className="profile__email-display">
-                    <span>{displayEmail}</span>
-                    <Lock />
-                  </div>
-                  {editMode && (
-                    <span className="profile__field-hint">Email is linked to your login and cannot be changed here.</span>
-                  )}
-                </div>
-
-                {/* Phone — optional */}
-                <div className="profile__field">
-                  <label className="profile__field-label">Phone</label>
-                  {editMode ? (
-                    <>
-                      <input
-                        className={`profile__input ${errors.phone ? "profile__input--error" : ""}`}
-                        value={form.phone}
-                        onChange={(e) => setForm((f) => ({ ...f, phone: e.target.value }))}
-                        placeholder="03001234567"
-                        maxLength={11}
-                      />
-                      {errors.phone
-                        ? <span className="profile__field-error">{errors.phone}</span>
-                        : <span className="profile__field-hint">Optional — 11 digits, starts with 03</span>
-                      }
-                    </>
-                  ) : (
-                    <p className={`profile__field-value ${!form.phone ? "profile__field-value--empty" : ""}`}>
-                      {form.phone || "Not provided"}
-                    </p>
-                  )}
-                </div>
-
-                {/* City — optional */}
-                <div className="profile__field">
-                  <label className="profile__field-label">City</label>
-                  {editMode ? (
-                    <input
-                      className="profile__input"
-                      value={form.city}
-                      onChange={(e) => setForm((f) => ({ ...f, city: e.target.value }))}
-                      placeholder="Lahore"
-                    />
-                  ) : (
-                    <p className={`profile__field-value ${!form.city ? "profile__field-value--empty" : ""}`}>
-                      {form.city || "Not provided"}
-                    </p>
-                  )}
-                </div>
-
-                {/* Area — optional */}
-                <div className="profile__field">
-                  <label className="profile__field-label">Area</label>
-                  {editMode ? (
-                    <>
-                      <input
-                        className="profile__input"
-                        value={form.area}
-                        onChange={(e) => setForm((f) => ({ ...f, area: e.target.value }))}
-                        placeholder="DHA Phase 5"
-                      />
-                      <span className="profile__field-hint">Optional neighbourhood / locality</span>
-                    </>
-                  ) : (
-                    <p className={`profile__field-value ${!form.area ? "profile__field-value--empty" : ""}`}>
-                      {form.area || "Not provided"}
-                    </p>
-                  )}
-                </div>
-
-              </div>
-            </div>
-
-            {/* CNIC Panel */}
-            <div className="profile__panel" style={{ marginTop: 16 }}>
-              <div className="profile__panel-header">
-                <h3 className="profile__panel-title">Identity</h3>
-                {editMode && (
-                  <span className="profile__required-note">
-                    <span className="profile__required-star">*</span> required
-                  </span>
-                )}
-              </div>
-
-              <div className="profile__fields">
-
-                {/* CNIC Number — required */}
-                <div className="profile__field">
-                  <label className="profile__field-label">
-                    CNIC Number {editMode && <span className="req">*</span>}
-                  </label>
-                  {editMode ? (
-                    <>
-                      <input
-                        className={`profile__input ${errors.cnic ? "profile__input--error" : ""}`}
-                        value={form.cnic}
-                        onChange={(e) => {
-                          // strip non-digits, max 13
-                          const raw = e.target.value.replace(/\D/g, "").slice(0, 13);
-                          setForm((f) => ({ ...f, cnic: raw }));
-                        }}
-                        placeholder="3520112345671"
-                        maxLength={13}
-                        inputMode="numeric"
-                      />
-                      {errors.cnic
-                        ? <span className="profile__field-error">{errors.cnic}</span>
-                        : <span className="profile__field-hint">13 digits, no dashes</span>
-                      }
-                    </>
-                  ) : (
-                    <p className={`profile__field-value ${!form.cnic ? "profile__field-value--empty" : ""}`}>
-                      {form.cnic
-                        ? `${form.cnic.slice(0, 5)}-${form.cnic.slice(5, 12)}-${form.cnic.slice(12)}`
-                        : "Not provided"}
-                    </p>
-                  )}
-                </div>
-
-                {/* CNIC Verification status */}
-                <div className="profile__field">
-                  <label className="profile__field-label">Verification status</label>
-                  <div style={{ display: "flex", alignItems: "center", gap: 8, paddingTop: 4 }}>
-                    <span style={{
-                      display: "inline-flex", alignItems: "center", gap: 5,
-                      fontSize: 12, fontFamily: "var(--font-mono)", textTransform: "uppercase",
-                      letterSpacing: "0.06em", padding: "3px 10px", borderRadius: 20,
-                      background: (profile?.IsVerified || profile?.isVerified) ? "#e6f7ee" : "#fff3e0",
-                      color: (profile?.IsVerified || profile?.isVerified) ? "#15803d" : "#b45309",
-                    }}>
-                      {(profile?.IsVerified || profile?.isVerified) ? "Verified" : "Pending review"}
-                    </span>
-                  </div>
-                  {editMode && (
-                    <span className="profile__field-hint">Verification is done by the Udhaari team.</span>
-                  )}
-                </div>
-
-              </div>
-            </div>
-
+            )}
           </div>
 
-          {/* ── RIGHT: SIDEBAR ── */}
-          <div className="profile__side">
-
-            {/* Quick links */}
-            <div className="profile__panel profile__panel--links">
-              <div className="profile__panel-header">
-                <h3 className="profile__panel-title">Quick links</h3>
-              </div>
-              <div className="profile__links">
-                <Link to="/my-assets" className="profile__link-item">
-                  <span>My Assets</span><Arrow />
-                </Link>
-                <Link to="/my-assets/add" className="profile__link-item">
-                  <span>List a new asset</span><Arrow />
-                </Link>
-                <Link to="/my-bookings" className="profile__link-item">
-                  <span>My Bookings</span><Arrow />
-                </Link>
-                <Link to="/my-requests" className="profile__link-item">
-                  <span>My Requests</span><Arrow />
-                </Link>
-                <Link to="/requests" className="profile__link-item">
-                  <span>Browse requests</span><Arrow />
-                </Link>
-              </div>
-            </div>
-
-            {/* Sign out */}
-            <div className="profile__panel profile__panel--danger">
-              <button onClick={handleLogout} className="profile__logout-btn">
-                Sign out
+          {/* Right: Quick Links */}
+          <div style={{ display:'flex', flexDirection:'column', gap:'1.25rem' }}>
+            {[
+              { icon:'📦', label:'My Assets',          sub:'Items you have listed for lending',       path:'/my-assets',       color:C.saffron },
+              { icon:'📋', label:'My Requests',        sub:'Borrow requests you have posted',         path:'/my-requests',     color:'#3B82F6' },
+              { icon:'📬', label:'My Offers Received', sub:'Offers lenders made on your requests',    path:'/my-offers',       color:'#059669' },
+              { icon:'📤', label:'My Offers Made',     sub:'Offers you have made to lend items',      path:'/my-offers-made',  color:C.maroon  },
+              { icon:'🗓️', label:'My Bookings',        sub:'Active and past booking history',          path:'/bookings',        color:'#7C3AED' },
+              { icon:'📊', label:'Dashboard',          sub:'Stats, earnings and activity',             path:'/dashboard',       color:C.brownLight },
+            ].map((item, i) => (
+              <button
+                key={item.path}
+                onClick={() => navigate(item.path)}
+                style={{
+                  display:'flex', alignItems:'center', gap:14,
+                  padding:'1rem 1.25rem',
+                  background:C.warmWhite,
+                  border:`1px solid ${C.border}`,
+                  borderRadius:14,
+                  cursor:'pointer',
+                  textAlign:'left',
+                  transition:'all 0.25s ease',
+                  animation: mounted ? `fadeUp 0.5s ease ${0.12 + i*0.06}s both` : 'none',
+                  boxShadow:'0 2px 8px rgba(128,0,32,0.05)',
+                }}
+                onMouseEnter={e => { e.currentTarget.style.transform='translateY(-3px)'; e.currentTarget.style.boxShadow='0 6px 24px rgba(128,0,32,0.12)'; e.currentTarget.style.borderColor='rgba(128,0,32,0.22)'; }}
+                onMouseLeave={e => { e.currentTarget.style.transform='translateY(0)'; e.currentTarget.style.boxShadow='0 2px 8px rgba(128,0,32,0.05)'; e.currentTarget.style.borderColor=C.border; }}
+              >
+                <div style={{ width:44, height:44, borderRadius:12, background:`${item.color}18`, display:'flex', alignItems:'center', justifyContent:'center', fontSize:'1.25rem', flexShrink:0 }}>
+                  {item.icon}
+                </div>
+                <div>
+                  <p style={{ margin:0, fontWeight:700, fontSize:'0.95rem', color:C.textDark }}>{item.label}</p>
+                  <p style={{ margin:'2px 0 0', fontSize:'0.8rem', color:C.textFaint }}>{item.sub}</p>
+                </div>
+                <div style={{ marginLeft:'auto', color:C.textFaint, fontSize:'1rem' }}>→</div>
               </button>
-            </div>
-
+            ))}
           </div>
         </div>
       </div>
+
+      <style>{`
+        @media (max-width: 700px) {
+          div[style*="grid-template-columns: 1fr 1fr"] { grid-template-columns: 1fr !important; }
+        }
+      `}</style>
     </div>
   );
 }

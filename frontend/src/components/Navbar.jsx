@@ -1,117 +1,316 @@
-﻿import { Link, useNavigate } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext';
+﻿import { useState } from 'react';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
+import { signOut } from 'firebase/auth';
+import { auth } from '../config/firebase';
 
 export default function Navbar() {
-  const { user, loading, logout } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
+  const [menuOpen, setMenuOpen] = useState(false);
+
+  const storedUser = JSON.parse(localStorage.getItem('udhaari_user') || 'null');
+  const isLoggedIn = !!storedUser;
+  const userRole = storedUser?.Role || storedUser?.role || 'user';
+  const isAdmin = userRole === 'admin';
+  const displayName = storedUser?.FullName || storedUser?.fullName || storedUser?.name || 'User';
+  const initials = displayName.split(' ').filter(Boolean).slice(0, 2).map(w => w[0].toUpperCase()).join('');
+  const profilePic = storedUser?.ProfilePic || storedUser?.profilePic || null;
+
+  const isActive = (path) => location.pathname === path || location.pathname.startsWith(path + '/');
 
   const handleLogout = async () => {
-    await logout();
+    try { await signOut(auth); } catch {}
+    localStorage.removeItem('token');
+    localStorage.removeItem('udhaari_user');
+    setMenuOpen(false);
     navigate('/auth');
   };
 
-  const profilePic = user?.profilePic || user?.ProfilePic || null;
-  const fullName = user?.fullName || user?.FullName || '';
-
-  const navLink = (to, label) => (
-    <Link
-      to={to}
-      style={{ color: '#374151', textDecoration: 'none', fontWeight: 500, fontSize: '0.95rem', transition: 'color 0.2s' }}
-      onMouseEnter={(e) => e.target.style.color = '#059669'}
-      onMouseLeave={(e) => e.target.style.color = '#374151'}
-    >
-      {label}
-    </Link>
-  );
+  const linkStyle = (path) => ({
+    textDecoration: 'none',
+    fontSize: '14px',
+    fontWeight: 500,
+    color: isActive(path) ? '#059669' : '#374151',
+    padding: '6px 12px',
+    borderRadius: '8px',
+    background: isActive(path) ? '#f0fdf4' : 'transparent',
+    transition: 'all 0.2s',
+    whiteSpace: 'nowrap',
+  });
 
   return (
-    <nav style={{
-      padding: '1rem 2rem',
-      background: '#fff',
-      borderBottom: '1px solid #e5e7eb',
-      display: 'flex',
-      justifyContent: 'space-between',
-      alignItems: 'center',
-      position: 'sticky',
-      top: 0,
-      zIndex: 100,
-      boxShadow: '0 1px 2px rgba(0,0,0,0.05)',
-      flexWrap: 'wrap',
-      gap: '1rem',
-      minWidth: 0,
-    }}>
-
-      {/* Logo */}
-      <Link to="/" style={{ color: '#065f46', fontSize: '1.25rem', fontWeight: 800, textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-        <span style={{ width: '32px', height: '32px', borderRadius: '8px', background: 'linear-gradient(135deg, #059669 0%, #10b981 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: '1rem', fontWeight: 700 }}>
-          L
-        </span>
-        endigo
-      </Link>
-
-      {/* Center Nav Links */}
-      <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', flexWrap: 'wrap', flex: 1, justifyContent: 'center', minWidth: 0 }}>
-        {navLink('/browse', 'Baazar')}
-        {navLink('/requests', 'Requests')}
-
-        {!loading && user && (
-          <>
-            {navLink('/my-assets', 'My Assets')}
-            {/* My Requests links to /requests with My Requests tab */}
-            {navLink('/bookings', 'Bookings')}
-            {navLink('/my-offers-made', 'My Offers Made')}
-            {navLink('/dashboard', 'Dashboard')}
-          </>
-        )}
-      </div>
-
-      {/* Right Side */}
-      <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
-        {!loading && user ? (
-          <>
-            {/* Profile */}
-            <Link to="/profile" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#065f46', textDecoration: 'none' }}>
-              <div style={{
-                width: '38px', height: '38px', borderRadius: '50%',
-                background: profilePic ? `url(${profilePic}) center/cover no-repeat` : 'linear-gradient(135deg, #059669 0%, #10b981 100%)',
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                fontSize: '0.9rem', fontWeight: 600,
-                color: profilePic ? 'transparent' : '#fff',
-                border: '2px solid #fff', boxShadow: '0 2px 4px rgba(0,0,0,0.1)', flexShrink: 0,
-              }}>
-                {!profilePic && (fullName?.[0]?.toUpperCase() || 'U')}
-              </div>
-              <span style={{ color: '#374151', fontSize: '0.9rem', fontWeight: 500 }}>{fullName}</span>
-            </Link>
-
-            {/* Wallet */}
-            <Link to="/wallet" style={{ padding: '0.5rem 1rem', background: '#f0fdf4', border: '1px solid #86efac', borderRadius: '8px', color: '#065f46', textDecoration: 'none', fontSize: '0.85rem', fontWeight: 500, transition: 'all 0.2s' }}
-              onMouseEnter={(e) => { e.target.style.background = '#dcfce7'; e.target.style.borderColor = '#4ade80'; }}
-              onMouseLeave={(e) => { e.target.style.background = '#f0fdf4'; e.target.style.borderColor = '#86efac'; }}>
-              Wallet
-            </Link>
-
-            {/* Logout */}
-            <button onClick={handleLogout} style={{ padding: '0.5rem 1rem', background: '#fee2e2', border: '1px solid #fca5a5', borderRadius: '8px', color: '#dc2626', cursor: 'pointer', fontSize: '0.85rem', fontWeight: 500, transition: 'all 0.2s' }}
-              onMouseEnter={(e) => { e.target.style.background = '#fecaca'; }}
-              onMouseLeave={(e) => { e.target.style.background = '#fee2e2'; }}>
-              Logout
-            </button>
-          </>
-        ) : !loading ? (
-          <Link to="/auth" style={{ padding: '0.5rem 1rem', background: 'linear-gradient(135deg, #059669 0%, #10b981 100%)', border: 'none', borderRadius: '8px', color: '#fff', textDecoration: 'none', fontWeight: 600, fontSize: '0.9rem', transition: 'transform 0.2s, box-shadow 0.2s' }}
-            onMouseEnter={(e) => { e.target.style.transform = 'translateY(-2px)'; e.target.style.boxShadow = '0 4px 12px rgba(5,150,105,0.4)'; }}
-            onMouseLeave={(e) => { e.target.style.transform = 'translateY(0)'; e.target.style.boxShadow = 'none'; }}>
-            Sign In
-          </Link>
-        ) : (
-          <div style={{ width: '80px', height: '38px', background: '#e5e7eb', borderRadius: '8px', animation: 'pulse 1.5s infinite' }} />
-        )}
-      </div>
-
+    <>
       <style>{`
-        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+        .nav-link:hover { background: #f3f4f6 !important; color: #1f2937 !important; }
+        .nav-link.active-link { background: #f0fdf4 !important; color: #059669 !important; }
+        .admin-badge { animation: pulse-badge 2s ease-in-out infinite; }
+        @keyframes pulse-badge {
+          0%, 100% { box-shadow: 0 0 0 0 rgba(220, 38, 38, 0.4); }
+          50% { box-shadow: 0 0 0 6px rgba(220, 38, 38, 0); }
+        }
+        @keyframes slideDown {
+          from { opacity: 0; transform: translateY(-8px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
       `}</style>
-    </nav>
+
+      <nav style={{
+        position: 'fixed',
+        top: 0,
+        left: 0,
+        right: 0,
+        zIndex: 1000,
+        background: 'rgba(255,255,255,0.95)',
+        backdropFilter: 'blur(12px)',
+        borderBottom: '1px solid #e5e7eb',
+        height: '64px',
+        display: 'flex',
+        alignItems: 'center',
+        padding: '0 24px',
+        gap: '16px',
+      }}>
+
+        {/* Logo */}
+        <Link to="/" style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
+          <span style={{
+            fontSize: '22px',
+            fontWeight: 900,
+            letterSpacing: '-0.04em',
+            color: '#1f2937',
+          }}>
+            Lendigo
+          </span>
+          {isAdmin && (
+            <span className="admin-badge" style={{
+              fontSize: '10px',
+              fontWeight: 700,
+              background: '#dc2626',
+              color: '#fff',
+              padding: '2px 7px',
+              borderRadius: '20px',
+              textTransform: 'uppercase',
+              letterSpacing: '0.05em',
+            }}>
+              Admin
+            </span>
+          )}
+        </Link>
+
+        {/* Spacer */}
+        <div style={{ flex: 1 }} />
+
+        {/* Nav Links — Desktop */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+
+          {/* Admin gets a special nav */}
+          {isAdmin ? (
+            <>
+              <Link to="/admin" className="nav-link" style={linkStyle('/admin')}>
+                🛡️ Admin Panel
+              </Link>
+              <Link to="/browse" className="nav-link" style={linkStyle('/browse')}>
+                Browse
+              </Link>
+              <Link to="/requests" className="nav-link" style={linkStyle('/requests')}>
+                Requests
+              </Link>
+            </>
+          ) : isLoggedIn ? (
+            <>
+              <Link to="/browse" className="nav-link" style={linkStyle('/browse')}>
+                Browse
+              </Link>
+              <Link to="/requests" className="nav-link" style={linkStyle('/requests')}>
+                Requests
+              </Link>
+              <Link to="/bookings" className="nav-link" style={linkStyle('/bookings')}>
+                Bookings
+              </Link>
+              <Link to="/dashboard" className="nav-link" style={linkStyle('/dashboard')}>
+                Dashboard
+              </Link>
+              <Link to="/wallet" className="nav-link" style={linkStyle('/wallet')}>
+                Wallet
+              </Link>
+            </>
+          ) : (
+            <>
+              <Link to="/browse" className="nav-link" style={linkStyle('/browse')}>
+                Browse
+              </Link>
+              <Link to="/requests" className="nav-link" style={linkStyle('/requests')}>
+                Requests
+              </Link>
+            </>
+          )}
+        </div>
+
+        {/* Auth Section */}
+        {isLoggedIn ? (
+          <div style={{ position: 'relative', flexShrink: 0 }}>
+            <button
+              onClick={() => setMenuOpen(!menuOpen)}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                background: 'none',
+                border: '1px solid #e5e7eb',
+                borderRadius: '10px',
+                padding: '6px 12px 6px 6px',
+                cursor: 'pointer',
+                transition: 'all 0.2s',
+              }}
+              onMouseEnter={(e) => { e.currentTarget.style.borderColor = '#059669'; e.currentTarget.style.background = '#f0fdf4'; }}
+              onMouseLeave={(e) => { e.currentTarget.style.borderColor = '#e5e7eb'; e.currentTarget.style.background = 'none'; }}
+            >
+              {/* Avatar */}
+              <div style={{
+                width: '30px',
+                height: '30px',
+                borderRadius: '50%',
+                background: profilePic ? `url(${profilePic}) center/cover` : (isAdmin ? '#dc2626' : '#059669'),
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                color: '#fff',
+                fontWeight: 700,
+                fontSize: '12px',
+                flexShrink: 0,
+              }}>
+                {profilePic ? '' : initials}
+              </div>
+              <span style={{ fontSize: '14px', fontWeight: 500, color: '#374151', maxWidth: '120px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                {isAdmin ? `${displayName} (Admin)` : displayName}
+              </span>
+              <svg width="12" height="12" viewBox="0 0 12 12" fill="none" style={{ color: '#9ca3af', transform: menuOpen ? 'rotate(180deg)' : 'rotate(0)', transition: 'transform 0.2s', flexShrink: 0 }}>
+                <path d="M2 4l4 4 4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            </button>
+
+            {/* Dropdown */}
+            {menuOpen && (
+              <div
+                style={{
+                  position: 'absolute',
+                  top: 'calc(100% + 8px)',
+                  right: 0,
+                  background: '#fff',
+                  border: '1px solid #e5e7eb',
+                  borderRadius: '12px',
+                  boxShadow: '0 8px 24px rgba(0,0,0,0.12)',
+                  minWidth: '200px',
+                  padding: '6px',
+                  animation: 'slideDown 0.15s ease-out',
+                  zIndex: 100,
+                }}
+              >
+                {/* Admin shortcut at top of dropdown */}
+                {isAdmin && (
+                  <>
+                    <DropItem
+                      onClick={() => { navigate('/admin'); setMenuOpen(false); }}
+                      icon="🛡️"
+                      label="Admin Panel"
+                      danger
+                    />
+                    <div style={{ height: '1px', background: '#f3f4f6', margin: '4px 0' }} />
+                  </>
+                )}
+
+                {!isAdmin && (
+                  <>
+                    <DropItem onClick={() => { navigate('/dashboard'); setMenuOpen(false); }} icon="📊" label="Dashboard" />
+                    <DropItem onClick={() => { navigate('/my-assets'); setMenuOpen(false); }} icon="🏠" label="My Assets" />
+                    <DropItem onClick={() => { navigate('/my-requests'); setMenuOpen(false); }} icon="📋" label="My Requests" />
+                    <DropItem onClick={() => { navigate('/my-offers'); setMenuOpen(false); }} icon="📬" label="Offers Received" />
+                    <DropItem onClick={() => { navigate('/my-offers-made'); setMenuOpen(false); }} icon="🤝" label="Offers Made" />
+                    <DropItem onClick={() => { navigate('/bookings'); setMenuOpen(false); }} icon="📅" label="My Bookings" />
+                    <DropItem onClick={() => { navigate('/wallet'); setMenuOpen(false); }} icon="💳" label="Wallet" />
+                    <div style={{ height: '1px', background: '#f3f4f6', margin: '4px 0' }} />
+                  </>
+                )}
+
+                <DropItem onClick={() => { navigate('/profile'); setMenuOpen(false); }} icon="👤" label="Profile" />
+                <DropItem onClick={handleLogout} icon="🚪" label="Sign out" danger />
+              </div>
+            )}
+          </div>
+        ) : (
+          <div style={{ display: 'flex', gap: '8px', flexShrink: 0 }}>
+            <Link to="/auth" style={{
+              padding: '8px 16px',
+              background: 'transparent',
+              border: '1px solid #e5e7eb',
+              borderRadius: '8px',
+              fontSize: '14px',
+              fontWeight: 500,
+              color: '#374151',
+              textDecoration: 'none',
+              transition: 'all 0.2s',
+            }}
+              onMouseEnter={(e) => { e.currentTarget.style.borderColor = '#374151'; }}
+              onMouseLeave={(e) => { e.currentTarget.style.borderColor = '#e5e7eb'; }}
+            >
+              Sign in
+            </Link>
+            <Link to="/auth" style={{
+              padding: '8px 16px',
+              background: '#059669',
+              border: '1px solid #059669',
+              borderRadius: '8px',
+              fontSize: '14px',
+              fontWeight: 600,
+              color: '#fff',
+              textDecoration: 'none',
+              transition: 'all 0.2s',
+            }}
+              onMouseEnter={(e) => { e.currentTarget.style.background = '#047857'; }}
+              onMouseLeave={(e) => { e.currentTarget.style.background = '#059669'; }}
+            >
+              Get started
+            </Link>
+          </div>
+        )}
+      </nav>
+
+      {/* Click outside to close dropdown */}
+      {menuOpen && (
+        <div
+          style={{ position: 'fixed', inset: 0, zIndex: 99 }}
+          onClick={() => setMenuOpen(false)}
+        />
+      )}
+    </>
+  );
+}
+
+function DropItem({ onClick, icon, label, danger }) {
+  const [hovered, setHovered] = useState(false);
+  return (
+    <button
+      onClick={onClick}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+      style={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: '10px',
+        width: '100%',
+        padding: '9px 12px',
+        background: hovered ? (danger ? '#fef2f2' : '#f9fafb') : 'transparent',
+        border: 'none',
+        borderRadius: '8px',
+        cursor: 'pointer',
+        fontSize: '14px',
+        fontWeight: 500,
+        color: danger ? '#dc2626' : '#374151',
+        textAlign: 'left',
+        transition: 'all 0.15s',
+      }}
+    >
+      <span style={{ fontSize: '16px' }}>{icon}</span>
+      {label}
+    </button>
   );
 }

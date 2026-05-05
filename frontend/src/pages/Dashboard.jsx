@@ -10,9 +10,16 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
+  // Check admin role from localStorage immediately — redirect before any fetch
+  const storedUser = JSON.parse(localStorage.getItem('udhaari_user') || 'null');
+  const userRole = storedUser?.Role || storedUser?.role || 'user';
+
   useEffect(() => {
+    if (userRole === 'admin') {
+      navigate('/admin', { replace: true });
+      return;
+    }
     fetchDashboard();
-    // Refresh dashboard every 15 seconds for real-time data (silent refresh)
     const interval = setInterval(() => {
       silentRefreshDashboard();
     }, 15000);
@@ -24,10 +31,8 @@ export default function Dashboard() {
     setError(null);
     try {
       const res = await API.get('/dashboard/comprehensive');
-      console.log('✅ Dashboard data fetched:', res.data);
       setData(res.data.data || res.data);
     } catch (err) {
-      console.error('❌ Failed to load dashboard:', err);
       setError(err.response?.data?.error || 'Failed to load dashboard');
     } finally {
       setLoading(false);
@@ -37,11 +42,9 @@ export default function Dashboard() {
   const silentRefreshDashboard = async () => {
     try {
       const res = await API.get('/dashboard/comprehensive');
-      console.log('🔄 Dashboard refreshed silently:', res.data);
       setData(res.data.data || res.data);
     } catch (err) {
       console.warn('Silent refresh failed:', err.message);
-      // Don't show error for silent refreshes
     }
   };
 
@@ -74,6 +77,9 @@ export default function Dashboard() {
     };
     return labels[type] || 'Activity';
   };
+
+  // If admin, we're redirecting — render nothing
+  if (userRole === 'admin') return null;
 
   if (loading) {
     return (
@@ -121,7 +127,7 @@ export default function Dashboard() {
       `}</style>
       
       <div style={{ maxWidth: '1600px', margin: '0 auto' }} className="dashboard-container">
-        {/* 🎨 HEADER SECTION */}
+        {/* HEADER */}
         <div style={{ marginBottom: '3rem' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '2rem' }}>
             <div>
@@ -134,7 +140,7 @@ export default function Dashboard() {
           </div>
         </div>
 
-        {/* 👤 USER PROFILE BANNER */}
+        {/* USER PROFILE BANNER */}
         <div style={{ display: 'flex', gap: '2rem', marginBottom: '3rem', alignItems: 'center', background: 'linear-gradient(135deg, #059669 0%, #10b981 100%)', padding: '3rem', borderRadius: '20px', color: '#fff', boxShadow: '0 12px 32px rgba(5, 150, 105, 0.25)', border: '1px solid rgba(255,255,255,0.1)' }}>
           <div style={{ width: '120px', height: '120px', borderRadius: '16px', background: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, overflow: 'hidden', boxShadow: '0 8px 16px rgba(0,0,0,0.1)' }}>
             {user?.profilePic || user?.ProfilePic ? (
@@ -162,10 +168,9 @@ export default function Dashboard() {
           </div>
         </div>
 
-        {/* 📊 MAIN STATS GRID (2x3) */}
+        {/* MAIN STATS GRID */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '2rem', marginBottom: '3rem' }}>
-          {/* Card 1: Total Assets */}
-          <div className="stat-card" style={{ background: 'linear-gradient(135deg, #f0fdf4 0%, #fff 100%)', padding: '2.5rem', borderRadius: '18px', boxShadow: '0 4px 12px rgba(0,0,0,0.06)', border: '1px solid rgba(5,150,105,0.1)', cursor: 'pointer', transition: 'all 0.3s', backgroundImage: 'radial-gradient(circle at top right, rgba(5,150,105,0.08), transparent)' }} onClick={() => navigate('/my-assets')} onMouseEnter={(e) => { e.currentTarget.style.transform = 'translateY(-8px)'; }} onMouseLeave={(e) => { e.currentTarget.style.transform = 'translateY(0)'; }}>
+          <div className="stat-card" style={{ background: 'linear-gradient(135deg, #f0fdf4 0%, #fff 100%)', padding: '2.5rem', borderRadius: '18px', boxShadow: '0 4px 12px rgba(0,0,0,0.06)', border: '1px solid rgba(5,150,105,0.1)', cursor: 'pointer', transition: 'all 0.3s' }} onClick={() => navigate('/my-assets')} onMouseEnter={(e) => { e.currentTarget.style.transform = 'translateY(-8px)'; }} onMouseLeave={(e) => { e.currentTarget.style.transform = 'translateY(0)'; }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', marginBottom: '2rem' }}>
               <div style={{ fontSize: '3.5rem', background: 'linear-gradient(135deg, #059669 0%, #10b981 100%)', borderRadius: '14px', padding: '1.2rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>🏠</div>
               <span style={{ padding: '0.5rem 1.2rem', background: 'linear-gradient(135deg, #dcfce7 0%, #f0fdf4 100%)', color: '#059669', borderRadius: '20px', fontSize: '0.8rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Assets</span>
@@ -175,8 +180,7 @@ export default function Dashboard() {
             <p style={{ color: '#d1d5db', fontSize: '0.9rem' }}>Tap to manage your assets</p>
           </div>
 
-          {/* Card 2: Pending Approvals */}
-          <div className="stat-card" style={{ background: 'linear-gradient(135deg, #fffbeb 0%, #fff 100%)', padding: '2.5rem', borderRadius: '18px', boxShadow: '0 4px 12px rgba(0,0,0,0.06)', border: '1px solid rgba(217,119,6,0.1)', cursor: 'pointer', transition: 'all 0.3s', backgroundImage: 'radial-gradient(circle at top right, rgba(217,119,6,0.08), transparent)' }} onClick={() => navigate('/bookings')} onMouseEnter={(e) => { e.currentTarget.style.transform = 'translateY(-8px)'; }} onMouseLeave={(e) => { e.currentTarget.style.transform = 'translateY(0)'; }}>
+          <div className="stat-card" style={{ background: 'linear-gradient(135deg, #fffbeb 0%, #fff 100%)', padding: '2.5rem', borderRadius: '18px', boxShadow: '0 4px 12px rgba(0,0,0,0.06)', border: '1px solid rgba(217,119,6,0.1)', cursor: 'pointer', transition: 'all 0.3s' }} onClick={() => navigate('/bookings')} onMouseEnter={(e) => { e.currentTarget.style.transform = 'translateY(-8px)'; }} onMouseLeave={(e) => { e.currentTarget.style.transform = 'translateY(0)'; }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', marginBottom: '2rem' }}>
               <div style={{ fontSize: '3.5rem', background: 'linear-gradient(135deg, #d97706 0%, #f59e0b 100%)', borderRadius: '14px', padding: '1.2rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>⏳</div>
               <span style={{ padding: '0.5rem 1.2rem', background: 'linear-gradient(135deg, #fef3c7 0%, #fffbeb 100%)', color: '#d97706', borderRadius: '20px', fontSize: '0.8rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Action</span>
@@ -186,8 +190,7 @@ export default function Dashboard() {
             <p style={{ color: '#d1d5db', fontSize: '0.9rem' }}>Awaiting your decision</p>
           </div>
 
-          {/* Card 3: Active Requests */}
-          <div className="stat-card" style={{ background: 'linear-gradient(135deg, #eff6ff 0%, #fff 100%)', padding: '2.5rem', borderRadius: '18px', boxShadow: '0 4px 12px rgba(0,0,0,0.06)', border: '1px solid rgba(2,132,199,0.1)', cursor: 'pointer', transition: 'all 0.3s', backgroundImage: 'radial-gradient(circle at top right, rgba(2,132,199,0.08), transparent)' }} onClick={() => navigate('/my-requests')} onMouseEnter={(e) => { e.currentTarget.style.transform = 'translateY(-8px)'; }} onMouseLeave={(e) => { e.currentTarget.style.transform = 'translateY(0)'; }}>
+          <div className="stat-card" style={{ background: 'linear-gradient(135deg, #eff6ff 0%, #fff 100%)', padding: '2.5rem', borderRadius: '18px', boxShadow: '0 4px 12px rgba(0,0,0,0.06)', border: '1px solid rgba(2,132,199,0.1)', cursor: 'pointer', transition: 'all 0.3s' }} onClick={() => navigate('/my-requests')} onMouseEnter={(e) => { e.currentTarget.style.transform = 'translateY(-8px)'; }} onMouseLeave={(e) => { e.currentTarget.style.transform = 'translateY(0)'; }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', marginBottom: '2rem' }}>
               <div style={{ fontSize: '3.5rem', background: 'linear-gradient(135deg, #0284c7 0%, #0891b2 100%)', borderRadius: '14px', padding: '1.2rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>📋</div>
               <span style={{ padding: '0.5rem 1.2rem', background: 'linear-gradient(135deg, #dbeafe 0%, #eff6ff 100%)', color: '#0284c7', borderRadius: '20px', fontSize: '0.8rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Active</span>
@@ -197,8 +200,7 @@ export default function Dashboard() {
             <p style={{ color: '#d1d5db', fontSize: '0.9rem' }}>Browse and manage requests</p>
           </div>
 
-          {/* Card 4: Pending Offers */}
-          <div className="stat-card" style={{ background: 'linear-gradient(135deg, #faf5ff 0%, #fff 100%)', padding: '2.5rem', borderRadius: '18px', boxShadow: '0 4px 12px rgba(0,0,0,0.06)', border: '1px solid rgba(147,51,234,0.1)', cursor: 'pointer', transition: 'all 0.3s', backgroundImage: 'radial-gradient(circle at top right, rgba(147,51,234,0.08), transparent)' }} onClick={() => navigate('/my-offers-made')} onMouseEnter={(e) => { e.currentTarget.style.transform = 'translateY(-8px)'; }} onMouseLeave={(e) => { e.currentTarget.style.transform = 'translateY(0)'; }}>
+          <div className="stat-card" style={{ background: 'linear-gradient(135deg, #faf5ff 0%, #fff 100%)', padding: '2.5rem', borderRadius: '18px', boxShadow: '0 4px 12px rgba(0,0,0,0.06)', border: '1px solid rgba(147,51,234,0.1)', cursor: 'pointer', transition: 'all 0.3s' }} onClick={() => navigate('/my-offers-made')} onMouseEnter={(e) => { e.currentTarget.style.transform = 'translateY(-8px)'; }} onMouseLeave={(e) => { e.currentTarget.style.transform = 'translateY(0)'; }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', marginBottom: '2rem' }}>
               <div style={{ fontSize: '3.5rem', background: 'linear-gradient(135deg, #9333ea 0%, #a855f7 100%)', borderRadius: '14px', padding: '1.2rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>🤝</div>
               <span style={{ padding: '0.5rem 1.2rem', background: 'linear-gradient(135deg, #f3e8ff 0%, #faf5ff 100%)', color: '#9333ea', borderRadius: '20px', fontSize: '0.8rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Offers</span>
@@ -208,7 +210,6 @@ export default function Dashboard() {
             <p style={{ color: '#d1d5db', fontSize: '0.9rem' }}>Offers awaiting response</p>
           </div>
 
-          {/* Card 5: Wallet Balance - HIGHLIGHTED */}
           <div className="stat-card" style={{ background: 'linear-gradient(135deg, #16a34a 0%, #22c55e 100%)', padding: '2.5rem', borderRadius: '18px', boxShadow: '0 8px 24px rgba(22,163,74,0.25)', border: '1px solid rgba(255,255,255,0.2)', cursor: 'pointer', transition: 'all 0.3s', color: '#fff' }} onClick={() => navigate('/wallet')} onMouseEnter={(e) => { e.currentTarget.style.transform = 'translateY(-8px)'; e.currentTarget.style.boxShadow = '0 12px 32px rgba(22,163,74,0.35)'; }} onMouseLeave={(e) => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 8px 24px rgba(22,163,74,0.25)'; }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', marginBottom: '2rem' }}>
               <div style={{ fontSize: '3.5rem', background: 'rgba(255,255,255,0.2)', borderRadius: '14px', padding: '1.2rem', display: 'flex', alignItems: 'center', justifyContent: 'center', backdropFilter: 'blur(10px)' }}>💰</div>
@@ -219,8 +220,7 @@ export default function Dashboard() {
             <p style={{ color: 'rgba(255,255,255,0.75)', fontSize: '0.9rem' }}>Ready to use</p>
           </div>
 
-          {/* Card 6: Completed Bookings */}
-          <div className="stat-card" style={{ background: 'linear-gradient(135deg, #f0fdfa 0%, #fff 100%)', padding: '2.5rem', borderRadius: '18px', boxShadow: '0 4px 12px rgba(0,0,0,0.06)', border: '1px solid rgba(16,185,129,0.1)', cursor: 'pointer', transition: 'all 0.3s', backgroundImage: 'radial-gradient(circle at top right, rgba(16,185,129,0.08), transparent)' }} onMouseEnter={(e) => { e.currentTarget.style.transform = 'translateY(-8px)'; }} onMouseLeave={(e) => { e.currentTarget.style.transform = 'translateY(0)'; }}>
+          <div className="stat-card" style={{ background: 'linear-gradient(135deg, #f0fdfa 0%, #fff 100%)', padding: '2.5rem', borderRadius: '18px', boxShadow: '0 4px 12px rgba(0,0,0,0.06)', border: '1px solid rgba(16,185,129,0.1)', cursor: 'pointer', transition: 'all 0.3s' }} onMouseEnter={(e) => { e.currentTarget.style.transform = 'translateY(-8px)'; }} onMouseLeave={(e) => { e.currentTarget.style.transform = 'translateY(0)'; }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', marginBottom: '2rem' }}>
               <div style={{ fontSize: '3.5rem', background: 'linear-gradient(135deg, #16a34a 0%, #22c55e 100%)', borderRadius: '14px', padding: '1.2rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>✅</div>
               <span style={{ padding: '0.5rem 1.2rem', background: 'linear-gradient(135deg, #dcfce7 0%, #f0fdf4 100%)', color: '#16a34a', borderRadius: '20px', fontSize: '0.8rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Success</span>
@@ -231,9 +231,8 @@ export default function Dashboard() {
           </div>
         </div>
 
-        {/* 📈 TWO COLUMN SECTION: Activity & Earnings */}
+        {/* TWO COLUMN: Activity & Earnings */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(480px, 1fr))', gap: '2.5rem', marginBottom: '3rem' }}>
-          {/* Recent Activity */}
           <div style={{ background: '#fff', padding: '2.5rem', borderRadius: '18px', boxShadow: '0 4px 12px rgba(0,0,0,0.06)', border: '1px solid #e5e7eb' }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '2rem', paddingBottom: '1.5rem', borderBottom: '2px solid #e5e7eb' }}>
               <h3 style={{ fontSize: '1.5rem', fontWeight: 800, color: '#1f2937', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>📌 <span>Recent Activity</span></h3>
@@ -263,7 +262,6 @@ export default function Dashboard() {
             )}
           </div>
 
-          {/* Earnings Summary */}
           <div style={{ background: '#fff', padding: '2.5rem', borderRadius: '18px', boxShadow: '0 4px 12px rgba(0,0,0,0.06)', border: '1px solid #e5e7eb' }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '2rem', paddingBottom: '1.5rem', borderBottom: '2px solid #e5e7eb' }}>
               <h3 style={{ fontSize: '1.5rem', fontWeight: 800, color: '#1f2937', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>📊 <span>This Year's Earnings</span></h3>
@@ -303,7 +301,7 @@ export default function Dashboard() {
           </div>
         </div>
 
-        {/* 💻 QUICK ACTIONS */}
+        {/* QUICK ACTIONS */}
         <div style={{ background: '#fff', padding: '2.5rem', borderRadius: '18px', boxShadow: '0 4px 12px rgba(0,0,0,0.06)', border: '1px solid #e5e7eb', marginBottom: '2rem' }}>
           <h3 style={{ fontSize: '1.5rem', fontWeight: 800, color: '#1f2937', marginBottom: '2rem', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>⚡ <span>Quick Actions</span></h3>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: '1.5rem' }}>
