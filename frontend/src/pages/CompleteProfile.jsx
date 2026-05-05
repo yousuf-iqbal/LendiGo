@@ -119,7 +119,10 @@ const handleSubmit = async (e) => {
       console.error('❌ NO USER in response! Response:', response.data);
       // If no user in response, try to login to get it
       try {
-        const loginRes = await API.post('/auth/login');
+       const token = await auth.currentUser.getIdToken(true);
+const loginRes = await API.post('/auth/login', {}, {
+  headers: { Authorization: `Bearer ${token}` }
+});
         if (loginRes.data.user) {
           localStorage.setItem('udhaari_user', JSON.stringify(loginRes.data.user));
           console.log('✅ Got user from login:', loginRes.data.user);
