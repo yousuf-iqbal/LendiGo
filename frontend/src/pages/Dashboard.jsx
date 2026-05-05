@@ -1,7 +1,67 @@
-import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext';
-import API from '../api/axios';
+import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+import { useAuth } from "../context/AuthContext";
+import API from "../api/axios";
+//import FloatingBackground from "../components/FloatingBackground";
+
+const C = {
+  saffron: "#F4A020", saffronDark: "#E08800", saffronPale: "#FFF0CC",
+  maroon: "#800020", maroonL: "#B00030", maroonDeep: "#5C0018",
+  brownLight: "#C4956A", cream: "#FDF6EC", warmWhite: "#FFF9F0",
+  textDark: "#2C1810", textMuted: "#6B4C3B", textFaint: "#A68070",
+  border: "rgba(128,0,32,0.12)", borderS: "rgba(128,0,32,0.25)",
+};
+
+// SVG Icons
+const Icons = {
+  Home: () => <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>,
+  Clock: () => <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>,
+  FileText: () => <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>,
+  Handshake: () => <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M17 11L12 6 7 11M12 6v8M20 11l-5 5H9l-5-5"/><path d="M4 10l4-4 3 3-3 3-4-4z"/><path d="M20 10l-4-4-3 3 3 3 4-4z"/></svg>,
+  CheckCircle: () => <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>,
+  Wallet: () => <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M21 12v3a4 4 0 0 1-4 4H7a4 4 0 0 1-4-4V9a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4h-4a2 2 0 0 0-2 2v2a2 2 0 0 0 2 2h4z"/><line x1="18" y1="12" x2="18" y2="12.01"/></svg>,
+  TrendingUp: () => <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>,
+  Refresh: () => <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M23 4v6h-6"/><path d="M1 20v-6h6"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>,
+  Activity: () => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>,
+};
+
+function StatCard({ icon: Icon, label, value, sub, color, onClick, idx }) {
+  return (
+    <div onClick={onClick}
+      style={{
+        background: C.warmWhite, border: `1px solid ${C.border}`, borderRadius: 16,
+        padding: "1.75rem", cursor: onClick ? "pointer" : "default",
+        boxShadow: "0 2px 12px rgba(128,0,32,0.07)", transition: "all 0.28s ease",
+        animation: `fadeUp 0.5s ease ${idx * 0.06}s both`,
+      }}
+      onMouseEnter={e => { if (onClick) { e.currentTarget.style.transform = "translateY(-4px)"; e.currentTarget.style.boxShadow = "0 8px 28px rgba(128,0,32,0.13)"; e.currentTarget.style.borderColor = C.borderS; } }}
+      onMouseLeave={e => { e.currentTarget.style.transform = "translateY(0)"; e.currentTarget.style.boxShadow = "0 2px 12px rgba(128,0,32,0.07)"; e.currentTarget.style.borderColor = C.border; }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "1.25rem" }}>
+        <div style={{ width: 48, height: 48, borderRadius: 12, background: `${color}18`, display: "flex", alignItems: "center", justifyContent: "center", color }}>
+          {Icon && <Icon />}
+        </div>
+        {sub && <span style={{ fontSize: "0.72rem", fontWeight: 700, color, background: `${color}15`, padding: "3px 10px", borderRadius: 999, border: `1px solid ${color}30` }}>{sub}</span>}
+      </div>
+      <p style={{ color: C.textFaint, fontSize: "0.78rem", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.07em", marginBottom: "0.3rem" }}>{label}</p>
+      <p style={{ fontFamily: "Cormorant Garamond, serif", fontSize: "2.2rem", fontWeight: 700, color, margin: 0, lineHeight: 1 }}>{value}</p>
+    </div>
+  );
+}
+
+function QuickBtn({ icon: Icon, label, onClick, color }) {
+  return (
+    <button onClick={onClick}
+      style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 8, padding: "1.25rem 1rem", background: C.warmWhite, border: `1px solid ${C.border}`, borderRadius: 14, cursor: "pointer", fontFamily: "'Outfit', sans-serif", fontWeight: 700, fontSize: "0.88rem", color: C.textDark, transition: "all 0.25s ease" }}
+      onMouseEnter={e => { e.currentTarget.style.background = `${color}12`; e.currentTarget.style.borderColor = `${color}50`; e.currentTarget.style.transform = "translateY(-3px)"; e.currentTarget.style.boxShadow = `0 6px 20px ${color}20`; }}
+      onMouseLeave={e => { e.currentTarget.style.background = C.warmWhite; e.currentTarget.style.borderColor = C.border; e.currentTarget.style.transform = "translateY(0)"; e.currentTarget.style.boxShadow = "none"; }}>
+      <div style={{ color, width: 28, height: 28 }}><Icon /></div>
+      {label}
+    </button>
+  );
+}
+
+const ACTIVITY_LABELS = { booking_received: "Booking Received", offer_received: "Offer Received", booking_confirmed: "Booking Confirmed", payment_received: "Payment Received" };
+const ACTIVITY_COLORS = { booking_received: C.saffron, offer_received: "#3B82F6", booking_confirmed: "#059669", payment_received: C.maroon };
 
 export default function Dashboard() {
   const navigate = useNavigate();
@@ -10,251 +70,153 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  // Check admin role from localStorage immediately — redirect before any fetch
-  const storedUser = JSON.parse(localStorage.getItem('udhaari_user') || 'null');
-  const userRole = storedUser?.Role || storedUser?.role || 'user';
+  const storedUser = JSON.parse(localStorage.getItem("udhaari_user") || "null");
+  const userRole = storedUser?.Role || storedUser?.role || "user";
 
   useEffect(() => {
-    if (userRole === 'admin') {
-      navigate('/admin', { replace: true });
+    if (userRole === "admin") {
+      navigate("/admin", { replace: true });
       return;
     }
     fetchDashboard();
-    const interval = setInterval(() => {
-      silentRefreshDashboard();
-    }, 15000);
+    const interval = setInterval(silentRefresh, 30000);
     return () => clearInterval(interval);
   }, []);
 
   const fetchDashboard = async () => {
-    setLoading(true);
-    setError(null);
+    setLoading(true); setError(null);
     try {
-      const res = await API.get('/dashboard/comprehensive');
+      const res = await API.get("/dashboard/comprehensive");
       setData(res.data.data || res.data);
-    } catch (err) {
-      setError(err.response?.data?.error || 'Failed to load dashboard');
-    } finally {
-      setLoading(false);
-    }
+    } catch (err) { setError(err.response?.data?.error || "Failed to load dashboard"); }
+    finally { setLoading(false); }
   };
 
-  const silentRefreshDashboard = async () => {
-    try {
-      const res = await API.get('/dashboard/comprehensive');
-      setData(res.data.data || res.data);
-    } catch (err) {
-      console.warn('Silent refresh failed:', err.message);
-    }
+  const silentRefresh = async () => {
+    try { const res = await API.get("/dashboard/comprehensive"); setData(res.data.data || res.data); } catch {}
   };
 
-  const getActivityIcon = (type) => {
-    const icons = {
-      booking_received: '📅',
-      offer_received: '🤝',
-      booking_confirmed: '✅',
-      payment_received: '💰',
-    };
-    return icons[type] || '📌';
-  };
+  if (userRole === "admin") return null;
 
-  const getActivityColor = (type) => {
-    const colors = {
-      booking_received: '#f59e0b',
-      offer_received: '#3b82f6',
-      booking_confirmed: '#10b981',
-      payment_received: '#059669',
-    };
-    return colors[type] || '#6b7280';
-  };
+  if (loading) return (
+    <div style={{ minHeight: "100vh", background: C.cream, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 16 }}>
+      <FloatingBackground variant="minimal" />
+      <div style={{ width: 44, height: 44, border: `3px solid ${C.border}`, borderTopColor: C.saffron, borderRadius: "50%", animation: "spin 0.8s linear infinite", zIndex: 1 }} />
+      <p style={{ color: C.textMuted, zIndex: 1, fontFamily: "'Outfit', sans-serif" }}>Loading dashboard…</p>
+      <style>{`@keyframes spin{to{transform:rotate(360deg);}}`}</style>
+    </div>
+  );
 
-  const getActivityLabel = (type) => {
-    const labels = {
-      booking_received: 'Booking Received',
-      offer_received: 'Offer Received',
-      booking_confirmed: 'Booking Confirmed',
-      payment_received: 'Payment Received',
-    };
-    return labels[type] || 'Activity';
-  };
-
-  // If admin, we're redirecting — render nothing
-  if (userRole === 'admin') return null;
-
-  if (loading) {
-    return (
-      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'linear-gradient(135deg, #f0fdf4 0%, #f9fafb 100%)' }}>
-        <style>{`
-          @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-          @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
-        `}</style>
-        <div style={{ textAlign: 'center' }}>
-          <div style={{ width: '64px', height: '64px', border: '4px solid #e5e7eb', borderTop: '4px solid #059669', borderRadius: '50%', animation: 'spin 1s linear infinite', margin: '0 auto 1rem' }} />
-          <p style={{ color: '#6b7280', fontSize: '1rem', fontWeight: 500 }}>Loading your dashboard...</p>
-        </div>
+  if (error) return (
+    <div style={{ minHeight: "100vh", background: C.cream, display: "flex", alignItems: "center", justifyContent: "center" }}>
+      <FloatingBackground variant="minimal" />
+      <div style={{ textAlign: "center", zIndex: 1, maxWidth: 400 }}>
+        <div style={{ width: 48, height: 48, margin: "0 auto 1rem", color: C.maroon }}><svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg></div>
+        <h3 style={{ fontFamily: "Cormorant Garamond, serif", fontSize: "1.5rem", color: C.textDark, marginBottom: "0.5rem" }}>Couldn't load dashboard</h3>
+        <p style={{ color: C.maroon, marginBottom: "1.5rem", fontSize: "0.95rem" }}>{error}</p>
+        <button onClick={fetchDashboard} style={{ padding: "0.75rem 2rem", background: C.maroon, color: "#fff", border: "none", borderRadius: 10, cursor: "pointer", fontFamily: "'Outfit', sans-serif", fontWeight: 700 }}>Try Again</button>
       </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div style={{ minHeight: '100vh', padding: '2rem', background: 'linear-gradient(135deg, #fef2f2 0%, #f9fafb 100%)' }}>
-        <div style={{ maxWidth: '600px', margin: '0 auto' }}>
-          <div style={{ background: '#fff', borderRadius: '16px', boxShadow: '0 4px 12px rgba(0,0,0,0.08)', border: '1px solid #fee2e2', padding: '3rem', textAlign: 'center' }}>
-            <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>⚠️</div>
-            <h3 style={{ fontSize: '1.5rem', fontWeight: 700, color: '#1f2937', marginBottom: '0.5rem' }}>Unable to Load Dashboard</h3>
-            <p style={{ color: '#dc2626', fontSize: '1rem', marginBottom: '2rem' }}>{error}</p>
-            <button onClick={fetchDashboard} style={{ padding: '0.75rem 2rem', background: 'linear-gradient(135deg, #059669 0%, #10b981 100%)', color: '#fff', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 700, fontSize: '1rem', transition: 'all 0.2s' }} onMouseEnter={(e) => { e.target.style.transform = 'translateY(-2px)'; e.target.style.boxShadow = '0 8px 16px rgba(5,150,105,0.3)'; }} onMouseLeave={(e) => { e.target.style.transform = 'translateY(0)'; e.target.style.boxShadow = 'none'; }}>
-              🔄 Try Again
-            </button>
-          </div>
-        </div>
-      </div>
-    );
-  }
+    </div>
+  );
 
   const stats = data?.stats || {};
   const activity = data?.activity || [];
   const earnings = data?.earnings || [];
+  const displayName = user?.fullName || user?.FullName || storedUser?.FullName || storedUser?.fullName || "there";
 
   return (
-    <div style={{ minHeight: '100vh', background: 'linear-gradient(135deg, #f0fdf4 0%, #f8f9fa 50%, #eff6ff 100%)', padding: '2rem 1rem' }}>
+    <div style={{ background: C.cream, minHeight: "100vh", position: "relative", fontFamily: "'Outfit', system-ui, sans-serif" }}>
+      //<FloatingBackground variant="minimal" />
       <style>{`
-        @keyframes slideInUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
-        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
-        .dashboard-container > * { animation: slideInUp 0.5s ease-out forwards; }
-        .stat-card:hover { box-shadow: 0 12px 32px rgba(5, 150, 105, 0.15); }
+        @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,600;0,700;1,600&family=Outfit:wght@300;400;500;600;700;800&display=swap');
+        @keyframes fadeUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes spin { to { transform: rotate(360deg); } }
       `}</style>
-      
-      <div style={{ maxWidth: '1600px', margin: '0 auto' }} className="dashboard-container">
-        {/* HEADER */}
-        <div style={{ marginBottom: '3rem' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '2rem' }}>
-            <div>
-              <h1 style={{ fontSize: '3.5rem', fontWeight: 900, background: 'linear-gradient(135deg, #059669 0%, #0891b2 100%)', backgroundClip: 'text', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', marginBottom: '0.5rem' }}>Dashboard</h1>
-              <p style={{ color: '#6b7280', fontSize: '1.1rem', fontWeight: 500 }}>Welcome back, <strong style={{ color: '#059669' }}>{user?.fullName || user?.FullName || 'User'}</strong>! 👋</p>
-            </div>
-            <button onClick={fetchDashboard} style={{ padding: '0.75rem 1.5rem', background: '#fff', border: '2px solid #e5e7eb', borderRadius: '10px', cursor: 'pointer', fontWeight: 600, color: '#6b7280', fontSize: '0.95rem', transition: 'all 0.2s', display: 'flex', alignItems: 'center', gap: '0.5rem' }} onMouseEnter={(e) => { e.currentTarget.style.borderColor = '#059669'; e.currentTarget.style.color = '#059669'; }} onMouseLeave={(e) => { e.currentTarget.style.borderColor = '#e5e7eb'; e.currentTarget.style.color = '#6b7280'; }}>
-              🔄 Refresh
-            </button>
+
+      <div style={{ position: "relative", zIndex: 1, maxWidth: 1200, margin: "0 auto", padding: "2rem 1.5rem" }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "2.5rem", animation: "fadeUp 0.5s ease both", flexWrap: "wrap", gap: "1rem" }}>
+          <div>
+            <p style={{ color: C.saffron, fontSize: "0.82rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: "0.4rem" }}>Overview</p>
+            <h1 style={{ fontFamily: "Cormorant Garamond, serif", fontSize: "2.8rem", fontWeight: 700, color: C.textDark, letterSpacing: "-0.02em", margin: 0 }}>
+              Welcome, <em style={{ color: C.maroon, fontStyle: "italic" }}>{displayName}</em>
+            </h1>
+            <p style={{ color: C.textMuted, marginTop: "0.4rem", fontSize: "0.95rem" }}>Here's what's happening across your account.</p>
           </div>
+          <button onClick={fetchDashboard} style={{ padding: "0.65rem 1.25rem", background: C.warmWhite, border: `1.5px solid ${C.border}`, borderRadius: 10, fontWeight: 600, cursor: "pointer", color: C.textMuted, fontFamily: "'Outfit', sans-serif", transition: "all 0.2s", display: "flex", alignItems: "center", gap: 6 }}>
+            <Icons.Refresh /> Refresh
+          </button>
         </div>
 
-        {/* USER PROFILE BANNER */}
-        <div style={{ display: 'flex', gap: '2rem', marginBottom: '3rem', alignItems: 'center', background: 'linear-gradient(135deg, #059669 0%, #10b981 100%)', padding: '3rem', borderRadius: '20px', color: '#fff', boxShadow: '0 12px 32px rgba(5, 150, 105, 0.25)', border: '1px solid rgba(255,255,255,0.1)' }}>
-          <div style={{ width: '120px', height: '120px', borderRadius: '16px', background: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, overflow: 'hidden', boxShadow: '0 8px 16px rgba(0,0,0,0.1)' }}>
-            {user?.profilePic || user?.ProfilePic ? (
-              <img src={user?.profilePic || user?.ProfilePic} alt="Profile" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+        <div style={{ background: `linear-gradient(135deg, ${C.maroon}, ${C.maroonDeep})`, borderRadius: 20, padding: "2rem 2.5rem", marginBottom: "2rem", display: "flex", alignItems: "center", gap: "2rem", flexWrap: "wrap", boxShadow: "0 8px 32px rgba(128,0,32,0.25)", animation: "fadeUp 0.5s ease 0.05s both" }}>
+          <div style={{ width: 80, height: 80, borderRadius: 16, background: "rgba(255,255,255,0.15)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, overflow: "hidden", boxShadow: "0 4px 16px rgba(0,0,0,0.2)", border: "2px solid rgba(255,255,255,0.25)" }}>
+            {storedUser?.ProfilePic ? (
+              <img src={storedUser.ProfilePic} alt="Profile" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
             ) : (
-              <span style={{ fontSize: '4rem', fontWeight: 900, color: '#059669' }}>{(user?.fullName || user?.FullName || 'U')[0]?.toUpperCase()}</span>
+              <span style={{ fontFamily: "Cormorant Garamond, serif", fontSize: "2.5rem", fontWeight: 700, color: C.saffron }}>{displayName[0]?.toUpperCase()}</span>
             )}
           </div>
-          <div style={{ flex: 1 }}>
-            <h2 style={{ fontSize: '2rem', fontWeight: 800, marginBottom: '0.5rem' }}>{user?.fullName || user?.FullName || 'User'}</h2>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, auto)', gap: '2rem', marginTop: '1rem' }}>
-              <div>
-                <p style={{ opacity: 0.85, fontSize: '0.9rem', marginBottom: '0.25rem' }}>📍 Location</p>
-                <p style={{ fontWeight: 700, fontSize: '1rem' }}>{user?.city || user?.City || 'Not specified'}</p>
-              </div>
-              <div>
-                <p style={{ opacity: 0.85, fontSize: '0.9rem', marginBottom: '0.25rem' }}>📧 Email</p>
-                <p style={{ fontWeight: 700, fontSize: '1rem', wordBreak: 'break-all' }}>{user?.email || user?.Email || 'N/A'}</p>
-              </div>
-              <div>
-                <p style={{ opacity: 0.85, fontSize: '0.9rem', marginBottom: '0.25rem' }}>📅 Member Since</p>
-                <p style={{ fontWeight: 700, fontSize: '1rem' }}>{new Date(user?.createdAt || new Date()).toLocaleDateString('en-US', { year: 'numeric', month: 'short' })}</p>
-              </div>
+          <div style={{ flex: 1, minWidth: 200 }}>
+            <h2 style={{ fontFamily: "Cormorant Garamond, serif", fontSize: "1.6rem", fontWeight: 700, color: "#fff", margin: "0 0 0.5rem", letterSpacing: "-0.01em" }}>{displayName}</h2>
+            <div style={{ display: "flex", gap: "2rem", flexWrap: "wrap" }}>
+              {[
+                { label: "Location", value: storedUser?.City || "Not set" },
+                { label: "Email", value: storedUser?.Email || "—" },
+              ].map(({ label, value }) => (
+                <div key={label}>
+                  <p style={{ color: "rgba(255,255,255,0.5)", fontSize: "0.72rem", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.07em", margin: "0 0 2px" }}>{label}</p>
+                  <p style={{ color: "#fff", fontWeight: 600, fontSize: "0.9rem", margin: 0 }}>{value}</p>
+                </div>
+              ))}
             </div>
           </div>
+          <button onClick={() => navigate("/profile")} style={{ padding: "0.65rem 1.5rem", background: "rgba(255,255,255,0.12)", border: "1.5px solid rgba(255,255,255,0.25)", borderRadius: 10, color: "#fff", fontFamily: "'Outfit', sans-serif", fontWeight: 600, cursor: "pointer", fontSize: "0.88rem", transition: "all 0.2s", flexShrink: 0 }}>
+            Edit Profile
+          </button>
         </div>
 
-        {/* MAIN STATS GRID */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '2rem', marginBottom: '3rem' }}>
-          <div className="stat-card" style={{ background: 'linear-gradient(135deg, #f0fdf4 0%, #fff 100%)', padding: '2.5rem', borderRadius: '18px', boxShadow: '0 4px 12px rgba(0,0,0,0.06)', border: '1px solid rgba(5,150,105,0.1)', cursor: 'pointer', transition: 'all 0.3s' }} onClick={() => navigate('/my-assets')} onMouseEnter={(e) => { e.currentTarget.style.transform = 'translateY(-8px)'; }} onMouseLeave={(e) => { e.currentTarget.style.transform = 'translateY(0)'; }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', marginBottom: '2rem' }}>
-              <div style={{ fontSize: '3.5rem', background: 'linear-gradient(135deg, #059669 0%, #10b981 100%)', borderRadius: '14px', padding: '1.2rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>🏠</div>
-              <span style={{ padding: '0.5rem 1.2rem', background: 'linear-gradient(135deg, #dcfce7 0%, #f0fdf4 100%)', color: '#059669', borderRadius: '20px', fontSize: '0.8rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Assets</span>
-            </div>
-            <p style={{ color: '#9ca3af', fontSize: '0.95rem', marginBottom: '0.5rem', fontWeight: 500 }}>Total Assets Owned</p>
-            <p style={{ fontSize: '3rem', fontWeight: 900, color: '#059669', marginBottom: '0.75rem' }}>{stats.TotalAssets || 0}</p>
-            <p style={{ color: '#d1d5db', fontSize: '0.9rem' }}>Tap to manage your assets</p>
-          </div>
-
-          <div className="stat-card" style={{ background: 'linear-gradient(135deg, #fffbeb 0%, #fff 100%)', padding: '2.5rem', borderRadius: '18px', boxShadow: '0 4px 12px rgba(0,0,0,0.06)', border: '1px solid rgba(217,119,6,0.1)', cursor: 'pointer', transition: 'all 0.3s' }} onClick={() => navigate('/bookings')} onMouseEnter={(e) => { e.currentTarget.style.transform = 'translateY(-8px)'; }} onMouseLeave={(e) => { e.currentTarget.style.transform = 'translateY(0)'; }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', marginBottom: '2rem' }}>
-              <div style={{ fontSize: '3.5rem', background: 'linear-gradient(135deg, #d97706 0%, #f59e0b 100%)', borderRadius: '14px', padding: '1.2rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>⏳</div>
-              <span style={{ padding: '0.5rem 1.2rem', background: 'linear-gradient(135deg, #fef3c7 0%, #fffbeb 100%)', color: '#d97706', borderRadius: '20px', fontSize: '0.8rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Action</span>
-            </div>
-            <p style={{ color: '#9ca3af', fontSize: '0.95rem', marginBottom: '0.5rem', fontWeight: 500 }}>Pending Approvals</p>
-            <p style={{ fontSize: '3rem', fontWeight: 900, color: '#d97706', marginBottom: '0.75rem' }}>{stats.PendingBookings || 0}</p>
-            <p style={{ color: '#d1d5db', fontSize: '0.9rem' }}>Awaiting your decision</p>
-          </div>
-
-          <div className="stat-card" style={{ background: 'linear-gradient(135deg, #eff6ff 0%, #fff 100%)', padding: '2.5rem', borderRadius: '18px', boxShadow: '0 4px 12px rgba(0,0,0,0.06)', border: '1px solid rgba(2,132,199,0.1)', cursor: 'pointer', transition: 'all 0.3s' }} onClick={() => navigate('/my-requests')} onMouseEnter={(e) => { e.currentTarget.style.transform = 'translateY(-8px)'; }} onMouseLeave={(e) => { e.currentTarget.style.transform = 'translateY(0)'; }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', marginBottom: '2rem' }}>
-              <div style={{ fontSize: '3.5rem', background: 'linear-gradient(135deg, #0284c7 0%, #0891b2 100%)', borderRadius: '14px', padding: '1.2rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>📋</div>
-              <span style={{ padding: '0.5rem 1.2rem', background: 'linear-gradient(135deg, #dbeafe 0%, #eff6ff 100%)', color: '#0284c7', borderRadius: '20px', fontSize: '0.8rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Active</span>
-            </div>
-            <p style={{ color: '#9ca3af', fontSize: '0.95rem', marginBottom: '0.5rem', fontWeight: 500 }}>Active Requests</p>
-            <p style={{ fontSize: '3rem', fontWeight: 900, color: '#0284c7', marginBottom: '0.75rem' }}>{stats.ActiveRequests || 0}</p>
-            <p style={{ color: '#d1d5db', fontSize: '0.9rem' }}>Browse and manage requests</p>
-          </div>
-
-          <div className="stat-card" style={{ background: 'linear-gradient(135deg, #faf5ff 0%, #fff 100%)', padding: '2.5rem', borderRadius: '18px', boxShadow: '0 4px 12px rgba(0,0,0,0.06)', border: '1px solid rgba(147,51,234,0.1)', cursor: 'pointer', transition: 'all 0.3s' }} onClick={() => navigate('/my-offers-made')} onMouseEnter={(e) => { e.currentTarget.style.transform = 'translateY(-8px)'; }} onMouseLeave={(e) => { e.currentTarget.style.transform = 'translateY(0)'; }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', marginBottom: '2rem' }}>
-              <div style={{ fontSize: '3.5rem', background: 'linear-gradient(135deg, #9333ea 0%, #a855f7 100%)', borderRadius: '14px', padding: '1.2rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>🤝</div>
-              <span style={{ padding: '0.5rem 1.2rem', background: 'linear-gradient(135deg, #f3e8ff 0%, #faf5ff 100%)', color: '#9333ea', borderRadius: '20px', fontSize: '0.8rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Offers</span>
-            </div>
-            <p style={{ color: '#9ca3af', fontSize: '0.95rem', marginBottom: '0.5rem', fontWeight: 500 }}>Pending Offers</p>
-            <p style={{ fontSize: '3rem', fontWeight: 900, color: '#9333ea', marginBottom: '0.75rem' }}>{stats.PendingOffers || 0}</p>
-            <p style={{ color: '#d1d5db', fontSize: '0.9rem' }}>Offers awaiting response</p>
-          </div>
-
-          <div className="stat-card" style={{ background: 'linear-gradient(135deg, #16a34a 0%, #22c55e 100%)', padding: '2.5rem', borderRadius: '18px', boxShadow: '0 8px 24px rgba(22,163,74,0.25)', border: '1px solid rgba(255,255,255,0.2)', cursor: 'pointer', transition: 'all 0.3s', color: '#fff' }} onClick={() => navigate('/wallet')} onMouseEnter={(e) => { e.currentTarget.style.transform = 'translateY(-8px)'; e.currentTarget.style.boxShadow = '0 12px 32px rgba(22,163,74,0.35)'; }} onMouseLeave={(e) => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 8px 24px rgba(22,163,74,0.25)'; }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', marginBottom: '2rem' }}>
-              <div style={{ fontSize: '3.5rem', background: 'rgba(255,255,255,0.2)', borderRadius: '14px', padding: '1.2rem', display: 'flex', alignItems: 'center', justifyContent: 'center', backdropFilter: 'blur(10px)' }}>💰</div>
-              <span style={{ padding: '0.5rem 1.2rem', background: 'rgba(255,255,255,0.25)', color: '#fff', borderRadius: '20px', fontSize: '0.8rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px', backdropFilter: 'blur(10px)' }}>Balance</span>
-            </div>
-            <p style={{ color: 'rgba(255,255,255,0.85)', fontSize: '0.95rem', marginBottom: '0.5rem', fontWeight: 500 }}>Available Balance</p>
-            <p style={{ fontSize: '3rem', fontWeight: 900, marginBottom: '0.75rem' }}>Rs. {(stats.WalletBalance || 0).toLocaleString()}</p>
-            <p style={{ color: 'rgba(255,255,255,0.75)', fontSize: '0.9rem' }}>Ready to use</p>
-          </div>
-
-          <div className="stat-card" style={{ background: 'linear-gradient(135deg, #f0fdfa 0%, #fff 100%)', padding: '2.5rem', borderRadius: '18px', boxShadow: '0 4px 12px rgba(0,0,0,0.06)', border: '1px solid rgba(16,185,129,0.1)', cursor: 'pointer', transition: 'all 0.3s' }} onMouseEnter={(e) => { e.currentTarget.style.transform = 'translateY(-8px)'; }} onMouseLeave={(e) => { e.currentTarget.style.transform = 'translateY(0)'; }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', marginBottom: '2rem' }}>
-              <div style={{ fontSize: '3.5rem', background: 'linear-gradient(135deg, #16a34a 0%, #22c55e 100%)', borderRadius: '14px', padding: '1.2rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>✅</div>
-              <span style={{ padding: '0.5rem 1.2rem', background: 'linear-gradient(135deg, #dcfce7 0%, #f0fdf4 100%)', color: '#16a34a', borderRadius: '20px', fontSize: '0.8rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Success</span>
-            </div>
-            <p style={{ color: '#9ca3af', fontSize: '0.95rem', marginBottom: '0.5rem', fontWeight: 500 }}>Completed Bookings</p>
-            <p style={{ fontSize: '3rem', fontWeight: 900, color: '#16a34a', marginBottom: '0.75rem' }}>{stats.CompletedBookings || 0}</p>
-            <p style={{ color: '#d1d5db', fontSize: '0.9rem' }}>Successfully completed</p>
-          </div>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: "1.25rem", marginBottom: "2rem" }}>
+          <StatCard icon={Icons.Home} label="Assets Owned" value={stats.TotalAssets || 0} sub="Listed" color={C.maroon} onClick={() => navigate("/my-assets")} />
+          <StatCard icon={Icons.Clock} label="Pending Approvals" value={stats.PendingBookings || 0} sub="Action needed" color={C.saffronDark} onClick={() => navigate("/bookings")} />
+          <StatCard icon={Icons.FileText} label="Active Requests" value={stats.ActiveRequests || 0} sub="Open" color="#0284C7" onClick={() => navigate("/my-requests")} />
+          <StatCard icon={Icons.Handshake} label="Pending Offers" value={stats.PendingOffers || 0} sub="Awaiting" color="#7C3AED" onClick={() => navigate("/my-offers-made")} />
+          <StatCard icon={Icons.CheckCircle} label="Completed Bookings" value={stats.CompletedBookings || 0} sub="Done" color="#059669" />
         </div>
 
-        {/* TWO COLUMN: Activity & Earnings */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(480px, 1fr))', gap: '2.5rem', marginBottom: '3rem' }}>
-          <div style={{ background: '#fff', padding: '2.5rem', borderRadius: '18px', boxShadow: '0 4px 12px rgba(0,0,0,0.06)', border: '1px solid #e5e7eb' }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '2rem', paddingBottom: '1.5rem', borderBottom: '2px solid #e5e7eb' }}>
-              <h3 style={{ fontSize: '1.5rem', fontWeight: 800, color: '#1f2937', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>📌 <span>Recent Activity</span></h3>
-              {activity.length > 0 && <span style={{ padding: '0.4rem 1rem', background: '#f0fdf4', color: '#059669', borderRadius: '20px', fontSize: '0.85rem', fontWeight: 700 }}>{activity.length} events</span>}
+        <div style={{ background: `linear-gradient(135deg, ${C.saffronPale}, #FFFAEE)`, border: `1px solid rgba(244,160,32,0.35)`, borderRadius: 16, padding: "1.5rem 2rem", marginBottom: "2rem", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "1rem", animation: "fadeUp 0.5s ease 0.36s both" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
+            <div style={{ width: 48, height: 48, borderRadius: 12, background: `${C.saffron}20`, display: "flex", alignItems: "center", justifyContent: "center", color: C.saffronDark }}><Icons.Wallet /></div>
+            <div>
+              <p style={{ color: C.saffronDark, fontSize: "0.75rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em", margin: "0 0 4px" }}>Wallet Balance</p>
+              <p style={{ fontFamily: "Cormorant Garamond, serif", fontSize: "2.8rem", fontWeight: 700, color: C.maroon, margin: 0, lineHeight: 1 }}>Rs. {Number(stats.WalletBalance || 0).toLocaleString()}</p>
+            </div>
+          </div>
+          <button onClick={() => navigate("/wallet")} style={{ padding: "0.75rem 1.5rem", background: C.maroon, color: "#fff", border: "none", borderRadius: 10, fontWeight: 700, cursor: "pointer", fontFamily: "'Outfit', sans-serif" }}>
+            View Wallet
+          </button>
+        </div>
+
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(380px, 1fr))", gap: "1.5rem", marginBottom: "2rem" }}>
+          <div style={{ background: C.warmWhite, border: `1px solid ${C.border}`, borderRadius: 16, padding: "1.75rem", animation: "fadeUp 0.5s ease 0.42s both" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.5rem", paddingBottom: "1rem", borderBottom: `1px solid ${C.border}` }}>
+              <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                <div style={{ width: 32, height: 32, borderRadius: 8, background: `${C.saffron}15`, display: "flex", alignItems: "center", justifyContent: "center", color: C.saffron }}><Icons.Activity /></div>
+                <h3 style={{ fontFamily: "Cormorant Garamond, serif", fontSize: "1.35rem", fontWeight: 700, color: C.textDark, margin: 0 }}>Recent Activity</h3>
+              </div>
             </div>
             {activity.length === 0 ? (
-              <div style={{ textAlign: 'center', padding: '3rem 1rem', color: '#9ca3af' }}>
-                <p style={{ fontSize: '3rem', marginBottom: '0.5rem' }}>🌟</p>
-                <p style={{ fontSize: '1rem', fontWeight: 500 }}>No activity yet</p>
-                <p style={{ fontSize: '0.9rem', marginTop: '0.5rem' }}>Your recent activities will appear here</p>
+              <div style={{ textAlign: "center", padding: "2.5rem 1rem", color: C.textFaint }}>
+                <p style={{ fontWeight: 500 }}>No activity yet</p>
+                <p style={{ fontSize: "0.85rem" }}>Your recent events will appear here</p>
               </div>
             ) : (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', maxHeight: '500px', overflowY: 'auto' }}>
-                {activity.slice(0, 10).map((item, idx) => (
-                  <div key={idx} style={{ display: 'flex', gap: '1rem', padding: '1.2rem', background: '#f9fafb', borderRadius: '12px', borderLeft: `4px solid ${getActivityColor(item.ActivityType)}`, transition: 'all 0.2s' }} onMouseEnter={(e) => { e.currentTarget.style.background = '#f0fdf4'; e.currentTarget.style.transform = 'translateX(4px)'; }} onMouseLeave={(e) => { e.currentTarget.style.background = '#f9fafb'; e.currentTarget.style.transform = 'translateX(0)'; }}>
-                    <div style={{ fontSize: '1.75rem', flexShrink: 0, minWidth: '32px' }}>{getActivityIcon(item.ActivityType)}</div>
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <p style={{ color: '#1f2937', fontSize: '0.95rem', fontWeight: 700, marginBottom: '0.25rem' }}>{getActivityLabel(item.ActivityType)}</p>
-                      <p style={{ color: '#6b7280', fontSize: '0.85rem', marginBottom: '0.3rem', whiteSpace: 'normal', wordBreak: 'break-word' }}>{item.Description}</p>
-                      <p style={{ color: '#9ca3af', fontSize: '0.8rem' }}>
-                        <strong>{item.UserName}</strong> • {new Date(item.Timestamp).toLocaleDateString()} {new Date(item.Timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                      </p>
+              <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem", maxHeight: 400, overflowY: "auto" }}>
+                {activity.slice(0, 8).map((item, i) => (
+                  <div key={i} style={{ display: "flex", gap: "0.875rem", padding: "0.875rem", background: C.cream, borderRadius: 10, borderLeft: `3px solid ${ACTIVITY_COLORS[item.ActivityType] || C.saffron}` }}>
+                    <div style={{ width: 32, height: 32, borderRadius: 8, background: `${ACTIVITY_COLORS[item.ActivityType] || C.saffron}15`, display: "flex", alignItems: "center", justifyContent: "center", color: ACTIVITY_COLORS[item.ActivityType] || C.saffron }}><Icons.Activity /></div>
+                    <div>
+                      <p style={{ fontWeight: 700, color: C.textDark, fontSize: "0.88rem", margin: "0 0 2px" }}>{ACTIVITY_LABELS[item.ActivityType] || "Activity"}</p>
+                      <p style={{ color: C.textMuted, fontSize: "0.82rem", margin: "0 0 2px" }}>{item.Description}</p>
+                      <p style={{ color: C.textFaint, fontSize: "0.75rem", margin: 0 }}>{new Date(item.Timestamp).toLocaleDateString("en-PK")}</p>
                     </div>
                   </div>
                 ))}
@@ -262,67 +224,53 @@ export default function Dashboard() {
             )}
           </div>
 
-          <div style={{ background: '#fff', padding: '2.5rem', borderRadius: '18px', boxShadow: '0 4px 12px rgba(0,0,0,0.06)', border: '1px solid #e5e7eb' }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '2rem', paddingBottom: '1.5rem', borderBottom: '2px solid #e5e7eb' }}>
-              <h3 style={{ fontSize: '1.5rem', fontWeight: 800, color: '#1f2937', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>📊 <span>This Year's Earnings</span></h3>
-              {earnings.length > 0 && <span style={{ padding: '0.4rem 1rem', background: '#f0fdf4', color: '#059669', borderRadius: '20px', fontSize: '0.85rem', fontWeight: 700 }}>{earnings.length} months</span>}
+          <div style={{ background: C.warmWhite, border: `1px solid ${C.border}`, borderRadius: 16, padding: "1.75rem", animation: "fadeUp 0.5s ease 0.48s both" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginBottom: "1.5rem", paddingBottom: "1rem", borderBottom: `1px solid ${C.border}` }}>
+              <div style={{ width: 32, height: 32, borderRadius: 8, background: `${C.maroon}15`, display: "flex", alignItems: "center", justifyContent: "center", color: C.maroon }}><Icons.TrendingUp /></div>
+              <h3 style={{ fontFamily: "Cormorant Garamond, serif", fontSize: "1.35rem", fontWeight: 700, color: C.textDark, margin: 0 }}>Monthly Earnings</h3>
             </div>
             {earnings.length === 0 ? (
-              <div style={{ textAlign: 'center', padding: '3rem 1rem', color: '#9ca3af' }}>
-                <p style={{ fontSize: '3rem', marginBottom: '0.5rem' }}>💸</p>
-                <p style={{ fontSize: '1rem', fontWeight: 500 }}>No earnings yet</p>
-                <p style={{ fontSize: '0.9rem', marginTop: '0.5rem' }}>Your earnings will appear as you complete bookings</p>
+              <div style={{ textAlign: "center", padding: "2.5rem 1rem", color: C.textFaint }}>
+                <p style={{ fontWeight: 500 }}>No earnings yet</p>
+                <p style={{ fontSize: "0.85rem" }}>Complete bookings to start earning</p>
               </div>
             ) : (
               <>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginBottom: '2rem', maxHeight: '350px', overflowY: 'auto' }}>
-                  {earnings.map((month, idx) => {
-                    const maxEarning = Math.max(...earnings.map(e => e.Earnings), 1);
-                    const percentage = (month.Earnings / maxEarning) * 100;
+                <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem", marginBottom: "1.5rem", maxHeight: 280, overflowY: "auto" }}>
+                  {earnings.map((month, i) => {
+                    const max = Math.max(...earnings.map(e => e.Earnings), 1);
+                    const pct = (month.Earnings / max) * 100;
                     return (
-                      <div key={idx} style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
-                        <span style={{ fontSize: '0.9rem', color: '#6b7280', minWidth: '70px', fontWeight: 600 }}>
-                          {new Date(month.Month).toLocaleDateString('en-US', { month: 'short', year: '2-digit' })}
+                      <div key={i} style={{ display: "flex", gap: "0.875rem", alignItems: "center" }}>
+                        <span style={{ fontSize: "0.82rem", color: C.textMuted, fontWeight: 600, minWidth: 56 }}>
+                          {new Date(month.Month).toLocaleDateString("en-US", { month: "short", year: "2-digit" })}
                         </span>
-                        <div style={{ flex: 1, height: '28px', background: '#e5e7eb', borderRadius: '6px', overflow: 'hidden', position: 'relative' }}>
-                          <div style={{ height: '100%', width: `${percentage}%`, background: 'linear-gradient(90deg, #059669 0%, #10b981 100%)', transition: 'width 0.5s ease-out', borderRadius: '6px' }} />
+                        <div style={{ flex: 1, height: 22, background: C.cream, borderRadius: 6, overflow: "hidden", border: `1px solid ${C.border}` }}>
+                          <div style={{ height: "100%", width: `${pct}%`, background: `linear-gradient(90deg, ${C.maroon}, ${C.maroonL})`, borderRadius: 6 }} />
                         </div>
-                        <span style={{ fontSize: '0.95rem', fontWeight: 800, color: '#1f2937', minWidth: '100px', textAlign: 'right' }}>Rs. {month.Earnings.toLocaleString()}</span>
+                        <span style={{ fontWeight: 700, color: C.textDark, fontSize: "0.85rem", minWidth: 80, textAlign: "right" }}>Rs. {Number(month.Earnings).toLocaleString()}</span>
                       </div>
                     );
                   })}
                 </div>
-                <div style={{ padding: '1.5rem', background: 'linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%)', borderRadius: '12px', border: '1px solid #bbf7d0' }}>
-                  <p style={{ color: '#6b7280', fontSize: '0.9rem', marginBottom: '0.5rem', fontWeight: 500 }}>💰 Total Earned (All Time)</p>
-                  <p style={{ fontSize: '2rem', fontWeight: 900, color: '#059669' }}>Rs. {(stats.TotalEarned || 0).toLocaleString()}</p>
+                <div style={{ background: C.cream, borderRadius: 12, padding: "1rem 1.25rem", border: `1px solid ${C.border}` }}>
+                  <p style={{ color: C.textFaint, fontSize: "0.72rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.07em", margin: "0 0 4px" }}>Total Earned (All Time)</p>
+                  <p style={{ fontFamily: "Cormorant Garamond, serif", fontSize: "1.8rem", fontWeight: 700, color: C.maroon, margin: 0 }}>Rs. {Number(stats.TotalEarned || 0).toLocaleString()}</p>
                 </div>
               </>
             )}
           </div>
         </div>
 
-        {/* QUICK ACTIONS */}
-        <div style={{ background: '#fff', padding: '2.5rem', borderRadius: '18px', boxShadow: '0 4px 12px rgba(0,0,0,0.06)', border: '1px solid #e5e7eb', marginBottom: '2rem' }}>
-          <h3 style={{ fontSize: '1.5rem', fontWeight: 800, color: '#1f2937', marginBottom: '2rem', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>⚡ <span>Quick Actions</span></h3>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: '1.5rem' }}>
-            <button onClick={() => navigate('/my-assets/add')} style={{ padding: '1.5rem 1rem', background: 'linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%)', border: '2px solid #86efac', borderRadius: '12px', color: '#059669', fontWeight: 700, cursor: 'pointer', transition: 'all 0.2s', fontSize: '1rem', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.5rem' }} onMouseEnter={(e) => { e.currentTarget.style.transform = 'translateY(-4px)'; e.currentTarget.style.boxShadow = '0 8px 16px rgba(5,150,105,0.15)'; }} onMouseLeave={(e) => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = 'none'; }}>
-              <span style={{ fontSize: '1.75rem' }}>➕</span> Add Asset
-            </button>
-            <button onClick={() => navigate('/post-request')} style={{ padding: '1.5rem 1rem', background: 'linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%)', border: '2px solid #60a5fa', borderRadius: '12px', color: '#0284c7', fontWeight: 700, cursor: 'pointer', transition: 'all 0.2s', fontSize: '1rem', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.5rem' }} onMouseEnter={(e) => { e.currentTarget.style.transform = 'translateY(-4px)'; e.currentTarget.style.boxShadow = '0 8px 16px rgba(2,132,199,0.15)'; }} onMouseLeave={(e) => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = 'none'; }}>
-              <span style={{ fontSize: '1.75rem' }}>📝</span> Post Request
-            </button>
-            <button onClick={() => navigate('/bookings')} style={{ padding: '1.5rem 1rem', background: 'linear-gradient(135deg, #fef3c7 0%, #fde68a 100%)', border: '2px solid #fcd34d', borderRadius: '12px', color: '#d97706', fontWeight: 700, cursor: 'pointer', transition: 'all 0.2s', fontSize: '1rem', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.5rem' }} onMouseEnter={(e) => { e.currentTarget.style.transform = 'translateY(-4px)'; e.currentTarget.style.boxShadow = '0 8px 16px rgba(217,119,6,0.15)'; }} onMouseLeave={(e) => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = 'none'; }}>
-              <span style={{ fontSize: '1.75rem' }}>📅</span> My Bookings
-            </button>
-            <button onClick={() => navigate('/my-offers-made')} style={{ padding: '1.5rem 1rem', background: 'linear-gradient(135deg, #f3e8ff 0%, #ede9fe 100%)', border: '2px solid #d8b4fe', borderRadius: '12px', color: '#9333ea', fontWeight: 700, cursor: 'pointer', transition: 'all 0.2s', fontSize: '1rem', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.5rem' }} onMouseEnter={(e) => { e.currentTarget.style.transform = 'translateY(-4px)'; e.currentTarget.style.boxShadow = '0 8px 16px rgba(147,51,234,0.15)'; }} onMouseLeave={(e) => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = 'none'; }}>
-              <span style={{ fontSize: '1.75rem' }}>🤝</span> My Offers
-            </button>
-            <button onClick={() => navigate('/wallet')} style={{ padding: '1.5rem 1rem', background: 'linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%)', border: '2px solid #86efac', borderRadius: '12px', color: '#059669', fontWeight: 700, cursor: 'pointer', transition: 'all 0.2s', fontSize: '1rem', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.5rem' }} onMouseEnter={(e) => { e.currentTarget.style.transform = 'translateY(-4px)'; e.currentTarget.style.boxShadow = '0 8px 16px rgba(5,150,105,0.15)'; }} onMouseLeave={(e) => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = 'none'; }}>
-              <span style={{ fontSize: '1.75rem' }}>💳</span> Wallet
-            </button>
-            <button onClick={() => navigate('/browse')} style={{ padding: '1.5rem 1rem', background: 'linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%)', border: '2px solid #60a5fa', borderRadius: '12px', color: '#0284c7', fontWeight: 700, cursor: 'pointer', transition: 'all 0.2s', fontSize: '1rem', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.5rem' }} onMouseEnter={(e) => { e.currentTarget.style.transform = 'translateY(-4px)'; e.currentTarget.style.boxShadow = '0 8px 16px rgba(2,132,199,0.15)'; }} onMouseLeave={(e) => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = 'none'; }}>
-              <span style={{ fontSize: '1.75rem' }}>🔍</span> Browse
-            </button>
+        <div style={{ background: C.warmWhite, border: `1px solid ${C.border}`, borderRadius: 16, padding: "1.75rem", animation: "fadeUp 0.5s ease 0.54s both" }}>
+          <h3 style={{ fontFamily: "Cormorant Garamond, serif", fontSize: "1.35rem", fontWeight: 700, color: C.textDark, margin: "0 0 1.25rem" }}>Quick Actions</h3>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(130px, 1fr))", gap: "1rem" }}>
+            <QuickBtn icon={() => <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>} label="Add Asset" onClick={() => navigate("/my-assets/add")} color={C.maroon} />
+            <QuickBtn icon={() => <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></svg>} label="Post Request" onClick={() => navigate("/post-request")} color="#0284C7" />
+            <QuickBtn icon={() => <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>} label="My Bookings" onClick={() => navigate("/bookings")} color={C.saffronDark} />
+            <QuickBtn icon={() => <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>} label="My Offers" onClick={() => navigate("/my-offers-made")} color="#7C3AED" />
+            <QuickBtn icon={() => <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M21 12v3a4 4 0 0 1-4 4H7a4 4 0 0 1-4-4V9a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4h-4a2 2 0 0 0-2 2v2a2 2 0 0 0 2 2h4z"/></svg>} label="Wallet" onClick={() => navigate("/wallet")} color="#059669" />
+            <QuickBtn icon={() => <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>} label="Browse" onClick={() => navigate("/browse")} color={C.brownLight} />
           </div>
         </div>
       </div>

@@ -1,8 +1,4 @@
-/* ═══════════════════════════════════════════════════════════
-   LENDIGO — Global Theme & Animation System
-   Place at: frontend/src/theme.css
-   Import in: frontend/src/main.jsx  →  import './theme.css'
-═══════════════════════════════════════════════════════════ */
+
 
 @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400;1,600&family=Outfit:wght@300;400;500;600;700;800&display=swap');
 
@@ -36,6 +32,43 @@
   --transition-slow:0.6s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
+/* Add to your theme.css */
+
+/* Ensure content appears above aurora background */
+.page-wrapper {
+  position: relative;
+  min-height: 100vh;
+  z-index: 1;
+  background-color: transparent; /* Remove any background color */
+}
+
+/* Make cards and containers slightly transparent to let aurora show through? */
+/* Or keep them solid - your choice */
+.card, 
+.btn,
+.tabs,
+[class*="bg-"] {
+  background: rgba(253, 246, 236, 0.95); /* cream with slight transparency */
+  backdrop-filter: blur(2px); /* subtle blur effect */
+}
+
+/* For sections that need full opacity */
+.section-solid {
+  background: var(--cream);
+}
+
+/* Optional: Add a subtle overlay to improve text readability */
+.page-wrapper::before {
+  content: '';
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: radial-gradient(circle at center, transparent 0%, rgba(253, 246, 236, 0.1) 100%);
+  pointer-events: none;
+  z-index: 0;
+}
 /* ── Reset & Base ──────────────────────────────────────── */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 

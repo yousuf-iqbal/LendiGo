@@ -24,6 +24,7 @@ import MyBookingsPage from './pages/MyBookingsPage';
 import PaymentReceiptPage from './pages/PaymentReceiptPage';
 import AdminDashboard from './pages/AdminDashboard';
 import HelpCorner from './components/HelpCorner';
+import Aurora from './components/Aurora';  // ✅ ADD THIS IMPORT
 
 import './App.css';
 
@@ -78,50 +79,62 @@ export default function App() {
   return (
     <AuthProvider>
       <BrowserRouter>
-        <div className="App">
-          <Navbar />
-          <Routes>
-            {/* Public Auth Routes */}
-            <Route path="/auth" element={<AuthPage />} />
-            <Route path="/login" element={<Navigate to="/auth" replace />} />
-            <Route path="/signup" element={<Navigate to="/auth" replace />} />
-            <Route path="/complete-profile" element={<CompleteProfile />} />
+        <div className="App" style={{ position: 'relative', minHeight: '100vh' }}>
+          {/* ✅ Add Aurora Background here */}
+          <Aurora
+            colorStops={["#F4A020", "#800020", "#C4956A"]}  // Lendigo theme: saffron, maroon, brown
+            amplitude={0.8}
+            blend={0.6}
+            speed={0.7}
+          />
+          
+          <div style={{ position: 'relative', zIndex: 1 }}>
+            <Navbar />
+            <div className="page-wrapper">
+              <Routes>
+                {/* Public Auth Routes */}
+                <Route path="/auth" element={<AuthPage />} />
+                <Route path="/login" element={<Navigate to="/auth" replace />} />
+                <Route path="/signup" element={<Navigate to="/auth" replace />} />
+                <Route path="/complete-profile" element={<CompleteProfile />} />
 
-            {/* Public Routes */}
-            <Route path="/" element={<HomePage />} />
-            <Route path="/browse" element={<BrowsePage />} />
+                {/* Public Routes */}
+                <Route path="/" element={<HomePage />} />
+                <Route path="/browse" element={<BrowsePage />} />
 
-            {/* Request Routes */}
-            <Route path="/requests" element={<AvailableRequestsPage />} />
-            <Route path="/requests/:id" element={<RequestDetailPage />} />
-            <Route path="/my-requests" element={<ProtectedRoute><MyRequestsPage /></ProtectedRoute>} />
-            <Route path="/my-offers" element={<ProtectedRoute><MyOffersPage /></ProtectedRoute>} />
-            <Route path="/my-offers-made" element={<ProtectedRoute><MyOutgoingOffersPage /></ProtectedRoute>} />
-            <Route path="/edit-request/:id" element={<ProtectedRoute><EditRequestPage /></ProtectedRoute>} />
-            <Route path="/post-request" element={<ProtectedRoute><PostRequestPage /></ProtectedRoute>} />
+                {/* Request Routes */}
+                <Route path="/requests" element={<AvailableRequestsPage />} />
+                <Route path="/requests/:id" element={<RequestDetailPage />} />
+                <Route path="/my-requests" element={<ProtectedRoute><MyRequestsPage /></ProtectedRoute>} />
+                <Route path="/my-offers" element={<ProtectedRoute><MyOffersPage /></ProtectedRoute>} />
+                <Route path="/my-offers-made" element={<ProtectedRoute><MyOutgoingOffersPage /></ProtectedRoute>} />
+                <Route path="/edit-request/:id" element={<ProtectedRoute><EditRequestPage /></ProtectedRoute>} />
+                <Route path="/post-request" element={<ProtectedRoute><PostRequestPage /></ProtectedRoute>} />
 
-            {/* Profile & Assets */}
-            <Route path="/profile" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
-            <Route path="/my-assets" element={<ProtectedRoute><MyAssetsPage /></ProtectedRoute>} />
-            <Route path="/my-assets/add" element={<ProtectedRoute><AddAssetPage /></ProtectedRoute>} />
-            <Route path="/my-assets/edit/:id" element={<ProtectedRoute><EditAssetPage /></ProtectedRoute>} />
-            <Route path="/assets/:id" element={<AssetDetailPage />} />
+                {/* Profile & Assets */}
+                <Route path="/profile" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
+                <Route path="/my-assets" element={<ProtectedRoute><MyAssetsPage /></ProtectedRoute>} />
+                <Route path="/my-assets/add" element={<ProtectedRoute><AddAssetPage /></ProtectedRoute>} />
+                <Route path="/my-assets/edit/:id" element={<ProtectedRoute><EditAssetPage /></ProtectedRoute>} />
+                <Route path="/assets/:id" element={<AssetDetailPage />} />
 
-            {/* Bookings & Payments */}
-            <Route path="/bookings" element={<ProtectedRoute><MyBookingsPage /></ProtectedRoute>} />
-            <Route path="/bookings/:bookingId/payment" element={<ProtectedRoute><PaymentReceiptPage /></ProtectedRoute>} />
+                {/* Bookings & Payments */}
+                <Route path="/bookings" element={<ProtectedRoute><MyBookingsPage /></ProtectedRoute>} />
+                <Route path="/bookings/:bookingId/payment" element={<ProtectedRoute><PaymentReceiptPage /></ProtectedRoute>} />
 
-            {/* Dashboard & Wallet */}
-            <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
-            <Route path="/wallet" element={<ProtectedRoute><WalletDashboard /></ProtectedRoute>} />
+                {/* Dashboard & Wallet */}
+                <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+                <Route path="/wallet" element={<ProtectedRoute><WalletDashboard /></ProtectedRoute>} />
 
-            {/* Admin — protected, admin-only */}
-            <Route path="/admin" element={<AdminRoute><AdminDashboard /></AdminRoute>} />
+                {/* Admin — protected, admin-only */}
+                <Route path="/admin" element={<AdminRoute><AdminDashboard /></AdminRoute>} />
 
-            {/* Catch-all */}
-            <Route path="*" element={<Navigate to="/" replace />} />
-          </Routes>
-          <HelpCorner />
+                {/* Catch-all */}
+                <Route path="*" element={<Navigate to="/" replace />} />
+              </Routes>
+            </div>
+            <HelpCorner />
+          </div>
         </div>
       </BrowserRouter>
     </AuthProvider>

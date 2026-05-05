@@ -161,6 +161,102 @@
   }
 }
 
+/* ============================================ */
+/* AURORA BACKGROUND & GLASSMORPHIC STYLES     */
+/* ============================================ */
+
+/* Make body transparent to show aurora */
+html, body, #root, .App {
+  background: transparent !important;
+  min-height: 100vh;
+}
+
+/* Page wrapper - content above aurora */
+.page-wrapper {
+  position: relative;
+  z-index: 1;
+  background: transparent;
+}
+
+/* Navbar - semi-transparent glass effect */
+.Navbar, nav:first-of-type {
+  position: relative;
+  z-index: 2;
+  background: rgba(128, 0, 32, 0.88) !important;
+  backdrop-filter: blur(12px);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+/* Make all cards and containers glassmorphic */
+.page-wrapper > div:not(nav):not(.Navbar),
+[style*="background: #FDF6EC"],
+[style*="background: #FFF9F0"],
+[style*="background: #FFF0CC"],
+[style*="border-radius: 16px"],
+[style*="border-radius: 20px"],
+[style*="background: #FDF6EC"] {
+  background: rgba(253, 246, 236, 0.85) !important;
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(128, 0, 32, 0.12);
+}
+
+/* Keep white cards but make them glass */
+.bg-white, .warm-white, 
+[style*="background: #FFF9F0"],
+[style*="background: #FFF9F0;"] {
+  background: rgba(255, 249, 240, 0.88) !important;
+  backdrop-filter: blur(8px);
+}
+
+/* Hero section - fully transparent background */
+section:first-of-type,
+[style*="min-height: 88vh"] {
+  background: transparent !important;
+}
+
+/* Stat cards and pills become glass */
+[style*="padding: 1.25rem 2rem"],
+[style*="border-radius: 14px"],
+.stat-card, .stat-pill {
+  background: rgba(128, 0, 32, 0.06) !important;
+  backdrop-filter: blur(4px);
+  border: 1px solid rgba(128, 0, 32, 0.1);
+}
+
+/* Category chips */
+[style*="border-radius: 999px"] {
+  background: rgba(255, 249, 240, 0.9) !important;
+  backdrop-filter: blur(4px);
+}
+
+/* Buttons stay solid for readability */
+button, .cta-primary, .cta-outline {
+  background: inherit;
+}
+
+/* Keep text readable */
+h1, h2, h3, h4, p, span, label {
+  color: #2C1810;
+  text-shadow: none;
+}
+
+/* Input fields - semi-transparent */
+input, textarea, select {
+  background: rgba(253, 246, 236, 0.9) !important;
+  backdrop-filter: blur(4px);
+}
+
+/* Modals and dropdowns */
+.modal, .dropdown, [role="dialog"] {
+  background: rgba(255, 249, 240, 0.95) !important;
+  backdrop-filter: blur(12px);
+}
+
+/* Remove any remaining background from FloatingBackground */
+.floating-bg, [class*="FloatingBackground"] {
+  display: none !important;
+}
+
 .ticks {
   position: relative;
   width: 100%;
