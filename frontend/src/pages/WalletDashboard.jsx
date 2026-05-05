@@ -1,5 +1,22 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import API from '../api/axios';
+import '../theme.css';
+
+const C = {
+  saffron: "#F4A020", saffronDark: "#E08800", saffronPale: "#FFF0CC",
+  maroon: "#800020", maroonL: "#B00030", maroonDeep: "#5C0018",
+  brownLight: "#C4956A", cream: "#FDF6EC", warmWhite: "#FFF9F0",
+  textDark: "#2C1810", textMuted: "#6B4C3B", textFaint: "#A68070",
+  border: "rgba(128,0,32,0.12)", borderS: "rgba(128,0,32,0.25)",
+};
+
+const Icons = {
+  Wallet: () => <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M21 12v3a4 4 0 0 1-4 4H7a4 4 0 0 1-4-4V9a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4h-4a2 2 0 0 0-2 2v2a2 2 0 0 0 2 2h4z"/><line x1="18" y1="12" x2="18" y2="12.01"/></svg>,
+  Plus: () => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>,
+  Close: () => <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>,
+  Empty: () => <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.2"><path d="M21 12v3a4 4 0 0 1-4 4H7a4 4 0 0 1-4-4V9a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4h-4a2 2 0 0 0-2 2v2a2 2 0 0 0 2 2h4z"/></svg>,
+};
 
 export default function WalletDashboard() {
   const navigate = useNavigate();
@@ -21,199 +38,217 @@ export default function WalletDashboard() {
   const fetchWalletData = async () => {
     try {
       const [balRes, transRes] = await Promise.all([
-        fetch('/api/wallet/balance', {
-          headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
-        }),
-        fetch('/api/wallet/transactions', {
-          headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
-        })
+        API.get('/wallet/balance'),
+        API.get('/wallet/transactions')
       ]);
       
-      if (balRes.ok) {
-        const balData = await balRes.json();
-        setBalance(parseFloat(balData.balance));
-      }
-      if (transRes.ok) {
-        const transData = await transRes.json();
-        setTransactions(transData.transactions);
-      }
+      setBalance(parseFloat(balRes.data.balance));
+      setTransactions(transRes.data.transactions || []);
     } catch (err) {
       setError('Failed to load wallet data');
     } finally {
       setLoading(false);
     }
   };
-const handlePay = async () => {
-  setPaying(true);
-  setError('');
-  try {
-    const res = await fetch('/api/wallet/pay-booking', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${localStorage.getItem('token')}`
-      },
-      body: JSON.stringify({
+
+  const handlePay = async () => {
+    setPaying(true);
+    setError('');
+    try {
+      const res = await API.post('/wallet/pay-booking', {
         bookingID: parseInt(bookingID),
         amount: parseFloat(amount)
-      })
-    });
-    
-    const data = await res.json();
-    if (res.ok) {
+      });
+      
       setSuccessMsg('Payment Successful!');
       setShowPayModal(false);
       setBookingID('');
       setAmount('');
       fetchWalletData();
       setTimeout(() => setSuccessMsg(''), 3000);
-    } else {
-      setError(data.error || 'Payment failed');
+    } catch (err) {
+      setError(err.response?.data?.error || 'Payment failed');
+    } finally {
+      setPaying(false);
     }
-  } catch (err) {
-    setError('Network error');
-  } finally {
-    setPaying(false);
-  }
-};
+  };
 
   if (loading) {
     return (
-      <div style={styles.loading}>
-        <div style={styles.spinner} />
-        <p style={styles.loadingText}>Loading Wallet...</p>
+      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: C.cream }}>
+        <div className="spinner" />
       </div>
     );
   }
 
   return (
-    <div style={styles.page}>
-      {/* Header */}
-      <div style={styles.header}>
-        <h1 style={styles.title}>
-          <span style={styles.titlePurple}>Wallet</span> & Payments
-        </h1>
-        <button style={styles.payBtn} onClick={() => setShowPayModal(true)}>
-          + Make Payment
-        </button>
-      </div>
-
-      {/* Messages */}
-      {error && <div style={styles.error}>{error}</div>}
-      {successMsg && <div style={styles.success}>{successMsg}</div>}
-
-      {/* Balance Card */}
-      <div style={styles.balanceCard}>
-        <div style={styles.balanceLabel}>Available Balance</div>
-        <div style={styles.balanceAmount}>Rs. {balance?.toFixed(2)}</div>
-        <div style={styles.balanceFooter}>
-          <span style={styles.lastUpdated}>Last updated: {new Date().toLocaleTimeString()}</span>
-        </div>
-      </div>
-
-      {/* Transactions */}
-      <div style={styles.transactionsCard}>
-        <h3 style={styles.cardTitle}>Transaction History</h3>
-        {transactions.length === 0 ? (
-          <div style={styles.emptyState}>
-            <div style={styles.emptyIcon}>📭</div>
-            <p style={styles.emptyText}>No transactions yet</p>
+    <div style={{ minHeight: '100vh', background: C.cream, padding: '2rem 1rem' }}>
+      <div style={{ maxWidth: '900px', margin: '0 auto' }}>
+        {/* Header */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem', flexWrap: 'wrap', gap: '1rem' }}>
+          <div>
+            <h1 style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: '2.8rem', fontWeight: 700, color: C.textDark, letterSpacing: '-0.02em', margin: 0 }}>
+              <span style={{ color: C.maroon }}>Wallet</span> & Payments
+            </h1>
+            <p style={{ color: C.textMuted, marginTop: '0.25rem' }}>Manage your funds and transactions</p>
           </div>
-        ) : (
-          <div style={styles.tableContainer}>
-            <table style={styles.table}>
-              <thead>
-                <tr>
-                  <th style={styles.th}>From</th>
-                  <th style={styles.th}>Amount</th>
-                  <th style={styles.th}>Date</th>
-                </tr>
-              </thead>
-              <tbody>
-                {transactions.map(t => (
-                  <tr key={t.TransactionID} style={styles.tr}>
-                    <td style={styles.td}>{t.FromUser || 'System'}</td>
-                    <td style={{...styles.td, color: '#4ade80', fontWeight: 600}}>
-                      Rs. {parseFloat(t.Amount).toFixed(2)}
-                    </td>
-                    <td style={styles.td}>
-                      {new Date(t.CreatedAt).toLocaleDateString('en-PK')}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+          <button onClick={() => setShowPayModal(true)} className="btn btn-primary" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <Icons.Plus /> Make Payment
+          </button>
+        </div>
+
+        {/* Messages */}
+        {error && (
+          <div style={{ background: '#FEE2E2', color: C.maroon, padding: '1rem', borderRadius: '12px', marginBottom: '1rem', borderLeft: `4px solid ${C.maroon}` }}>
+            {error}
           </div>
         )}
+        {successMsg && (
+          <div style={{ background: '#D1FAE5', color: '#065F46', padding: '1rem', borderRadius: '12px', marginBottom: '1rem', borderLeft: `4px solid #059669` }}>
+            ✓ {successMsg}
+          </div>
+        )}
+
+        {/* Balance Card */}
+        <div style={{ 
+          background: `linear-gradient(135deg, ${C.maroon} 0%, ${C.maroonDeep} 100%)`, 
+          borderRadius: '24px', 
+          padding: '2rem', 
+          marginBottom: '2rem',
+          boxShadow: '0 8px 32px rgba(128,0,32,0.25)'
+        }}>
+          <p style={{ color: 'rgba(255,255,255,0.7)', fontSize: '0.8rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '0.5rem' }}>
+            Available Balance
+          </p>
+          <p style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: '4rem', fontWeight: 800, color: C.saffron, margin: 0, textShadow: '0 0 20px rgba(244,160,32,0.3)' }}>
+            Rs. {balance?.toFixed(2)}
+          </p>
+          <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: '0.8rem', marginTop: '1rem', paddingTop: '1rem', borderTop: '1px solid rgba(255,255,255,0.1)' }}>
+            Last updated: {new Date().toLocaleTimeString()}
+          </p>
+        </div>
+
+        {/* Transactions */}
+        <div style={{ background: C.warmWhite, borderRadius: '20px', padding: '1.5rem', border: `1px solid ${C.border}` }}>
+          <h3 style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: '1.35rem', fontWeight: 700, color: C.textDark, marginBottom: '1.5rem', paddingBottom: '0.75rem', borderBottom: `1px solid ${C.border}` }}>
+            Transaction History
+          </h3>
+          
+          {transactions.length === 0 ? (
+            <div style={{ textAlign: 'center', padding: '3rem', color: C.textFaint }}>
+              <div style={{ width: 64, height: 64, margin: '0 auto 1rem' }}><Icons.Empty /></div>
+              <p>No transactions yet</p>
+            </div>
+          ) : (
+            <div style={{ overflowX: 'auto' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                <thead>
+                  <tr>
+                    <th style={{ textAlign: 'left', padding: '12px 16px', color: C.textFaint, fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.07em', borderBottom: `1px solid ${C.border}` }}>From</th>
+                    <th style={{ textAlign: 'left', padding: '12px 16px', color: C.textFaint, fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.07em', borderBottom: `1px solid ${C.border}` }}>Amount</th>
+                    <th style={{ textAlign: 'left', padding: '12px 16px', color: C.textFaint, fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.07em', borderBottom: `1px solid ${C.border}` }}>Date</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {transactions.map(t => (
+                    <tr key={t.TransactionID} style={{ transition: 'background 0.2s' }}>
+                      <td style={{ padding: '12px 16px', color: C.textDark, borderBottom: `1px solid ${C.border}` }}>{t.FromUser || 'System'}</td>
+                      <td style={{ padding: '12px 16px', color: '#059669', fontWeight: 600, borderBottom: `1px solid ${C.border}` }}>
+                        Rs. {parseFloat(t.Amount).toFixed(2)}
+                      </td>
+                      <td style={{ padding: '12px 16px', color: C.textMuted, fontSize: '0.85rem', borderBottom: `1px solid ${C.border}` }}>
+                        {new Date(t.CreatedAt).toLocaleDateString('en-PK')}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Payment Modal */}
       {showPayModal && (
-        <div style={styles.modalOverlay} onClick={() => setShowPayModal(false)}>
-          <div style={styles.modal} onClick={e => e.stopPropagation()}>
-            <button style={styles.closeBtn} onClick={() => setShowPayModal(false)}>×</button>
-            
-            <div style={styles.modalHeader}>
-              <div style={styles.modalIcon}>💳</div>
-              <h2 style={styles.modalTitle}>Make Payment</h2>
-              <p style={styles.modalSubtitle}>Enter booking details to pay</p>
+        <div style={{
+          position: 'fixed',
+          top: 0, left: 0, right: 0, bottom: 0,
+          background: 'rgba(0,0,0,0.7)',
+ backdropFilter: 'blur(4px)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 1000,
+          padding: '20px',
+        }} onClick={() => setShowPayModal(false)}>
+          <div style={{
+            background: C.warmWhite,
+            borderRadius: '24px',
+            maxWidth: '480px',
+            width: '100%',
+            padding: '1.5rem',
+            border: `1px solid ${C.border}`,
+            boxShadow: '0 20px 40px rgba(128,0,32,0.2)',
+            animation: 'scaleIn 0.3s ease',
+          }} onClick={e => e.stopPropagation()}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+              <h2 style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: '1.5rem', fontWeight: 700, color: C.textDark, margin: 0 }}>Make Payment</h2>
+              <button onClick={() => setShowPayModal(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: C.textMuted }}>
+                <Icons.Close />
+              </button>
+            </div>
+            <p style={{ color: C.textMuted, fontSize: '0.9rem', marginBottom: '1.5rem' }}>Enter booking details to pay</p>
+
+            <div style={{ marginBottom: '1.25rem' }}>
+              <label style={{ display: 'block', fontSize: '0.7rem', fontWeight: 700, color: C.textFaint, textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: '0.4rem' }}>Booking ID</label>
+              <input
+                type="number"
+                placeholder="e.g., 101"
+                value={bookingID}
+                onChange={e => setBookingID(e.target.value)}
+                className="field-input"
+                style={{ width: '100%' }}
+              />
             </div>
 
-            <div style={styles.modalBody}>
-              <div style={styles.inputGroup}>
-                <label style={styles.label}>Booking ID</label>
-                <input
-                  style={styles.input}
-                  type="number"
-                  placeholder="e.g., 101"
-                  value={bookingID}
-                  onChange={e => setBookingID(e.target.value)}
-                />
-              </div>
+            <div style={{ marginBottom: '1.5rem' }}>
+              <label style={{ display: 'block', fontSize: '0.7rem', fontWeight: 700, color: C.textFaint, textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: '0.4rem' }}>Amount (Rs.)</label>
+              <input
+                type="number"
+                placeholder="0.00"
+                value={amount}
+                onChange={e => setAmount(e.target.value)}
+                className="field-input"
+                style={{ width: '100%' }}
+              />
+            </div>
 
-              <div style={styles.inputGroup}>
-                <label style={styles.label}>Amount (Rs.)</label>
-                <input
-                  style={styles.input}
-                  type="number"
-                  placeholder="0.00"
-                  value={amount}
-                  onChange={e => setAmount(e.target.value)}
-                />
-              </div>
-
-              {bookingID && amount && (
-                <div style={styles.previewBox}>
-                  <div style={styles.previewRow}>
-                    <span>Booking ID:</span>
-                    <strong>#{bookingID}</strong>
-                  </div>
-                  <div style={styles.previewRow}>
-                    <span>Amount:</span>
-                    <strong style={{color: '#f87171'}}>Rs. {parseFloat(amount).toFixed(2)}</strong>
-                  </div>
-                  <div style={styles.previewRow}>
-                    <span>Balance After:</span>
-                    <strong style={{color: '#4ade80'}}>Rs. {(balance - parseFloat(amount)).toFixed(2)}</strong>
-                  </div>
+            {bookingID && amount && balance && (
+              <div style={{ background: C.cream, borderRadius: '12px', padding: '1rem', marginBottom: '1.5rem', border: `1px solid ${C.border}` }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', padding: '4px 0' }}>
+                  <span style={{ color: C.textMuted }}>Booking ID:</span>
+                  <strong style={{ color: C.textDark }}>#{bookingID}</strong>
                 </div>
-              )}
-            </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', padding: '4px 0' }}>
+                  <span style={{ color: C.textMuted }}>Amount:</span>
+                  <strong style={{ color: C.maroon }}>Rs. {parseFloat(amount).toFixed(2)}</strong>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', padding: '4px 0', marginTop: '8px', paddingTop: '8px', borderTop: `1px solid ${C.border}` }}>
+                  <span style={{ color: C.textMuted }}>Balance After:</span>
+                  <strong style={{ color: '#059669' }}>Rs. {(balance - parseFloat(amount)).toFixed(2)}</strong>
+                </div>
+              </div>
+            )}
 
-            <div style={styles.modalFooter}>
-              <button 
-                style={styles.cancelBtn} 
-                onClick={() => setShowPayModal(false)}
-              >
+            <div style={{ display: 'flex', gap: '12px' }}>
+              <button onClick={() => setShowPayModal(false)} className="btn-outline" style={{ flex: 1, padding: '0.85rem' }}>
                 Cancel
               </button>
               <button 
-                style={{
-                  ...styles.payConfirmBtn,
-                  opacity: (!bookingID || !amount || paying) ? 0.5 : 1
-                }}
                 onClick={handlePay}
                 disabled={!bookingID || !amount || paying}
+                className="btn btn-primary"
+                style={{ flex: 1, padding: '0.85rem', opacity: (!bookingID || !amount || paying) ? 0.6 : 1 }}
               >
                 {paying ? 'Processing...' : 'Confirm Payment'}
               </button>
@@ -224,325 +259,3 @@ const handlePay = async () => {
     </div>
   );
 }
-
-const styles = {
-  page: {
-    minHeight: '100vh',
-    background: 'linear-gradient(135deg, #0f0f1a 0%, #1a1a2e 50%, #16213e 100%)',
-    padding: '40px 20px',
-    fontFamily: "'Inter', system-ui, sans-serif",
-  },
-  loading: {
-    minHeight: '100vh',
-    display: 'flex',
-    flexDirection: 'column',
-    alignItems: 'center',
-    justifyContent: 'center',
-    background: '#0f0f1a',
-    color: '#fff',
-  },
-  spinner: {
-    width: '48px',
-    height: '48px',
-    border: '4px solid rgba(139, 92, 246, 0.2)',
-    borderTopColor: '#8b5cf6',
-    borderRadius: '50%',
-    animation: 'spin 0.8s linear infinite',
-    marginBottom: '16px',
-  },
-  loadingText: {
-    color: '#a78bfa',
-    fontSize: '1rem',
-    fontWeight: 500,
-  },
-  header: {
-    display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: '32px',
-    maxWidth: '900px',
-    margin: '0 auto 32px',
-  },
-  title: {
-    fontSize: '2rem',
-    fontWeight: 800,
-    color: '#fff',
-    margin: 0,
-  },
-  titlePurple: {
-    background: 'linear-gradient(135deg, #8b5cf6 0%, #a78bfa 100%)',
-    WebkitBackgroundClip: 'text',
-    WebkitTextFillColor: 'transparent',
-    backgroundClip: 'text',
-  },
-  payBtn: {
-    padding: '12px 24px',
-    background: 'linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%)',
-    color: '#fff',
-    border: 'none',
-    borderRadius: '12px',
-    fontWeight: 600,
-    fontSize: '0.9rem',
-    cursor: 'pointer',
-    boxShadow: '0 4px 16px rgba(139, 92, 246, 0.4)',
-    transition: 'all 0.2s',
-  },
-  balanceCard: {
-    background: 'linear-gradient(135deg, rgba(139, 92, 246, 0.15) 0%, rgba(124, 58, 237, 0.05) 100%)',
-    border: '1px solid rgba(139, 92, 246, 0.3)',
-    borderRadius: '20px',
-    padding: '32px',
-    textAlign: 'center',
-    marginBottom: '24px',
-    maxWidth: '900px',
-    margin: '0 auto 24px',
-    backdropFilter: 'blur(10px)',
-  },
-  balanceLabel: {
-    color: '#a78bfa',
-    fontSize: '0.85rem',
-    fontWeight: 600,
-    textTransform: 'uppercase',
-    letterSpacing: '0.1em',
-    marginBottom: '12px',
-  },
-  balanceAmount: {
-    fontSize: '3.5rem',
-    fontWeight: 800,
-    color: '#4ade80',
-    margin: '8px 0',
-    textShadow: '0 0 40px rgba(74, 222, 128, 0.3)',
-  },
-  balanceFooter: {
-    marginTop: '12px',
-    paddingTop: '16px',
-    borderTop: '1px solid rgba(139, 92, 246, 0.2)',
-  },
-  lastUpdated: {
-    color: '#6b7280',
-    fontSize: '0.85rem',
-  },
-  transactionsCard: {
-    background: 'rgba(255, 255, 255, 0.03)',
-    border: '1px solid rgba(255, 255, 255, 0.1)',
-    borderRadius: '20px',
-    padding: '28px',
-    maxWidth: '900px',
-    margin: '0 auto',
-    backdropFilter: 'blur(10px)',
-  },
-  cardTitle: {
-    color: '#fff',
-    fontSize: '1.25rem',
-    fontWeight: 700,
-    margin: '0 0 20px',
-    textAlign: 'center',
-  },
-  emptyState: {
-    textAlign: 'center',
-    padding: '48px 20px',
-    color: '#6b7280',
-  },
-  emptyIcon: {
-    fontSize: '3rem',
-    marginBottom: '12px',
-    opacity: 0.5,
-  },
-  emptyText: {
-    fontSize: '1rem',
-    margin: 0,
-  },
-  tableContainer: {
-    overflowX: 'auto',
-  },
-  table: {
-    width: '100%',
-    borderCollapse: 'collapse',
-  },
-  th: {
-    textAlign: 'left',
-    padding: '14px 16px',
-    color: '#a78bfa',
-    fontSize: '0.8rem',
-    fontWeight: 600,
-    textTransform: 'uppercase',
-    letterSpacing: '0.05em',
-    borderBottom: '2px solid rgba(139, 92, 246, 0.3)',
-  },
-  tr: {
-    transition: 'background 0.2s',
-  },
-  td: {
-    padding: '16px',
-    color: '#e5e7eb',
-    borderBottom: '1px solid rgba(255, 255, 255, 0.05)',
-    fontSize: '0.95rem',
-  },
-  error: {
-    background: 'rgba(239, 68, 68, 0.15)',
-    border: '1px solid rgba(239, 68, 68, 0.3)',
-    color: '#fca5a5',
-    padding: '14px 20px',
-    borderRadius: '12px',
-    marginBottom: '20px',
-    maxWidth: '900px',
-    margin: '0 auto 20px',
-  },
-  success: {
-    background: 'rgba(74, 222, 128, 0.15)',
-    border: '1px solid rgba(74, 222, 128, 0.3)',
-    color: '#86efac',
-    padding: '14px 20px',
-    borderRadius: '12px',
-    marginBottom: '20px',
-    maxWidth: '900px',
-    margin: '0 auto 20px',
-    animation: 'slideIn 0.3s ease',
-  },
-  modalOverlay: {
-    position: 'fixed',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    background: 'rgba(0, 0, 0, 0.8)',
-    backdropFilter: 'blur(4px)',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    zIndex: 1000,
-    padding: '20px',
-  },
-  modal: {
-    background: 'linear-gradient(135deg, #1a1a2e 0%, #16213e 100%)',
-    border: '1px solid rgba(139, 92, 246, 0.3)',
-    borderRadius: '24px',
-    padding: '32px',
-    width: '100%',
-    maxWidth: '480px',
-    boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5), 0 0 40px rgba(139, 92, 246, 0.2)',
-    position: 'relative',
-    animation: 'modalSlideIn 0.3s ease',
-  },
-  closeBtn: {
-    position: 'absolute',
-    top: '16px',
-    right: '16px',
-    background: 'rgba(255, 255, 255, 0.1)',
-    border: 'none',
-    color: '#fff',
-    width: '32px',
-    height: '32px',
-    borderRadius: '50%',
-    cursor: 'pointer',
-    fontSize: '1.5rem',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    transition: 'background 0.2s',
-  },
-  modalHeader: {
-    textAlign: 'center',
-    marginBottom: '28px',
-  },
-  modalIcon: {
-    fontSize: '3rem',
-    marginBottom: '12px',
-  },
-  modalTitle: {
-    color: '#fff',
-    fontSize: '1.75rem',
-    fontWeight: 700,
-    margin: '0 0 8px',
-  },
-  modalSubtitle: {
-    color: '#9ca3af',
-    fontSize: '0.9rem',
-    margin: 0,
-  },
-  modalBody: {
-    marginBottom: '24px',
-  },
-  inputGroup: {
-    marginBottom: '20px',
-  },
-  label: {
-    display: 'block',
-    color: '#a78bfa',
-    fontSize: '0.85rem',
-    fontWeight: 600,
-    marginBottom: '8px',
-    textTransform: 'uppercase',
-    letterSpacing: '0.05em',
-  },
-  input: {
-    width: '100%',
-    padding: '14px 16px',
-    background: 'rgba(255, 255, 255, 0.05)',
-    border: '1px solid rgba(139, 92, 246, 0.3)',
-    borderRadius: '12px',
-    color: '#fff',
-    fontSize: '1rem',
-    outline: 'none',
-    transition: 'all 0.2s',
-    boxSizing: 'border-box',
-  },
-  previewBox: {
-    background: 'rgba(139, 92, 246, 0.1)',
-    border: '1px solid rgba(139, 92, 246, 0.2)',
-    borderRadius: '12px',
-    padding: '16px',
-    marginTop: '20px',
-  },
-  previewRow: {
-    display: 'flex',
-    justifyContent: 'space-between',
-    padding: '8px 0',
-    color: '#d1d5db',
-    fontSize: '0.9rem',
-  },
-  modalFooter: {
-    display: 'flex',
-    gap: '12px',
-  },
-  cancelBtn: {
-    flex: 1,
-    padding: '14px',
-    background: 'rgba(255, 255, 255, 0.1)',
-    border: 'none',
-    borderRadius: '12px',
-    color: '#fff',
-    fontWeight: 600,
-    cursor: 'pointer',
-    transition: 'background 0.2s',
-  },
-  payConfirmBtn: {
-    flex: 1,
-    padding: '14px',
-    background: 'linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%)',
-    border: 'none',
-    borderRadius: '12px',
-    color: '#fff',
-    fontWeight: 600,
-    cursor: 'pointer',
-    boxShadow: '0 4px 12px rgba(139, 92, 246, 0.4)',
-    transition: 'all 0.2s',
-  },
-};
-
-// Add CSS animations
-const styleEl = document.createElement('style');
-styleEl.textContent = `
-  @keyframes spin {
-    to { transform: rotate(360deg); }
-  }
-  @keyframes slideIn {
-    from { opacity: 0; transform: translateY(-10px); }
-    to { opacity: 1; transform: translateY(0); }
-  }
-  @keyframes modalSlideIn {
-    from { opacity: 0; transform: scale(0.95) translateY(-20px); }
-    to { opacity: 1; transform: scale(1) translateY(0); }
-  }
-`;
-document.head.appendChild(styleEl);

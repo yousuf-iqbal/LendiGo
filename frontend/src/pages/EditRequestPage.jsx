@@ -1,6 +1,15 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import API from '../api/axios';
+import '../theme.css';
+
+const C = {
+  saffron: "#F4A020", saffronDark: "#E08800", saffronPale: "#FFF0CC",
+  maroon: "#800020", maroonL: "#B00030", maroonDeep: "#5C0018",
+  brownLight: "#C4956A", cream: "#FDF6EC", warmWhite: "#FFF9F0",
+  textDark: "#2C1810", textMuted: "#6B4C3B", textFaint: "#A68070",
+  border: "rgba(128,0,32,0.12)", borderS: "rgba(128,0,32,0.25)",
+};
 
 export default function EditRequestPage() {
   const { id } = useParams();
@@ -21,7 +30,6 @@ export default function EditRequestPage() {
   });
 
   useEffect(() => {
-    // Fetch request details
     const fetchRequest = async () => {
       try {
         const token = localStorage.getItem('token');
@@ -46,7 +54,6 @@ export default function EditRequestPage() {
       }
     };
 
-    // Fetch categories
     const fetchCategories = async () => {
       try {
         const response = await API.get('/requests/filters');
@@ -89,8 +96,8 @@ export default function EditRequestPage() {
     return (
       <div style={styles.page}>
         <div style={styles.card}>
-          <div style={styles.logo}>Udhaari</div>
-          <div style={styles.subtitle}>Loading request details...</div>
+          <div className="spinner" style={{ margin: '0 auto 1rem' }} />
+          <p style={{ color: C.textMuted, textAlign: 'center' }}>Loading request details...</p>
         </div>
       </div>
     );
@@ -99,7 +106,7 @@ export default function EditRequestPage() {
   return (
     <div style={styles.page}>
       <div style={styles.card}>
-        <div style={styles.logo}>Udhaari</div>
+        <div style={styles.logo}>Lendigo</div>
         <div style={styles.subtitle}>Edit Request</div>
 
         {error && <div style={styles.error}>{error}</div>}
@@ -241,38 +248,39 @@ function Field({ label, type = 'text', name, value, onChange, placeholder, requi
 const styles = {
   page: {
     minHeight: '100vh',
-    background: '#0a0a0f',
+    background: C.cream,
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
     padding: '2rem',
-    fontFamily: "'DM Sans', sans-serif",
+    fontFamily: "'Outfit', sans-serif",
   },
   card: {
     width: '100%',
     maxWidth: '560px',
-    background: '#13131a',
-    border: '1px solid #ffffff12',
+    background: C.warmWhite,
+    border: `1px solid ${C.border}`,
     borderRadius: '24px',
     padding: '2.5rem',
+    boxShadow: '0 4px 24px rgba(128,0,32,0.08)',
   },
   logo: {
-    fontFamily: "'Syne', sans-serif",
-    fontSize: '1.8rem',
-    fontWeight: 800,
-    color: '#7c5cfc',
+    fontFamily: "'Cormorant Garamond', serif",
+    fontSize: '2rem',
+    fontWeight: 700,
+    color: C.maroon,
     marginBottom: '0.25rem',
-    letterSpacing: '-0.03em',
+    letterSpacing: '-0.02em',
   },
   subtitle: {
-    color: '#888',
+    color: C.textMuted,
     fontSize: '0.9rem',
     marginBottom: '1.5rem',
   },
   error: {
-    background: '#ff5e7815',
-    border: '1px solid #ff5e7830',
-    color: '#ff5e78',
+    background: '#FEE2E2',
+    border: '1px solid #FCA5A5',
+    color: '#991B1B',
     padding: '0.75rem 1rem',
     borderRadius: '10px',
     fontSize: '0.875rem',
@@ -280,24 +288,25 @@ const styles = {
   },
   label: {
     display: 'block',
-    fontSize: '0.75rem',
-    fontWeight: 500,
-    color: '#888',
+    fontSize: '0.72rem',
+    fontWeight: 700,
+    color: C.textFaint,
     marginBottom: '0.4rem',
     textTransform: 'uppercase',
-    letterSpacing: '0.06em',
+    letterSpacing: '0.07em',
   },
   input: {
     width: '100%',
     padding: '0.75rem 1rem',
-    background: '#0a0a0f',
-    border: '1px solid #ffffff12',
+    background: C.cream,
+    border: `1.5px solid ${C.border}`,
     borderRadius: '10px',
-    color: '#f0f0f5',
+    color: C.textDark,
     fontSize: '0.95rem',
     outline: 'none',
-    fontFamily: "'DM Sans', sans-serif",
+    fontFamily: "'Outfit', sans-serif",
     boxSizing: 'border-box',
+    transition: 'all 0.2s ease',
   },
   row: {
     display: 'grid',
@@ -312,36 +321,50 @@ const styles = {
   },
   primaryBtn: {
     padding: '0.85rem',
-    background: '#7c5cfc',
+    background: C.maroon,
     border: 'none',
     borderRadius: '10px',
     color: '#fff',
     fontSize: '0.95rem',
     fontWeight: 700,
-    fontFamily: "'Syne', sans-serif",
+    fontFamily: "'Outfit', sans-serif",
     cursor: 'pointer',
-    letterSpacing: '0.02em',
+    transition: 'all 0.2s ease',
   },
   secondaryBtn: {
     padding: '0.85rem',
     background: 'transparent',
-    border: '1px solid #ffffff12',
+    border: `1.5px solid ${C.border}`,
     borderRadius: '10px',
-    color: '#888',
+    color: C.textMuted,
     fontSize: '0.95rem',
-    fontWeight: 700,
-    fontFamily: "'Syne', sans-serif",
+    fontWeight: 600,
+    fontFamily: "'Outfit', sans-serif",
     cursor: 'pointer',
+    transition: 'all 0.2s ease',
   },
   switchText: {
     textAlign: 'center',
-    color: '#666',
+    color: C.textFaint,
     fontSize: '0.85rem',
     marginTop: '1.5rem',
   },
   link: {
-    color: '#7c5cfc',
+    color: C.maroon,
     textDecoration: 'none',
-    fontWeight: 500,
+    fontWeight: 600,
   },
 };
+
+// Add focus styles for inputs
+const inputFocusStyle = `
+  input:focus, textarea:focus, select:focus {
+    border-color: ${C.saffron} !important;
+    box-shadow: 0 0 0 3px rgba(244,160,32,0.15) !important;
+  }
+`;
+if (typeof document !== 'undefined') {
+  const style = document.createElement('style');
+  style.textContent = inputFocusStyle;
+  document.head.appendChild(style);
+}

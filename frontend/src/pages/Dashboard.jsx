@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import API from "../api/axios";
-//import FloatingBackground from "../components/FloatingBackground";
+import FloatingBackground from "../components/FloatingBackground";
 
 const C = {
   saffron: "#F4A020", saffronDark: "#E08800", saffronPale: "#FFF0CC",
@@ -12,20 +12,7 @@ const C = {
   border: "rgba(128,0,32,0.12)", borderS: "rgba(128,0,32,0.25)",
 };
 
-// SVG Icons
-const Icons = {
-  Home: () => <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>,
-  Clock: () => <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>,
-  FileText: () => <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>,
-  Handshake: () => <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M17 11L12 6 7 11M12 6v8M20 11l-5 5H9l-5-5"/><path d="M4 10l4-4 3 3-3 3-4-4z"/><path d="M20 10l-4-4-3 3 3 3 4-4z"/></svg>,
-  CheckCircle: () => <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>,
-  Wallet: () => <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M21 12v3a4 4 0 0 1-4 4H7a4 4 0 0 1-4-4V9a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4h-4a2 2 0 0 0-2 2v2a2 2 0 0 0 2 2h4z"/><line x1="18" y1="12" x2="18" y2="12.01"/></svg>,
-  TrendingUp: () => <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>,
-  Refresh: () => <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M23 4v6h-6"/><path d="M1 20v-6h6"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>,
-  Activity: () => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>,
-};
-
-function StatCard({ icon: Icon, label, value, sub, color, onClick, idx }) {
+function StatCard({ label, value, sub, color, onClick, idx }) {
   return (
     <div onClick={onClick}
       style={{
@@ -37,9 +24,7 @@ function StatCard({ icon: Icon, label, value, sub, color, onClick, idx }) {
       onMouseEnter={e => { if (onClick) { e.currentTarget.style.transform = "translateY(-4px)"; e.currentTarget.style.boxShadow = "0 8px 28px rgba(128,0,32,0.13)"; e.currentTarget.style.borderColor = C.borderS; } }}
       onMouseLeave={e => { e.currentTarget.style.transform = "translateY(0)"; e.currentTarget.style.boxShadow = "0 2px 12px rgba(128,0,32,0.07)"; e.currentTarget.style.borderColor = C.border; }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "1.25rem" }}>
-        <div style={{ width: 48, height: 48, borderRadius: 12, background: `${color}18`, display: "flex", alignItems: "center", justifyContent: "center", color }}>
-          {Icon && <Icon />}
-        </div>
+        <div style={{ width: 48, height: 48, borderRadius: 12, background: `${color}18`, display: "flex", alignItems: "center", justifyContent: "center", color, fontSize: "1.2rem", fontWeight: 700 }}>{label[0]}</div>
         {sub && <span style={{ fontSize: "0.72rem", fontWeight: 700, color, background: `${color}15`, padding: "3px 10px", borderRadius: 999, border: `1px solid ${color}30` }}>{sub}</span>}
       </div>
       <p style={{ color: C.textFaint, fontSize: "0.78rem", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.07em", marginBottom: "0.3rem" }}>{label}</p>
@@ -48,13 +33,13 @@ function StatCard({ icon: Icon, label, value, sub, color, onClick, idx }) {
   );
 }
 
-function QuickBtn({ icon: Icon, label, onClick, color }) {
+function QuickBtn({ icon, label, onClick, color }) {
   return (
     <button onClick={onClick}
       style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 8, padding: "1.25rem 1rem", background: C.warmWhite, border: `1px solid ${C.border}`, borderRadius: 14, cursor: "pointer", fontFamily: "'Outfit', sans-serif", fontWeight: 700, fontSize: "0.88rem", color: C.textDark, transition: "all 0.25s ease" }}
       onMouseEnter={e => { e.currentTarget.style.background = `${color}12`; e.currentTarget.style.borderColor = `${color}50`; e.currentTarget.style.transform = "translateY(-3px)"; e.currentTarget.style.boxShadow = `0 6px 20px ${color}20`; }}
       onMouseLeave={e => { e.currentTarget.style.background = C.warmWhite; e.currentTarget.style.borderColor = C.border; e.currentTarget.style.transform = "translateY(0)"; e.currentTarget.style.boxShadow = "none"; }}>
-      <div style={{ color, width: 28, height: 28 }}><Icon /></div>
+      <span style={{ fontSize: "1.5rem", fontWeight: 400 }}>{icon}</span>
       {label}
     </button>
   );
@@ -88,7 +73,10 @@ export default function Dashboard() {
     try {
       const res = await API.get("/dashboard/comprehensive");
       setData(res.data.data || res.data);
-    } catch (err) { setError(err.response?.data?.error || "Failed to load dashboard"); }
+    } catch (err) { 
+      console.error("Dashboard error:", err);
+      setError(err.response?.data?.error || "Failed to load dashboard"); 
+    }
     finally { setLoading(false); }
   };
 
@@ -111,7 +99,7 @@ export default function Dashboard() {
     <div style={{ minHeight: "100vh", background: C.cream, display: "flex", alignItems: "center", justifyContent: "center" }}>
       <FloatingBackground variant="minimal" />
       <div style={{ textAlign: "center", zIndex: 1, maxWidth: 400 }}>
-        <div style={{ width: 48, height: 48, margin: "0 auto 1rem", color: C.maroon }}><svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg></div>
+        <div style={{ fontSize: "3rem", marginBottom: "1rem" }}>⚠️</div>
         <h3 style={{ fontFamily: "Cormorant Garamond, serif", fontSize: "1.5rem", color: C.textDark, marginBottom: "0.5rem" }}>Couldn't load dashboard</h3>
         <p style={{ color: C.maroon, marginBottom: "1.5rem", fontSize: "0.95rem" }}>{error}</p>
         <button onClick={fetchDashboard} style={{ padding: "0.75rem 2rem", background: C.maroon, color: "#fff", border: "none", borderRadius: 10, cursor: "pointer", fontFamily: "'Outfit', sans-serif", fontWeight: 700 }}>Try Again</button>
@@ -126,7 +114,7 @@ export default function Dashboard() {
 
   return (
     <div style={{ background: C.cream, minHeight: "100vh", position: "relative", fontFamily: "'Outfit', system-ui, sans-serif" }}>
-      //<FloatingBackground variant="minimal" />
+      <FloatingBackground variant="minimal" />
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,600;0,700;1,600&family=Outfit:wght@300;400;500;600;700;800&display=swap');
         @keyframes fadeUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
@@ -134,6 +122,7 @@ export default function Dashboard() {
       `}</style>
 
       <div style={{ position: "relative", zIndex: 1, maxWidth: 1200, margin: "0 auto", padding: "2rem 1.5rem" }}>
+        {/* Rest of your dashboard content */}
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "2.5rem", animation: "fadeUp 0.5s ease both", flexWrap: "wrap", gap: "1rem" }}>
           <div>
             <p style={{ color: C.saffron, fontSize: "0.82rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: "0.4rem" }}>Overview</p>
@@ -142,8 +131,9 @@ export default function Dashboard() {
             </h1>
             <p style={{ color: C.textMuted, marginTop: "0.4rem", fontSize: "0.95rem" }}>Here's what's happening across your account.</p>
           </div>
-          <button onClick={fetchDashboard} style={{ padding: "0.65rem 1.25rem", background: C.warmWhite, border: `1.5px solid ${C.border}`, borderRadius: 10, fontWeight: 600, cursor: "pointer", color: C.textMuted, fontFamily: "'Outfit', sans-serif", transition: "all 0.2s", display: "flex", alignItems: "center", gap: 6 }}>
-            <Icons.Refresh /> Refresh
+          <button onClick={fetchDashboard}
+            style={{ padding: "0.65rem 1.25rem", background: C.warmWhite, border: `1.5px solid ${C.border}`, borderRadius: 10, fontWeight: 600, cursor: "pointer", color: C.textMuted, fontFamily: "'Outfit', sans-serif", transition: "all 0.2s", display: "flex", alignItems: "center", gap: 6 }}>
+            ↻ Refresh
           </button>
         </div>
 
@@ -158,15 +148,14 @@ export default function Dashboard() {
           <div style={{ flex: 1, minWidth: 200 }}>
             <h2 style={{ fontFamily: "Cormorant Garamond, serif", fontSize: "1.6rem", fontWeight: 700, color: "#fff", margin: "0 0 0.5rem", letterSpacing: "-0.01em" }}>{displayName}</h2>
             <div style={{ display: "flex", gap: "2rem", flexWrap: "wrap" }}>
-              {[
-                { label: "Location", value: storedUser?.City || "Not set" },
-                { label: "Email", value: storedUser?.Email || "—" },
-              ].map(({ label, value }) => (
-                <div key={label}>
-                  <p style={{ color: "rgba(255,255,255,0.5)", fontSize: "0.72rem", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.07em", margin: "0 0 2px" }}>{label}</p>
-                  <p style={{ color: "#fff", fontWeight: 600, fontSize: "0.9rem", margin: 0 }}>{value}</p>
-                </div>
-              ))}
+              <div>
+                <p style={{ color: "rgba(255,255,255,0.5)", fontSize: "0.72rem", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.07em", margin: "0 0 2px" }}>Location</p>
+                <p style={{ color: "#fff", fontWeight: 600, fontSize: "0.9rem", margin: 0 }}>{storedUser?.City || "Not set"}</p>
+              </div>
+              <div>
+                <p style={{ color: "rgba(255,255,255,0.5)", fontSize: "0.72rem", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.07em", margin: "0 0 2px" }}>Email</p>
+                <p style={{ color: "#fff", fontWeight: 600, fontSize: "0.9rem", margin: 0 }}>{storedUser?.Email || "—"}</p>
+              </div>
             </div>
           </div>
           <button onClick={() => navigate("/profile")} style={{ padding: "0.65rem 1.5rem", background: "rgba(255,255,255,0.12)", border: "1.5px solid rgba(255,255,255,0.25)", borderRadius: 10, color: "#fff", fontFamily: "'Outfit', sans-serif", fontWeight: 600, cursor: "pointer", fontSize: "0.88rem", transition: "all 0.2s", flexShrink: 0 }}>
@@ -175,20 +164,17 @@ export default function Dashboard() {
         </div>
 
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: "1.25rem", marginBottom: "2rem" }}>
-          <StatCard icon={Icons.Home} label="Assets Owned" value={stats.TotalAssets || 0} sub="Listed" color={C.maroon} onClick={() => navigate("/my-assets")} />
-          <StatCard icon={Icons.Clock} label="Pending Approvals" value={stats.PendingBookings || 0} sub="Action needed" color={C.saffronDark} onClick={() => navigate("/bookings")} />
-          <StatCard icon={Icons.FileText} label="Active Requests" value={stats.ActiveRequests || 0} sub="Open" color="#0284C7" onClick={() => navigate("/my-requests")} />
-          <StatCard icon={Icons.Handshake} label="Pending Offers" value={stats.PendingOffers || 0} sub="Awaiting" color="#7C3AED" onClick={() => navigate("/my-offers-made")} />
-          <StatCard icon={Icons.CheckCircle} label="Completed Bookings" value={stats.CompletedBookings || 0} sub="Done" color="#059669" />
+          <StatCard label="Assets Owned" value={stats.TotalAssets || 0} sub="Listed" color={C.maroon} onClick={() => navigate("/my-assets")} idx={0} />
+          <StatCard label="Pending Approvals" value={stats.PendingBookings || 0} sub="Action needed" color={C.saffronDark} onClick={() => navigate("/bookings")} idx={1} />
+          <StatCard label="Active Requests" value={stats.ActiveRequests || 0} sub="Open" color="#0284C7" onClick={() => navigate("/my-requests")} idx={2} />
+          <StatCard label="Pending Offers" value={stats.PendingOffers || 0} sub="Awaiting" color="#7C3AED" onClick={() => navigate("/my-offers-made")} idx={3} />
+          <StatCard label="Completed Bookings" value={stats.CompletedBookings || 0} sub="Done" color="#059669" idx={4} />
         </div>
 
         <div style={{ background: `linear-gradient(135deg, ${C.saffronPale}, #FFFAEE)`, border: `1px solid rgba(244,160,32,0.35)`, borderRadius: 16, padding: "1.5rem 2rem", marginBottom: "2rem", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "1rem", animation: "fadeUp 0.5s ease 0.36s both" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
-            <div style={{ width: 48, height: 48, borderRadius: 12, background: `${C.saffron}20`, display: "flex", alignItems: "center", justifyContent: "center", color: C.saffronDark }}><Icons.Wallet /></div>
-            <div>
-              <p style={{ color: C.saffronDark, fontSize: "0.75rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em", margin: "0 0 4px" }}>Wallet Balance</p>
-              <p style={{ fontFamily: "Cormorant Garamond, serif", fontSize: "2.8rem", fontWeight: 700, color: C.maroon, margin: 0, lineHeight: 1 }}>Rs. {Number(stats.WalletBalance || 0).toLocaleString()}</p>
-            </div>
+          <div>
+            <p style={{ color: C.saffronDark, fontSize: "0.75rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em", margin: "0 0 4px" }}>Wallet Balance</p>
+            <p style={{ fontFamily: "Cormorant Garamond, serif", fontSize: "2.8rem", fontWeight: 700, color: C.maroon, margin: 0, lineHeight: 1 }}>Rs. {Number(stats.WalletBalance || 0).toLocaleString()}</p>
           </div>
           <button onClick={() => navigate("/wallet")} style={{ padding: "0.75rem 1.5rem", background: C.maroon, color: "#fff", border: "none", borderRadius: 10, fontWeight: 700, cursor: "pointer", fontFamily: "'Outfit', sans-serif" }}>
             View Wallet
@@ -197,12 +183,7 @@ export default function Dashboard() {
 
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(380px, 1fr))", gap: "1.5rem", marginBottom: "2rem" }}>
           <div style={{ background: C.warmWhite, border: `1px solid ${C.border}`, borderRadius: 16, padding: "1.75rem", animation: "fadeUp 0.5s ease 0.42s both" }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.5rem", paddingBottom: "1rem", borderBottom: `1px solid ${C.border}` }}>
-              <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
-                <div style={{ width: 32, height: 32, borderRadius: 8, background: `${C.saffron}15`, display: "flex", alignItems: "center", justifyContent: "center", color: C.saffron }}><Icons.Activity /></div>
-                <h3 style={{ fontFamily: "Cormorant Garamond, serif", fontSize: "1.35rem", fontWeight: 700, color: C.textDark, margin: 0 }}>Recent Activity</h3>
-              </div>
-            </div>
+            <h3 style={{ fontFamily: "Cormorant Garamond, serif", fontSize: "1.35rem", fontWeight: 700, color: C.textDark, margin: "0 0 1.5rem", borderBottom: `1px solid ${C.border}`, paddingBottom: "0.75rem" }}>Recent Activity</h3>
             {activity.length === 0 ? (
               <div style={{ textAlign: "center", padding: "2.5rem 1rem", color: C.textFaint }}>
                 <p style={{ fontWeight: 500 }}>No activity yet</p>
@@ -212,7 +193,7 @@ export default function Dashboard() {
               <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem", maxHeight: 400, overflowY: "auto" }}>
                 {activity.slice(0, 8).map((item, i) => (
                   <div key={i} style={{ display: "flex", gap: "0.875rem", padding: "0.875rem", background: C.cream, borderRadius: 10, borderLeft: `3px solid ${ACTIVITY_COLORS[item.ActivityType] || C.saffron}` }}>
-                    <div style={{ width: 32, height: 32, borderRadius: 8, background: `${ACTIVITY_COLORS[item.ActivityType] || C.saffron}15`, display: "flex", alignItems: "center", justifyContent: "center", color: ACTIVITY_COLORS[item.ActivityType] || C.saffron }}><Icons.Activity /></div>
+                    <div style={{ width: 32, height: 32, borderRadius: 8, background: `${ACTIVITY_COLORS[item.ActivityType] || C.saffron}15`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1rem" }}>📋</div>
                     <div>
                       <p style={{ fontWeight: 700, color: C.textDark, fontSize: "0.88rem", margin: "0 0 2px" }}>{ACTIVITY_LABELS[item.ActivityType] || "Activity"}</p>
                       <p style={{ color: C.textMuted, fontSize: "0.82rem", margin: "0 0 2px" }}>{item.Description}</p>
@@ -225,10 +206,7 @@ export default function Dashboard() {
           </div>
 
           <div style={{ background: C.warmWhite, border: `1px solid ${C.border}`, borderRadius: 16, padding: "1.75rem", animation: "fadeUp 0.5s ease 0.48s both" }}>
-            <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginBottom: "1.5rem", paddingBottom: "1rem", borderBottom: `1px solid ${C.border}` }}>
-              <div style={{ width: 32, height: 32, borderRadius: 8, background: `${C.maroon}15`, display: "flex", alignItems: "center", justifyContent: "center", color: C.maroon }}><Icons.TrendingUp /></div>
-              <h3 style={{ fontFamily: "Cormorant Garamond, serif", fontSize: "1.35rem", fontWeight: 700, color: C.textDark, margin: 0 }}>Monthly Earnings</h3>
-            </div>
+            <h3 style={{ fontFamily: "Cormorant Garamond, serif", fontSize: "1.35rem", fontWeight: 700, color: C.textDark, margin: "0 0 1.5rem", borderBottom: `1px solid ${C.border}`, paddingBottom: "0.75rem" }}>Monthly Earnings</h3>
             {earnings.length === 0 ? (
               <div style={{ textAlign: "center", padding: "2.5rem 1rem", color: C.textFaint }}>
                 <p style={{ fontWeight: 500 }}>No earnings yet</p>
@@ -242,9 +220,7 @@ export default function Dashboard() {
                     const pct = (month.Earnings / max) * 100;
                     return (
                       <div key={i} style={{ display: "flex", gap: "0.875rem", alignItems: "center" }}>
-                        <span style={{ fontSize: "0.82rem", color: C.textMuted, fontWeight: 600, minWidth: 56 }}>
-                          {new Date(month.Month).toLocaleDateString("en-US", { month: "short", year: "2-digit" })}
-                        </span>
+                        <span style={{ fontSize: "0.82rem", color: C.textMuted, fontWeight: 600, minWidth: 56 }}>{new Date(month.Month).toLocaleDateString("en-US", { month: "short", year: "2-digit" })}</span>
                         <div style={{ flex: 1, height: 22, background: C.cream, borderRadius: 6, overflow: "hidden", border: `1px solid ${C.border}` }}>
                           <div style={{ height: "100%", width: `${pct}%`, background: `linear-gradient(90deg, ${C.maroon}, ${C.maroonL})`, borderRadius: 6 }} />
                         </div>
@@ -265,12 +241,12 @@ export default function Dashboard() {
         <div style={{ background: C.warmWhite, border: `1px solid ${C.border}`, borderRadius: 16, padding: "1.75rem", animation: "fadeUp 0.5s ease 0.54s both" }}>
           <h3 style={{ fontFamily: "Cormorant Garamond, serif", fontSize: "1.35rem", fontWeight: 700, color: C.textDark, margin: "0 0 1.25rem" }}>Quick Actions</h3>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(130px, 1fr))", gap: "1rem" }}>
-            <QuickBtn icon={() => <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>} label="Add Asset" onClick={() => navigate("/my-assets/add")} color={C.maroon} />
-            <QuickBtn icon={() => <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></svg>} label="Post Request" onClick={() => navigate("/post-request")} color="#0284C7" />
-            <QuickBtn icon={() => <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>} label="My Bookings" onClick={() => navigate("/bookings")} color={C.saffronDark} />
-            <QuickBtn icon={() => <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>} label="My Offers" onClick={() => navigate("/my-offers-made")} color="#7C3AED" />
-            <QuickBtn icon={() => <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M21 12v3a4 4 0 0 1-4 4H7a4 4 0 0 1-4-4V9a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4h-4a2 2 0 0 0-2 2v2a2 2 0 0 0 2 2h4z"/></svg>} label="Wallet" onClick={() => navigate("/wallet")} color="#059669" />
-            <QuickBtn icon={() => <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>} label="Browse" onClick={() => navigate("/browse")} color={C.brownLight} />
+            <QuickBtn icon="+" label="Add Asset" onClick={() => navigate("/my-assets/add")} color={C.maroon} />
+            <QuickBtn icon="✎" label="Post Request" onClick={() => navigate("/post-request")} color="#0284C7" />
+            <QuickBtn icon="📅" label="My Bookings" onClick={() => navigate("/bookings")} color={C.saffronDark} />
+            <QuickBtn icon="🤝" label="My Offers" onClick={() => navigate("/my-offers-made")} color="#7C3AED" />
+            <QuickBtn icon="$" label="Wallet" onClick={() => navigate("/wallet")} color="#059669" />
+            <QuickBtn icon="🔍" label="Browse" onClick={() => navigate("/browse")} color={C.brownLight} />
           </div>
         </div>
       </div>
