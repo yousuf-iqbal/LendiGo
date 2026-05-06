@@ -171,6 +171,82 @@
   z-index: 2;
 }
 
+/* Leaflet map styles */
+.leaflet-container {
+  z-index: 1;
+}
+
+.leaflet-popup-content-wrapper {
+  border-radius: 12px;
+  background: #FFF9F0;
+  box-shadow: 0 4px 20px rgba(128,0,32,0.15);
+}
+
+.leaflet-popup-tip {
+  background: #FFF9F0;
+}
+
+.custom-marker {
+  background: transparent !important;
+}
+
+/* Pulse animation for new items */
+@keyframes pulse-new {
+  0% {
+    box-shadow: 0 0 0 0 rgba(244, 160, 32, 0.4);
+    transform: scale(1);
+  }
+  50% {
+    box-shadow: 0 0 0 8px rgba(244, 160, 32, 0);
+    transform: scale(1.02);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(244, 160, 32, 0);
+    transform: scale(1);
+  }
+}
+@keyframes ping-large {
+  0% {
+    transform: scale(0.5);
+    opacity: 0.8;
+  }
+  70% {
+    transform: scale(3);
+    opacity: 0;
+  }
+  100% {
+    transform: scale(4);
+    opacity: 0;
+  }
+}
+
+/* Force fonts on everything - overrides inline styles */
+* {
+  font-family: 'Plus Jakarta Sans', 'Outfit', system-ui, sans-serif !important;
+}
+
+h1, h2, h3, h4, .cormorant, [class*="Cormorant"] {
+  font-family: 'Playfair Display', 'Cormorant Garamond', Georgia, serif !important;
+}
+
+/* Make backgrounds transparent on all pages */
+[style*="background: #FDF6EC"],
+[style*="background: #FFF9F0"],
+[style*="background: #FDF6EC;"],
+[style*="background: #FFF9F0;"] {
+  background: rgba(255, 249, 240, 0.85) !important;
+  backdrop-filter: blur(8px) !important;
+}
+
+/* Remove solid backgrounds from page wrappers */
+.page-wrapper > div {
+  background: transparent !important;
+}
+
+.pulse-new {
+  animation: pulse-new 0.6s ease-out;
+}
+
 .ticks {
   position: relative;
   width: 100%;

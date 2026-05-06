@@ -4,6 +4,10 @@ const cors = require('cors');
 const { Server } = require('socket.io');
 require('dotenv').config();
 
+// Add fetch polyfill for Node.js (if Node version < 18)
+const fetch = require('node-fetch');
+global.fetch = fetch;
+
 const { poolPromise, sql } = require('./config/db');
 const { admin } = require('./config/firebase');
 const authRoutes = require('./routes/authRoutes');

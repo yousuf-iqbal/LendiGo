@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import API from "../api/axios";
-import FloatingBackground from "../components/FloatingBackground";
+//import FloatingBackground from "../components/FloatingBackground";
 
 const C = {
   saffron: "#F4A020", saffronDark: "#E08800", saffronPale: "#FFF0CC",
@@ -116,7 +116,7 @@ export default function AddAssetPage() {
 
   return (
     <div style={{ background: C.cream, minHeight: "100vh", position: "relative", fontFamily: "'Outfit', system-ui, sans-serif" }}>
-      <FloatingBackground variant="minimal" />
+      {/*<FloatingBackground variant="minimal" />*/}
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,600;0,700;1,600&family=Outfit:wght@300;400;500;600;700;800&display=swap');
         @keyframes fadeUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }

@@ -9,7 +9,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import API from '../api/axios';
-import FloatingBackground from '../components/FloatingBackground';
+//import FloatingBackground from '../components/FloatingBackground';
 
 /* ── Design tokens ─────────────────────────── */
 const C = {
@@ -175,7 +175,7 @@ export default function ProfilePage() {
 
   if (loading) return (
     <div style={{ minHeight:'100vh', display:'flex', alignItems:'center', justifyContent:'center', background:C.cream }}>
-      <FloatingBackground variant="minimal" />
+     {/*} <FloatingBackground variant="minimal" />*/}
       <div style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:16, position:'relative', zIndex:1 }}>
         <div style={{ width:44, height:44, border:`3px solid ${C.border}`, borderTopColor:C.saffron, borderRadius:'50%', animation:'spin 0.8s linear infinite' }} />
         <p style={{ color:C.textMuted, fontFamily:"'Outfit', sans-serif" }}>Loading profile…</p>
@@ -189,7 +189,7 @@ export default function ProfilePage() {
 
   return (
     <div style={{ background:C.cream, minHeight:'100vh', position:'relative', fontFamily:"'Outfit', system-ui, sans-serif" }}>
-      <FloatingBackground variant="minimal" />
+      {/*<FloatingBackground variant="minimal" />*/}
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,600;0,700;1,600&family=Outfit:wght@300;400;500;600;700;800&display=swap');
         @keyframes spin { to { transform: rotate(360deg); } }

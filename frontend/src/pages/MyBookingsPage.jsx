@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import API from '../api/axios';
-import FloatingBackground from '../components/FloatingBackground';
+//import FloatingBackground from '../components/FloatingBackground';
 
 const C = { saffron:'#F4A020', saffronPale:'#FFF0CC', maroon:'#800020', maroonL:'#B00030', cream:'#FDF6EC', warmWhite:'#FFF9F0', textDark:'#2C1810', textMuted:'#6B4C3B', textFaint:'#A68070', border:'rgba(128,0,32,0.12)' };
 
@@ -44,7 +44,7 @@ export default function MyBookingsPage() {
 
   if (loading) return (
     <div style={{ minHeight:'100vh', background:C.cream, display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', gap:16 }}>
-      <FloatingBackground variant="minimal" />
+     {/*} <FloatingBackground variant="minimal" />*/}
       <div style={{ width:44, height:44, border:`3px solid ${C.border}`, borderTopColor:C.saffron, borderRadius:'50%', animation:'spin 0.8s linear infinite', zIndex:1 }} />
       <p style={{ color:C.textMuted, zIndex:1, fontFamily:"'Outfit',sans-serif" }}>Loading bookings…</p>
       <style>{`@keyframes spin{to{transform:rotate(360deg);}}`}</style>
@@ -53,7 +53,7 @@ export default function MyBookingsPage() {
 
   return (
     <div style={{ background:C.cream, minHeight:'100vh', position:'relative', fontFamily:"'Outfit',system-ui,sans-serif" }}>
-      <FloatingBackground variant="minimal" />
+     {/*} <FloatingBackground variant="minimal" />*/}
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@600;700&family=Outfit:wght@400;500;600;700;800&display=swap');
         @keyframes fadeUp{from{opacity:0;transform:translateY(18px);}to{opacity:1;transform:translateY(0);}}

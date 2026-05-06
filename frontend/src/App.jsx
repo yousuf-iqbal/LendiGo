@@ -1,6 +1,7 @@
 ﻿import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
-
+import { MapProvider } from './context/MapContext';
+import MapSidebar from './components/MapSidebar';
 import AuthPage from './pages/AuthPage';
 import CompleteProfile from './pages/CompleteProfile';
 import WalletDashboard from './pages/WalletDashboard';
@@ -24,6 +25,7 @@ import MyBookingsPage from './pages/MyBookingsPage';
 import PaymentReceiptPage from './pages/PaymentReceiptPage';
 import AdminDashboard from './pages/AdminDashboard';
 import HelpCorner from './components/HelpCorner';
+import GlobalBackground from './components/GlobalBackground';
 // DELETE THIS LINE: import Aurora from './components/Aurora';
 
 import './App.css';
@@ -79,9 +81,11 @@ export default function App() {
   return (
     <AuthProvider>
       <BrowserRouter>
+        <MapProvider>
         <div className="App">
-          {/* AURORA REMOVED - DELETE THIS LINE */}
+          <GlobalBackground />
           <Navbar />
+
           <div className="page-wrapper">
             <Routes>
               {/* Public Auth Routes */}
@@ -126,7 +130,9 @@ export default function App() {
             </Routes>
           </div>
           <HelpCorner />
+          <MapSidebar />
         </div>
+        </MapProvider>
       </BrowserRouter>
     </AuthProvider>
   );

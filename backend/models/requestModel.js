@@ -1,23 +1,33 @@
 const { poolPromise, sql } = require('../config/db');
 
 // ── CREATE ────────────────────────────────────────────────────────────────────
-async function createRequest(data, requesterID) {
+async function createRequest(requestData, userId) {
   const pool = await poolPromise;
+  const { 
+    title, description, categoryId, startDate, endDate, 
+    maxBudget, city, area, lat, lng 
+  } = requestData;
+  
   const result = await pool.request()
-    .input('Title', sql.NVarChar, data.title)
-    .input('Description', sql.NVarChar, data.description || '')
-    .input('CategoryID', sql.Int, data.categoryId || null)
-    .input('StartDate', sql.Date, data.startDate)
-    .input('EndDate', sql.Date, data.endDate)
-    .input('MaxBudget', sql.Decimal, data.maxBudget || null)
-    .input('City', sql.NVarChar, data.city || '')
-    .input('Area', sql.NVarChar, data.area || '')
-    .input('RequesterID', sql.Int, requesterID)
+    .input('Title', sql.NVarChar, title)
+    .input('Description', sql.NVarChar, description || null)
+    .input('CategoryID', sql.Int, categoryId || null)
+    .input('StartDate', sql.Date, startDate)
+    .input('EndDate', sql.Date, endDate)
+    .input('MaxBudget', sql.Decimal(18,2), maxBudget || null)
+    .input('City', sql.NVarChar, city || null)
+    .input('Area', sql.NVarChar, area || null)
+    .input('Lat', sql.Float, lat || null)
+    .input('Lng', sql.Float, lng || null)
+    .input('RequesterID', sql.Int, userId)
     .query(`
-      INSERT INTO Requests (Title, Description, CategoryID, StartDate, EndDate, MaxBudget, City, Area, RequesterID, Status)
-      OUTPUT INSERTED.RequestID
-      VALUES (@Title, @Description, @CategoryID, @StartDate, @EndDate, @MaxBudget, @City, @Area, @RequesterID, 'open')
+      INSERT INTO Requests (Title, Description, CategoryID, StartDate, EndDate, 
+        MaxBudget, City, Area, Lat, Lng, RequesterID, Status, CreatedAt)
+      VALUES (@Title, @Description, @CategoryID, @StartDate, @EndDate, 
+        @MaxBudget, @City, @Area, @Lat, @Lng, @RequesterID, 'open', GETDATE());
+      SELECT SCOPE_IDENTITY() AS RequestID;
     `);
+  
   return result.recordset[0].RequestID;
 }
 
@@ -49,8 +59,21 @@ async function getAllRequests(filters = {}) {
 
   const result = await request.query(`
     SELECT 
-      r.RequestID, r.Title, r.Description, r.MaxBudget, r.StartDate, r.EndDate, r.Status, r.CreatedAt,
-      u.FullName AS RequesterName, u.UserID AS RequesterID, u.ProfilePic AS RequesterPic,
+      r.RequestID, 
+      r.Title, 
+      r.Description, 
+      r.MaxBudget, 
+      r.StartDate, 
+      r.EndDate, 
+      r.Status, 
+      r.CreatedAt,
+      r.Lat,           -- ← ADD THIS
+      r.Lng,           -- ← ADD THIS
+      r.City,          -- ← ADD THIS (optional, for map display)
+      r.Area,          -- ← ADD THIS (optional, for map display)
+      u.FullName AS RequesterName, 
+      u.UserID AS RequesterID, 
+      u.ProfilePic AS RequesterPic,
       c.Name AS CategoryName
     FROM Requests r
     LEFT JOIN Users u ON r.RequesterID = u.UserID
@@ -67,10 +90,10 @@ async function getRequestById(requestId) {
     .input('RequestID', sql.Int, requestId)
     .query(`
       SELECT 
-        r.RequestID, r.Title, r.Description, r.MaxBudget, r.StartDate, r.EndDate, r.Status, r.CreatedAt,
-        r.City, r.Area,
-        u.FullName AS RequesterName, u.UserID AS RequesterID, u.ProfilePic AS RequesterPic, u.Phone AS RequesterPhone,
-        c.Name AS CategoryName, c.CategoryID
+        r.RequestID, r.Title, r.Description, r.MaxBudget, r.StartDate, r.EndDate, 
+        r.Status, r.CreatedAt, r.City, r.Area, r.Lat, r.Lng,  -- ← ADD r.Lat, r.Lng
+        u.FullName AS RequesterName, u.UserID AS RequesterID, u.ProfilePic AS RequesterPic,
+        c.Name AS CategoryName
       FROM Requests r
       LEFT JOIN Users u ON r.RequesterID = u.UserID
       LEFT JOIN Categories c ON r.CategoryID = c.CategoryID
@@ -79,7 +102,7 @@ async function getRequestById(requestId) {
   return result.recordset[0];
 }
 
-// ✅ FIXED: was using global.pool — now uses poolPromise correctly
+//was using global.pool — now uses poolPromise correctly
 async function getRequestsByUser(userID) {
   const pool = await poolPromise;
   const result = await pool.request()

@@ -1,4 +1,32 @@
 ﻿const requestModel = require('../models/requestModel');
+const fetch = require('node-fetch');
+// Geocoding function 
+const geocodeArea = async (area, city = 'Lahore') => {
+  if (!area && !city) return { lat: null, lng: null };
+  
+  try {
+    const searchQuery = `${area || ''} ${city || ''}`.trim();
+    if (!searchQuery) return { lat: null, lng: null };
+    
+    // Using Nominatim OpenStreetMap geocoding (free, no API key needed)
+    const response = await fetch(
+      `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(searchQuery)}&format=json&limit=1&accept-language=en`
+    );
+    const data = await response.json();
+    
+    if (data && data.length > 0) {
+      return { 
+        lat: parseFloat(data[0].lat), 
+        lng: parseFloat(data[0].lon) 
+      };
+    }
+  } catch (err) {
+    console.error('Geocoding error:', err);
+  }
+  
+  // Default fallback - Lahore center if geocoding fails
+  return { lat: 31.5204, lng: 74.3587 };
+};
 
 // ── CREATE ────────────────────────────────────────────────────────────────────
 async function createRequest(req, res) {
@@ -11,6 +39,10 @@ async function createRequest(req, res) {
     if (new Date(endDate) < new Date(startDate)) return res.status(400).json({ error: 'End date must be after start date' });
     if (maxBudget && maxBudget < 0) return res.status(400).json({ error: 'Budget cannot be negative' });
 
+    // Geocode the area to get coordinates for map
+    const { lat, lng } = await geocodeArea(area, city);
+    console.log(`📍 Geocoded ${area || city} to:`, { lat, lng });
+
     const requestId = await requestModel.createRequest({
       title: title.trim(),
       description: description?.trim(),
@@ -20,12 +52,31 @@ async function createRequest(req, res) {
       maxBudget: maxBudget ? parseFloat(maxBudget) : null,
       city: city?.trim(),
       area: area?.trim(),
+      lat,
+      lng,
     }, req.userID);
+
+    // Emit real-time event for map and live feed
+    const io = req.app.get('io');
+    if (io) {
+      io.emit('new_request', {
+        _id: requestId,
+        id: requestId,
+        title: title.trim(),
+        itemName: title.trim(),
+        area: area?.trim(),
+        city: city?.trim(),
+        lat,
+        lng,
+        maxBudget: maxBudget ? parseFloat(maxBudget) : null,
+        createdAt: new Date().toISOString(),
+      });
+    }
 
     res.status(201).json({ 
       message: 'Request created successfully', 
       requestId,
-      request: { title, startDate, endDate, maxBudget }
+      request: { title, startDate, endDate, maxBudget, lat, lng }
     });
   } catch (err) {
     console.error('Create request error:', err);
@@ -86,6 +137,14 @@ async function updateRequest(req, res) {
       return res.status(400).json({ error: 'End date must be after start date' });
     }
 
+    // Update geocoding if area changed
+    let lat = null, lng = null;
+    if ((area && area.trim()) || (city && city.trim())) {
+      const geocodeResult = await geocodeArea(area, city);
+      lat = geocodeResult.lat;
+      lng = geocodeResult.lng;
+    }
+
     await requestModel.updateRequest(req.params.id, {
       title: title?.trim(),
       description: description?.trim(),
@@ -95,6 +154,8 @@ async function updateRequest(req, res) {
       maxBudget: maxBudget ? parseFloat(maxBudget) : null,
       city: city?.trim(),
       area: area?.trim(),
+      lat,
+      lng,
     }, req.userID);
 
     res.json({ message: 'Request updated successfully' });

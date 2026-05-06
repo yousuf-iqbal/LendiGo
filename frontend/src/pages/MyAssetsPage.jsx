@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import API from '../api/axios';
-import FloatingBackground from '../components/FloatingBackground';
+//import FloatingBackground from '../components/FloatingBackground';
 
 const C = { saffron:'#F4A020', saffronPale:'#FFF0CC', maroon:'#800020', maroonL:'#B00030', cream:'#FDF6EC', warmWhite:'#FFF9F0', textDark:'#2C1810', textMuted:'#6B4C3B', textFaint:'#A68070', border:'rgba(128,0,32,0.12)' };
 
@@ -44,7 +44,7 @@ export default function MyAssetsPage() {
 
   if (loading) return (
     <div style={{ minHeight:'100vh', background:C.cream, display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', gap:16 }}>
-      <FloatingBackground variant="minimal" />
+     {/*} <FloatingBackground variant="minimal" />*/}
       <div style={{ width:44, height:44, border:`3px solid ${C.border}`, borderTopColor:C.saffron, borderRadius:'50%', animation:'spin 0.8s linear infinite', zIndex:1 }} />
       <style>{`@keyframes spin{to{transform:rotate(360deg);}}`}</style>
     </div>
@@ -52,7 +52,7 @@ export default function MyAssetsPage() {
 
   return (
     <div style={{ background:C.cream, minHeight:'100vh', position:'relative', fontFamily:"'Outfit',system-ui,sans-serif" }}>
-      <FloatingBackground variant="minimal" />
+     {/*} <FloatingBackground variant="minimal" />*/}
       <style>{`@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@700&family=Outfit:wght@400;500;600;700;800&display=swap');@keyframes fadeUp{from{opacity:0;transform:translateY(18px);}to{opacity:1;transform:translateY(0);}}.asset-card{transition:all 0.25s ease;}.asset-card:hover{transform:translateY(-4px);box-shadow:0 10px 32px rgba(128,0,32,0.13) !important;}`}</style>
       <div style={{ position:'relative', zIndex:1, maxWidth:1200, margin:'0 auto', padding:'2rem 1.5rem' }}>
         <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'2rem', animation:'fadeUp 0.5s ease both' }}>
