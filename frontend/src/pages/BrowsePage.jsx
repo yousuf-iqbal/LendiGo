@@ -1,11 +1,12 @@
-import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useCallback, useState, useEffect } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import API from '../api/axios';
 
 const C = { saffron:'#F4A020', saffronPale:'#FFF0CC', maroon:'#800020', maroonL:'#B00030', cream:'#FDF6EC', warmWhite:'#FFF9F0', textDark:'#2C1810', textMuted:'#6B4C3B', textFaint:'#A68070', border:'rgba(128,0,32,0.12)', borderS:'rgba(128,0,32,0.25)' };
 
 export default function BrowsePage() {
   const navigate = useNavigate();
+  const location = useLocation();
   const [assets, setAssets] = useState([]);
   const [categories, setCategories] = useState([]);
   const [filtered, setFiltered] = useState([]);
@@ -15,9 +16,6 @@ export default function BrowsePage() {
   const [minPrice, setMinPrice] = useState(0);
   const [maxPrice, setMaxPrice] = useState(10000);
   const [sortBy, setSortBy] = useState('recent');
-
-  useEffect(() => { fetchCategories(); fetchAssets(); }, []);
-  useEffect(() => { filterAndSortAssets(); }, [category, minPrice, maxPrice, sortBy, search, assets]);
 
   const fetchCategories = async () => {
     try {
@@ -32,7 +30,7 @@ export default function BrowsePage() {
     catch { /* silent */ } finally { setLoading(false); }
   };
 
-  const filterAndSortAssets = () => {
+  const filterAndSortAssets = useCallback(() => {
     let out = assets;
     if (category !== 'All') out = out.filter(a => a.category === category);
     if (search.trim()) out = out.filter(a => a.name?.toLowerCase().includes(search.toLowerCase()));
@@ -41,7 +39,15 @@ export default function BrowsePage() {
     else if (sortBy === 'price-high') out.sort((a,b) => b.price_per_day - a.price_per_day);
     else out.sort((a,b) => new Date(b.createdAt||0) - new Date(a.createdAt||0));
     setFiltered(out);
-  };
+  }, [assets, category, maxPrice, minPrice, search, sortBy]);
+
+  useEffect(() => { fetchCategories(); fetchAssets(); }, []);
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const categoryParam = params.get('category');
+    if (categoryParam) setCategory(categoryParam);
+  }, [location.search]);
+  useEffect(() => { filterAndSortAssets(); }, [filterAndSortAssets]);
 
   if (loading) return (
     <div style={{ minHeight:'100vh', background:C.cream, display:'flex', alignItems:'center', justifyContent:'center', flexDirection:'column', gap:16 }}>
