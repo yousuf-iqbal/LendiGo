@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { gsap } from 'gsap';
 import FlowingMenu from './FlowingMenu';
 import './StaggeredMenu.css';
@@ -41,11 +42,12 @@ export default function StaggeredMenu({
       const textInner = textInnerRef.current;
       if (!panel || !plusH || !plusV || !icon || !textInner) return;
 
-      const preLayers = preContainer ? Array.from(preContainer.querySelectorAll('.sm-prelayer')) : [];
-      const offscreen = position === 'left' ? -100 : 100;
+      const preLayers = preContainer
+        ? Array.from(preContainer.querySelectorAll('.sm-prelayer'))
+        : [];
       preLayerElsRef.current = preLayers;
 
-      gsap.set([panel, ...preLayers], { xPercent: offscreen, opacity: 1 });
+      gsap.set([panel, ...preLayers], { xPercent: position === 'left' ? -100 : 100, opacity: 1 });
       gsap.set(plusH, { transformOrigin: '50% 50%', rotate: 0 });
       gsap.set(plusV, { transformOrigin: '50% 50%', rotate: 90 });
       gsap.set(icon, { rotate: 0, transformOrigin: '50% 50%' });
@@ -71,15 +73,29 @@ export default function StaggeredMenu({
     gsap.set([panel, ...layers], { visibility: 'visible' });
 
     layers.forEach((layer, index) => {
-      tl.fromTo(layer, { xPercent: offscreen }, { xPercent: 0, duration: 0.42, ease: 'power4.out' }, index * 0.055);
+      tl.fromTo(
+        layer,
+        { xPercent: offscreen },
+        { xPercent: 0, duration: 0.42, ease: 'power4.out' },
+        index * 0.055
+      );
     });
 
     const panelStart = (layers.length ? (layers.length - 1) * 0.055 : 0) + 0.06;
-    tl.fromTo(panel, { xPercent: offscreen }, { xPercent: 0, duration: 0.52, ease: 'power4.out' }, panelStart);
+    tl.fromTo(
+      panel,
+      { xPercent: offscreen },
+      { xPercent: 0, duration: 0.52, ease: 'power4.out' },
+      panelStart
+    );
 
     if (itemEls.length) {
       gsap.set(itemEls, { x: 18, opacity: 0, filter: 'blur(8px)' });
-      tl.to(itemEls, { x: 0, opacity: 1, filter: 'blur(0)', duration: 0.52, ease: 'power3.out', stagger: 0.035 }, panelStart + 0.12);
+      tl.to(
+        itemEls,
+        { x: 0, opacity: 1, filter: 'blur(0)', duration: 0.52, ease: 'power3.out', stagger: 0.035 },
+        panelStart + 0.12
+      );
     }
 
     openTlRef.current = tl;
@@ -131,15 +147,18 @@ export default function StaggeredMenu({
     });
   }, []);
 
-  const animateColor = useCallback((opening) => {
-    colorTweenRef.current?.kill();
-    colorTweenRef.current = gsap.to(toggleBtnRef.current, {
-      color: opening ? openMenuButtonColor : menuButtonColor,
-      delay: opening ? 0.14 : 0,
-      duration: 0.25,
-      ease: 'power2.out',
-    });
-  }, [menuButtonColor, openMenuButtonColor]);
+  const animateColor = useCallback(
+    (opening) => {
+      colorTweenRef.current?.kill();
+      colorTweenRef.current = gsap.to(toggleBtnRef.current, {
+        color: opening ? openMenuButtonColor : menuButtonColor,
+        delay: opening ? 0.14 : 0,
+        duration: 0.25,
+        ease: 'power2.out',
+      });
+    },
+    [menuButtonColor, openMenuButtonColor]
+  );
 
   const animateText = useCallback((opening) => {
     const current = opening ? 'Menu' : 'Close';
@@ -200,11 +219,46 @@ export default function StaggeredMenu({
     };
   }, [closeMenu, open]);
 
+  /* Portal content -- rendered directly under document.body so that
+     position:fixed children are never inside an ancestor with
+     transform / backdrop-filter (which would break fixed positioning). */
+  const portalContent = (
+    <div className="sm-portal" data-open={open || undefined}>
+      <div className="sm-screen" aria-hidden={!open} onClick={closeMenu} />
+
+      <div ref={preLayersRef} className="sm-prelayers" aria-hidden="true">
+        {colors.slice(0, 4).map((color) => (
+          <div key={color} className="sm-prelayer" style={{ background: color }} />
+        ))}
+      </div>
+
+      <aside
+        id="staggered-menu-panel"
+        ref={panelRef}
+        className="staggered-menu-panel"
+        aria-hidden={!open}
+        data-position={position}
+      >
+        <div className="sm-panel-inner">
+          <FlowingMenu
+            items={items}
+            speed={13}
+            textColor="#FDF6EC"
+            bgColor="#5C0018"
+            marqueeBgColor="#F4A020"
+            marqueeTextColor="#5C0018"
+            borderColor="rgba(253, 246, 236, 0.18)"
+            onNavigate={closeMenu}
+          />
+        </div>
+      </aside>
+    </div>
+  );
+
   return (
     <div
       className="staggered-menu-wrapper"
       data-position={position}
-      data-open={open || undefined}
       style={{ '--sm-accent': accentColor }}
     >
       <button
@@ -231,28 +285,7 @@ export default function StaggeredMenu({
         </span>
       </button>
 
-      <div className="sm-screen" aria-hidden={!open} onClick={closeMenu} />
-
-      <div ref={preLayersRef} className="sm-prelayers" aria-hidden="true">
-        {colors.slice(0, 4).map((color) => (
-          <div key={color} className="sm-prelayer" style={{ background: color }} />
-        ))}
-      </div>
-
-      <aside id="staggered-menu-panel" ref={panelRef} className="staggered-menu-panel" aria-hidden={!open}>
-        <div className="sm-panel-inner">
-          <FlowingMenu
-            items={items}
-            speed={13}
-            textColor="#FDF6EC"
-            bgColor="#5C0018"
-            marqueeBgColor="#F4A020"
-            marqueeTextColor="#5C0018"
-            borderColor="rgba(253, 246, 236, 0.18)"
-            onNavigate={closeMenu}
-          />
-        </div>
-      </aside>
+      {createPortal(portalContent, document.body)}
     </div>
   );
 }

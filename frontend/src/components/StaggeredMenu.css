@@ -77,6 +77,13 @@ body.sm-menu-open {
   transform: translate(-50%, -50%);
 }
 
+/* Portal wrapper -- all fixed descendants are now children of document.body
+   so position:fixed works correctly regardless of the navbar's stacking context. */
+.sm-portal {
+  /* no layout of its own */
+}
+
+/* Overlay screen */
 .sm-screen {
   position: fixed;
   inset: 0;
@@ -86,28 +93,25 @@ body.sm-menu-open {
   transition: background 240ms ease;
 }
 
-.staggered-menu-wrapper[data-open] .sm-screen {
+.sm-portal[data-open] .sm-screen {
   pointer-events: auto;
   background: rgba(44, 24, 16, 0.18);
 }
 
+/* Pre-layers (color reveal strips) */
 .sm-prelayers {
   position: fixed;
   top: 14px;
   right: 14px;
-  width: min(430px, calc(100vw - 28px));
+  left: auto;
+  width: min(740px, calc(100vw - 28px));
   height: calc(100vh - 28px);
   z-index: 1250;
   pointer-events: none;
   visibility: hidden;
 }
 
-[data-position='left'] .sm-prelayers {
-  right: auto;
-  left: 14px;
-}
-
-.staggered-menu-wrapper[data-open] .sm-prelayers {
+.sm-portal[data-open] .sm-prelayers {
   visibility: visible;
 }
 
@@ -118,11 +122,12 @@ body.sm-menu-open {
   opacity: 1;
 }
 
+/* Main panel */
 .staggered-menu-panel {
   position: fixed;
   top: 14px;
   right: 14px;
-  width: min(430px, calc(100vw - 28px));
+  width: min(740px, calc(100vw - 28px));
   height: calc(100vh - 28px);
   z-index: 1300;
   display: flex;
@@ -138,11 +143,20 @@ body.sm-menu-open {
   overflow: hidden;
 }
 
-.staggered-menu-wrapper[data-open] .staggered-menu-panel {
+.sm-portal[data-open] .staggered-menu-panel {
   visibility: visible;
 }
 
-[data-position='left'] .staggered-menu-panel {
+/* Left-position variant */
+.staggered-menu-panel[data-position='left'] {
+  right: auto;
+  left: 14px;
+  width: min(520px, calc(100vw - 28px));
+  box-shadow: 24px 24px 70px rgba(44, 24, 16, 0.24);
+}
+
+.sm-portal[data-open] .sm-prelayers[data-position='left'] {
+  /* mirror for left-opening menus if ever needed */
   right: auto;
   left: 14px;
 }
@@ -174,3 +188,5 @@ body.sm-menu-open {
     border-radius: 24px;
   }
 }
+
+y

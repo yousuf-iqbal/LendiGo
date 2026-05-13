@@ -28,7 +28,7 @@ function makeMenuImage(seed, primary, secondary) {
 function Logo() {
   return (
     <Link to="/" className="navbar-logo" aria-label="Go to homepage">
-      {'Lendigo'.split('').map((letter, index) => (
+      {'LendiGo'.split('').map((letter, index) => (
         <span className={`navbar-logo__letter navbar-logo__letter--${index}`} key={`${letter}-${index}`}>
           {letter}
         </span>
