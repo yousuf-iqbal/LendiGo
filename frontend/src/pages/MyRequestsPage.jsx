@@ -2,6 +2,8 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import API from '../api/axios';
+import ChatButton from '../components/ChatButton';
+import DisputeModal from '../components/DisputeModal';
 import '../theme.css';
 
 const C = {
@@ -20,6 +22,8 @@ export default function MyRequestsPage() {
   const [error, setError] = useState(null);
   const [activeFilter, setActiveFilter] = useState('all');
   const [searchTerm, setSearchTerm] = useState('');
+  const [showDisputeModal, setShowDisputeModal] = useState(false);
+  const [selectedRequest, setSelectedRequest] = useState(null);
 
   useEffect(() => {
     fetchRequests();
@@ -244,10 +248,10 @@ export default function MyRequestsPage() {
                 </div>
 
                 {/* Card Footer */}
-                <div style={{ padding: '1rem', background: C.cream, borderTop: `1px solid ${C.border}`, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}>
+                <div style={{ padding: '1rem', background: C.cream, borderTop: `1px solid ${C.border}`, display: 'grid', gridTemplateColumns: 'auto auto auto', gap: '0.5rem' }}>
                   <button
                     className="btn-outline"
-                    style={{ padding: '0.5rem', fontSize: '0.8rem' }}
+                    style={{ padding: '0.5rem 1rem', fontSize: '0.8rem' }}
                     onClick={(e) => {
                       e.stopPropagation();
                       navigate(`/request/${request.RequestID}`);
@@ -257,7 +261,7 @@ export default function MyRequestsPage() {
                   </button>
                   <button
                     className="btn-ghost"
-                    style={{ padding: '0.5rem', fontSize: '0.8rem' }}
+                    style={{ padding: '0.5rem 1rem', fontSize: '0.8rem' }}
                     onClick={(e) => {
                       e.stopPropagation();
                       navigate(`/request/${request.RequestID}/edit`);
@@ -265,12 +269,45 @@ export default function MyRequestsPage() {
                   >
                     Edit Request
                   </button>
+                  <button
+                    onClick={() => {
+                      setSelectedRequest(request);
+                      setShowDisputeModal(true);
+                    }}
+                    style={{
+                      padding: '0.5rem 1rem',
+                      background: '#f3f4f6',
+                      color: '#666',
+                      border: '1px solid #d1d5db',
+                      borderRadius: '6px',
+                      cursor: 'pointer',
+                      fontWeight: 600,
+                      fontSize: '0.8rem',
+                    }}
+                  >
+                    Report
+                  </button>
                 </div>
               </div>
             ))}
           </div>
         )}
       </div>
+
+      {/* Dispute Modal */}
+      {showDisputeModal && (
+        <DisputeModal
+          bookingId={selectedRequest?.BookingID}
+          onClose={() => {
+            setShowDisputeModal(false);
+            setSelectedRequest(null);
+          }}
+          onSubmitSuccess={() => {
+            setShowDisputeModal(false);
+            setSelectedRequest(null);
+          }}
+        />
+      )}
     </div>
   );
 }

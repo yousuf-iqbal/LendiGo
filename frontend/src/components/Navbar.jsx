@@ -72,22 +72,21 @@ export default function Navbar() {
   };
 
   const publicItems = [
-    { link: '/', text: 'Home', eyebrow: 'Landing', image: makeMenuImage('Home', '#F4A020', '#800020') },
-    { link: '/browse', text: 'Browse', eyebrow: 'Assets nearby', image: makeMenuImage('Browse', '#800020', '#C4956A') },
+    { link: '/browse', text: 'Browse', eyebrow: 'Explore assets', image: makeMenuImage('Browse', '#800020', '#C4956A') },
     { link: '/requests', text: 'Requests', eyebrow: 'Community needs', image: makeMenuImage('Need', '#5C0018', '#F4A020') },
   ];
 
   const signedInItems = [
     { link: '/post-request', text: 'Post Request', eyebrow: 'Ask community', image: makeMenuImage('Post', '#F4A020', '#5C0018') },
-    { link: '/dashboard', text: 'Dashboard', eyebrow: 'Overview', image: makeMenuImage('Hub', '#800020', '#F4A020') },
-    { link: '/my-assets', text: 'My Assets', eyebrow: 'Things you lend', image: makeMenuImage('Assets', '#C4956A', '#5C0018') },
     { link: '/my-assets/add', text: 'List Asset', eyebrow: 'Add item', image: makeMenuImage('List', '#F4A020', '#800020') },
-    { link: '/my-requests', text: 'My Requests', eyebrow: 'Needs posted', image: makeMenuImage('Mine', '#800020', '#C4956A') },
-    { link: '/my-offers', text: 'Offers Gotten', eyebrow: 'Received', image: makeMenuImage('Got', '#5C0018', '#F4A020') },
-    { link: '/my-offers-made', text: 'Offers Made', eyebrow: 'Sent', image: makeMenuImage('Made', '#F4A020', '#5C0018') },
-    { link: '/bookings', text: 'Bookings', eyebrow: 'Orders', image: makeMenuImage('Book', '#800020', '#F4A020') },
-    { link: '/wallet', text: 'Wallet', eyebrow: 'Payments', image: makeMenuImage('Pay', '#C4956A', '#800020') },
-    { link: '/profile', text: 'Profile', eyebrow: 'Account', image: makeMenuImage('You', '#5C0018', '#C4956A') },
+    { link: '/bookings', text: 'Bookings', eyebrow: 'Your orders', image: makeMenuImage('Book', '#800020', '#F4A020') },
+    { link: '/messages', text: 'Messages', eyebrow: 'Conversations', image: makeMenuImage('Chat', '#F4A020', '#800020') },
+    { link: '/my-assets', text: 'My Assets', eyebrow: 'Items you lend', image: makeMenuImage('Assets', '#C4956A', '#5C0018') },
+    { link: '/my-offers-made', text: 'Offers Made', eyebrow: 'Offers sent', image: makeMenuImage('Made', '#F4A020', '#5C0018') },
+    { link: '/my-offers', text: 'Offers Received', eyebrow: 'Offers gotten', image: makeMenuImage('Got', '#5C0018', '#F4A020') },
+    { link: '/wallet', text: 'Wallet', eyebrow: 'Payments & topups', image: makeMenuImage('Pay', '#C4956A', '#800020') },
+    { link: '/dashboard', text: 'Dashboard', eyebrow: 'Overview & stats', image: makeMenuImage('Hub', '#800020', '#F4A020') },
+    { link: '/profile', text: 'Profile', eyebrow: 'Account settings', image: makeMenuImage('You', '#5C0018', '#C4956A') },
   ];
 
   const authItems = isLoggedIn

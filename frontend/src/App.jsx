@@ -11,7 +11,6 @@ import Navbar from './components/Navbar';
 import BrowsePage from './pages/BrowsePage';
 import AvailableRequestsPage from './pages/AvailableRequestsPage';
 import RequestDetailPage from './pages/RequestDetailPage';
-import MyRequestsPage from './pages/MyRequestsPage';
 import MyOffersPage from './pages/MyOffersPage';
 import MyOutgoingOffersPage from './pages/MyOutgoingOffersPage';
 import EditRequestPage from './pages/EditRequestPage';
@@ -24,10 +23,13 @@ import AssetDetailPage from './pages/AssetDetailPage';
 import MyBookingsPage from './pages/MyBookingsPage';
 import PaymentReceiptPage from './pages/PaymentReceiptPage';
 import AdminDashboard from './pages/AdminDashboard';
+import AdminMessagesPage from './pages/AdminMessagesPage';
+import AdminDisputesPage from './pages/AdminDisputesPage';
 import ReviewsPage from './pages/ReviewsPage';
+import ChatPage from './pages/ChatPage';
 import HelpCorner from './components/HelpCorner';
 import GlobalBackground from './components/GlobalBackground';
-// DELETE THIS LINE: import Aurora from './components/Aurora';
+ 
 
 import './App.css';
 
@@ -102,7 +104,7 @@ export default function App() {
               {/* Request Routes */}
               <Route path="/requests" element={<AvailableRequestsPage />} />
               <Route path="/requests/:id" element={<RequestDetailPage />} />
-              <Route path="/my-requests" element={<ProtectedRoute><MyRequestsPage /></ProtectedRoute>} />
+              <Route path="/my-requests" element={<Navigate to="/requests" replace />} />
               <Route path="/my-offers" element={<ProtectedRoute><MyOffersPage /></ProtectedRoute>} />
               <Route path="/my-offers-made" element={<ProtectedRoute><MyOutgoingOffersPage /></ProtectedRoute>} />
               <Route path="/edit-request/:id" element={<ProtectedRoute><EditRequestPage /></ProtectedRoute>} />
@@ -122,11 +124,14 @@ export default function App() {
               {/* Dashboard & Wallet */}
               <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
               <Route path="/wallet" element={<ProtectedRoute><WalletDashboard /></ProtectedRoute>} />
+              <Route path="/messages" element={<ProtectedRoute><ChatPage /></ProtectedRoute>} />
               <Route path="/reviews/:userID" element={<ProtectedRoute><ReviewsPage /></ProtectedRoute>} />
               <Route path="/reviews" element={<ProtectedRoute><ReviewsPage /></ProtectedRoute>} />
 
               {/* Admin — protected, admin-only */}
               <Route path="/admin" element={<AdminRoute><AdminDashboard /></AdminRoute>} />
+              <Route path="/admin/messages" element={<AdminRoute><AdminMessagesPage /></AdminRoute>} />
+              <Route path="/admin/disputes" element={<AdminRoute><AdminDisputesPage /></AdminRoute>} />
 
               {/* Catch-all */}
               <Route path="*" element={<Navigate to="/" replace />} />

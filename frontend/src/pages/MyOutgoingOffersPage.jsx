@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import API from '../api/axios';
+import ChatButton from '../components/ChatButton';
+import DisputeModal from '../components/DisputeModal';
 import '../theme.css';
 
 const C = {
@@ -16,6 +18,8 @@ export default function MyOutgoingOffersPage() {
   const [offers, setOffers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filterStatus, setFilterStatus] = useState('all');
+  const [showDisputeModal, setShowDisputeModal] = useState(false);
+  const [selectedOffer, setSelectedOffer] = useState(null);
 
   useEffect(() => {
     fetchOffers();
@@ -256,13 +260,32 @@ export default function MyOutgoingOffersPage() {
                   </div>
 
                   {/* Action Button */}
-                  <div style={{ marginTop: '1.5rem', paddingTop: '1.5rem', borderTop: `1px solid ${C.border}` }}>
+                  <div style={{ marginTop: '1.5rem', paddingTop: '1.5rem', borderTop: `1px solid ${C.border}`, display: 'flex', gap: '0.875rem', flexWrap: 'wrap' }}>
                     <button
                       onClick={() => navigate(`/requests/${offer.RequestID}`)}
                       className="btn btn-outline"
                       style={{ padding: '0.7rem 1.5rem' }}
                     >
                       View Original Request
+                    </button>
+                    <ChatButton bookingId={offer.BookingID} userId={offer.RequesterID} style={{ padding: '0.7rem 1.5rem' }} />
+                    <button
+                      onClick={() => {
+                        setSelectedOffer(offer);
+                        setShowDisputeModal(true);
+                      }}
+                      style={{
+                        padding: '0.7rem 1.5rem',
+                        background: '#f3f4f6',
+                        color: '#666',
+                        border: '1px solid #d1d5db',
+                        borderRadius: '8px',
+                        cursor: 'pointer',
+                        fontWeight: 600,
+                        fontSize: '0.85rem',
+                      }}
+                    >
+                      Report
                     </button>
                   </div>
                 </div>
@@ -271,6 +294,21 @@ export default function MyOutgoingOffersPage() {
           </div>
         )}
       </div>
+
+      {/* Dispute Modal */}
+      {showDisputeModal && (
+        <DisputeModal
+          bookingId={selectedOffer?.BookingID}
+          onClose={() => {
+            setShowDisputeModal(false);
+            setSelectedOffer(null);
+          }}
+          onSubmitSuccess={() => {
+            setShowDisputeModal(false);
+            setSelectedOffer(null);
+          }}
+        />
+      )}
     </div>
   );
 }

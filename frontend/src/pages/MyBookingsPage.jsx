@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import API from '../api/axios';
+import ChatButton from '../components/ChatButton';
+import DisputeModal from '../components/DisputeModal';
 //import FloatingBackground from '../components/FloatingBackground';
 
 const C = { saffron:'#F4A020', saffronPale:'#FFF0CC', maroon:'#800020', maroonL:'#B00030', cream:'#FDF6EC', warmWhite:'#FFF9F0', textDark:'#2C1810', textMuted:'#6B4C3B', textFaint:'#A68070', border:'rgba(128,0,32,0.12)' };
@@ -24,6 +26,8 @@ export default function MyBookingsPage() {
   const [loading, setLoading] = useState(true);
   const [role, setRole] = useState('borrower');
   const [processing, setProcessing] = useState(null);
+  const [showDisputeModal, setShowDisputeModal] = useState(false);
+  const [selectedBooking, setSelectedBooking] = useState(null);
   const navigate = useNavigate();
   const currentUser = JSON.parse(localStorage.getItem('udhaari_user') || 'null');
 
@@ -143,6 +147,27 @@ export default function MyBookingsPage() {
                     {assetId && <Btn onClick={() => navigate(`/assets/${assetId}`)} variant="ghost">View Asset</Btn>}
                     {assetId && <Btn onClick={() => navigate(`/reviews/${assetId}`)} variant="outline">View Reviews</Btn>}
                     <Btn onClick={() => navigate(`/bookings/${bookingId}/payment`)} variant="outline">Receipt</Btn>
+                    <ChatButton bookingId={bookingId} style={{ padding: '0.55rem 1rem', fontSize: '0.85rem' }} />
+                    <button
+                      onClick={() => {
+                        setSelectedBooking(b);
+                        setShowDisputeModal(true);
+                      }}
+                      style={{
+                        padding: '0.55rem 1rem',
+                        background: 'rgba(128,0,32,0.06)',
+                        color: '#2C1810',
+                        border: 'none',
+                        borderRadius: 9,
+                        cursor: 'pointer',
+                        fontWeight: 700,
+                        fontFamily: "'Outfit',sans-serif",
+                        fontSize: '0.85rem',
+                        transition: 'all 0.2s',
+                      }}
+                    >
+                      Report
+                    </button>
                   </div>
                 </div>
               );
@@ -150,6 +175,21 @@ export default function MyBookingsPage() {
           </div>
         )}
       </div>
+
+      {/* Dispute Modal */}
+      {showDisputeModal && (
+        <DisputeModal
+          bookingId={selectedBooking?.booking_id || selectedBooking?.BookingID}
+          onClose={() => {
+            setShowDisputeModal(false);
+            setSelectedBooking(null);
+          }}
+          onSubmitSuccess={() => {
+            setShowDisputeModal(false);
+            setSelectedBooking(null);
+          }}
+        />
+      )}
     </div>
   );
 }

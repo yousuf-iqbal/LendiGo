@@ -98,8 +98,8 @@ export default function PaymentReceiptPage() {
     </div>
   );
 
-  const days = Math.ceil((new Date(booking.EndDate) - new Date(booking.StartDate)) / (1000 * 60 * 60 * 24));
-  const dailyRate = parseFloat(booking.OfferedPrice || booking.TotalPrice / days);
+  const daysInclusive = Math.ceil((new Date(booking.EndDate) - new Date(booking.StartDate)) / (1000 * 60 * 60 * 24)) + 1;
+  const dailyRate = parseFloat(booking.TotalPrice / daysInclusive);
 
   return (
     <div style={{ minHeight: '100vh', background: C.cream, padding: '2rem 1rem' }}>
@@ -167,7 +167,7 @@ export default function PaymentReceiptPage() {
                   <div style={{ background: C.cream, padding: '1rem', borderRadius: '12px' }}>
                     <strong style={{ color: C.textDark }}>Rental Period:</strong><br/>
                     {new Date(booking.StartDate).toLocaleDateString()} - {new Date(booking.EndDate).toLocaleDateString()}<br/>
-                    <span style={{ color: C.textFaint, fontSize: '0.8rem' }}>({days} day{days > 1 ? 's' : ''})</span>
+                    <span style={{ color: C.textFaint, fontSize: '0.8rem' }}>({daysInclusive} day{daysInclusive > 1 ? 's' : ''})</span>
                   </div>
                 </div>
               </div>
@@ -181,7 +181,7 @@ export default function PaymentReceiptPage() {
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
                   <span style={{ color: C.textMuted }}>Number of Days</span>
-                  <span style={{ fontWeight: 500 }}>{days} day{days > 1 ? 's' : ''}</span>
+                  <span style={{ fontWeight: 500 }}>{daysInclusive} day{daysInclusive > 1 ? 's' : ''}</span>
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', paddingTop: '1rem', borderTop: `2px solid ${C.border}`, marginTop: '1rem' }}>
                   <span style={{ fontWeight: 700, fontSize: '1.1rem', color: C.textDark }}>Total Due</span>

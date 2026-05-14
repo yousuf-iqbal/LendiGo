@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import API from '../api/axios';
-//import FloatingBackground from '../components/FloatingBackground';
+import API from '../api/axios';import Calendar from '../components/Calendar';//import FloatingBackground from '../components/FloatingBackground';
 
 const C = { saffron:'#F4A020', saffronPale:'#FFF0CC', maroon:'#800020', maroonL:'#B00030', cream:'#FDF6EC', warmWhite:'#FFF9F0', textDark:'#2C1810', textMuted:'#6B4C3B', textFaint:'#A68070', border:'rgba(128,0,32,0.12)' };
 
@@ -100,8 +99,22 @@ export default function PostRequestPage() {
               </div>
 
               <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'1rem' }}>
-                <FloatField label="Start Date *" type="date" value={form.startDate} onChange={e=>set('startDate',e.target.value)} min={new Date().toISOString().split('T')[0]} />
-                <FloatField label="End Date *" type="date" value={form.endDate} onChange={e=>set('endDate',e.target.value)} min={form.startDate || new Date().toISOString().split('T')[0]} />
+                <div style={{ marginBottom:'1.1rem' }}>
+                  <label style={{ display:'block', fontSize:'0.72rem', fontWeight:700, color:C.textFaint, textTransform:'uppercase', marginBottom:'0.4rem' }}>Start Date *</label>
+                  <Calendar 
+                    onDateSelect={(date) => set('startDate', date.toISOString().split('T')[0])}
+                    selectedDate={form.startDate}
+                    minDate={new Date().toISOString().split('T')[0]}
+                  />
+                </div>
+                <div style={{ marginBottom:'1.1rem' }}>
+                  <label style={{ display:'block', fontSize:'0.72rem', fontWeight:700, color:C.textFaint, textTransform:'uppercase', marginBottom:'0.4rem' }}>End Date *</label>
+                  <Calendar 
+                    onDateSelect={(date) => set('endDate', date.toISOString().split('T')[0])}
+                    selectedDate={form.endDate}
+                    minDate={form.startDate || new Date().toISOString().split('T')[0]}
+                  />
+                </div>
               </div>
 
               <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'1rem' }}>

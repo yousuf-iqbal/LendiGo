@@ -48,6 +48,23 @@ begin
 end;
 go
 
+--------- create admin user (admin@gmail.com) ---------
+if not exists (select 1 from Users where Email = 'admin@gmail.com')
+begin
+    insert into Users (FullName, Email, Phone, City, Area, CNIC, IsVerified, IsBanned, Role, SignupMethod)
+    values ('Admin User', 'admin@gmail.com', '03001234567', 'Lahore', 'DHA', '1234567890123', 1, 0, 'admin', 'email');
+    
+    -- Create wallet for admin user with 100000 balance
+    declare @adminUserID int;
+    select @adminUserID = UserID from Users where Email = 'admin@gmail.com';
+    
+    if not exists (select 1 from Wallets where UserID = @adminUserID)
+    begin
+        insert into Wallets (UserID, Balance) values (@adminUserID, 100000.00);
+    end;
+end;
+go
+
 --------- queries for wallet demo ---------
 
 --------- show user 3 wallet balance before payment ---------

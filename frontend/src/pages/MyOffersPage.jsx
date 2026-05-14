@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import API from '../api/axios';
+import ChatButton from '../components/ChatButton';
+import DisputeModal from '../components/DisputeModal';
 import '../theme.css';
 
 const C = {
@@ -16,6 +18,8 @@ export default function MyOffersPage() {
   const [offers, setOffers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [processing, setProcessing] = useState(null);
+  const [showDisputeModal, setShowDisputeModal] = useState(false);
+  const [selectedOffer, setSelectedOffer] = useState(null);
   const user = JSON.parse(localStorage.getItem('udhaari_user') || 'null');
 
   useEffect(() => {
@@ -93,7 +97,7 @@ export default function MyOffersPage() {
             </h1>
             <p style={{ color: C.textMuted }}>Review and manage offers received on your requests</p>
           </div>
-          <button onClick={() => navigate('/my-requests')} className="btn btn-outline">
+          <button onClick={() => navigate('/requests')} className="btn btn-outline">
             ← Back to My Requests
           </button>
         </div>
@@ -110,7 +114,7 @@ export default function MyOffersPage() {
               No offers yet
             </h3>
             <p style={{ color: C.textMuted, marginBottom: '2rem' }}>When lenders make offers on your requests, they'll appear here.</p>
-            <button onClick={() => navigate('/my-requests')} className="btn btn-primary">
+            <button onClick={() => navigate('/requests')} className="btn btn-primary">
               View My Requests
             </button>
           </div>
@@ -213,12 +217,46 @@ export default function MyOffersPage() {
                       View Request Details
                     </button>
                   )}
+                  <ChatButton bookingId={offer.BookingID} userId={offer.LenderID} />
+                  <button
+                    onClick={() => {
+                      setSelectedOffer(offer);
+                      setShowDisputeModal(true);
+                    }}
+                    style={{
+                      padding: '0.75rem 1rem',
+                      background: '#f3f4f6',
+                      color: '#666',
+                      border: '1px solid #d1d5db',
+                      borderRadius: '8px',
+                      cursor: 'pointer',
+                      fontWeight: 600,
+                      fontSize: '0.85rem',
+                    }}
+                  >
+                    Report
+                  </button>
                 </div>
               </div>
             ))}
           </div>
         )}
       </div>
+
+      {/* Dispute Modal */}
+      {showDisputeModal && (
+        <DisputeModal
+          bookingId={selectedOffer?.BookingID}
+          onClose={() => {
+            setShowDisputeModal(false);
+            setSelectedOffer(null);
+          }}
+          onSubmitSuccess={() => {
+            setShowDisputeModal(false);
+            setSelectedOffer(null);
+          }}
+        />
+      )}
     </div>
   );
 }

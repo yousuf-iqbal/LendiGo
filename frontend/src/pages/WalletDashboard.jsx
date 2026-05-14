@@ -22,14 +22,19 @@ export default function WalletDashboard() {
   const navigate = useNavigate();
   const [balance, setBalance] = useState(null);
   const [transactions, setTransactions] = useState([]);
+  const [loanRequests, setLoanRequests] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [successMsg, setSuccessMsg] = useState('');
   
-  const [showPayModal, setShowPayModal] = useState(false);
-  const [bookingID, setBookingID] = useState('');
-  const [amount, setAmount] = useState('');
-  const [paying, setPaying] = useState(false);
+  const [showTopUpModal, setShowTopUpModal] = useState(false);
+  const [topUpAmount, setTopUpAmount] = useState('');
+  const [topUpProcessing, setTopUpProcessing] = useState(false);
+  
+  const [showLoanModal, setShowLoanModal] = useState(false);
+  const [loanAmount, setLoanAmount] = useState('');
+  const [loanDescription, setLoanDescription] = useState('');
+  const [loanProcessing, setLoanProcessing] = useState(false);
 
   useEffect(() => {
     fetchWalletData();
@@ -37,13 +42,15 @@ export default function WalletDashboard() {
 
   const fetchWalletData = async () => {
     try {
-      const [balRes, transRes] = await Promise.all([
+      const [balRes, transRes, loansRes] = await Promise.all([
         API.get('/wallet/balance'),
-        API.get('/wallet/transactions')
+        API.get('/wallet/transactions'),
+        API.get('/wallet/loan-requests').catch(() => ({ data: { loanRequests: [] } }))
       ]);
       
       setBalance(parseFloat(balRes.data.balance));
       setTransactions(transRes.data.transactions || []);
+      setLoanRequests(loansRes.data.loanRequests || []);
     } catch (err) {
       setError('Failed to load wallet data');
     } finally {
@@ -51,25 +58,55 @@ export default function WalletDashboard() {
     }
   };
 
-  const handlePay = async () => {
-    setPaying(true);
+  const handleTopUp = async () => {
+    if (!topUpAmount || parseFloat(topUpAmount) <= 0) {
+      setError('Please enter a valid amount');
+      return;
+    }
+    
+    setTopUpProcessing(true);
     setError('');
     try {
-      const res = await API.post('/wallet/pay-booking', {
-        bookingID: parseInt(bookingID),
-        amount: parseFloat(amount)
+      await API.post('/wallet/top-up', {
+        amount: parseFloat(topUpAmount)
       });
       
-      setSuccessMsg('Payment Successful!');
-      setShowPayModal(false);
-      setBookingID('');
-      setAmount('');
+      setSuccessMsg(`Top-up request of Rs. ${topUpAmount} submitted! Please wait for admin confirmation.`);
+      setShowTopUpModal(false);
+      setTopUpAmount('');
       fetchWalletData();
-      setTimeout(() => setSuccessMsg(''), 3000);
+      setTimeout(() => setSuccessMsg(''), 4000);
     } catch (err) {
-      setError(err.response?.data?.error || 'Payment failed');
+      setError(err.response?.data?.error || 'Top-up request failed');
     } finally {
-      setPaying(false);
+      setTopUpProcessing(false);
+    }
+  };
+
+  const handleLoanRequest = async () => {
+    if (!loanAmount || parseFloat(loanAmount) <= 0) {
+      setError('Please enter a valid loan amount');
+      return;
+    }
+    
+    setLoanProcessing(true);
+    setError('');
+    try {
+      await API.post('/wallet/request-loan', {
+        amount: parseFloat(loanAmount),
+        description: loanDescription.trim()
+      });
+      
+      setSuccessMsg(`Loan request of Rs. ${loanAmount} submitted! Admin will review and approve.`);
+      setShowLoanModal(false);
+      setLoanAmount('');
+      setLoanDescription('');
+      fetchWalletData();
+      setTimeout(() => setSuccessMsg(''), 4000);
+    } catch (err) {
+      setError(err.response?.data?.error || 'Loan request failed');
+    } finally {
+      setLoanProcessing(false);
     }
   };
 
@@ -92,9 +129,14 @@ export default function WalletDashboard() {
             </h1>
             <p style={{ color: C.textMuted, marginTop: '0.25rem' }}>Manage your funds and transactions</p>
           </div>
-          <button onClick={() => setShowPayModal(true)} className="btn btn-primary" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <Icons.Plus /> Make Payment
-          </button>
+          <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+            <button onClick={() => setShowTopUpModal(true)} className="btn btn-primary" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <Icons.Plus /> Top-up Wallet
+            </button>
+            <button onClick={() => setShowLoanModal(true)} style={{ padding: '10px 16px', background: 'linear-gradient(135deg, #f4a020 0%, #E08800 100%)', color: '#fff', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 600, fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              💰 Request Loan
+            </button>
+          </div>
         </div>
 
         {/* Messages */}
@@ -168,89 +210,193 @@ export default function WalletDashboard() {
         </div>
       </div>
 
-      {/* Payment Modal */}
-      {showPayModal && (
+      {/* Top-up Modal */}
+      {showTopUpModal && (
         <div style={{
           position: 'fixed',
           top: 0, left: 0, right: 0, bottom: 0,
           background: 'rgba(0,0,0,0.7)',
- backdropFilter: 'blur(4px)',
+          backdropFilter: 'blur(4px)',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
           zIndex: 1000,
           padding: '20px',
-        }} onClick={() => setShowPayModal(false)}>
+        }} onClick={() => setShowTopUpModal(false)}>
           <div style={{
             background: C.warmWhite,
             borderRadius: '24px',
             maxWidth: '480px',
             width: '100%',
-            padding: '1.5rem',
+            padding: '2rem',
             border: `1px solid ${C.border}`,
             boxShadow: '0 20px 40px rgba(128,0,32,0.2)',
             animation: 'scaleIn 0.3s ease',
           }} onClick={e => e.stopPropagation()}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-              <h2 style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: '1.5rem', fontWeight: 700, color: C.textDark, margin: 0 }}>Make Payment</h2>
-              <button onClick={() => setShowPayModal(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: C.textMuted }}>
-                <Icons.Close />
-              </button>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+              <h2 style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: '1.8rem', fontWeight: 700, color: C.textDark, margin: 0 }}>Add Funds</h2>
+              <button onClick={() => setShowTopUpModal(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: C.textMuted, fontSize: '1.5rem' }}>✕</button>
             </div>
-            <p style={{ color: C.textMuted, fontSize: '0.9rem', marginBottom: '1.5rem' }}>Enter booking details to pay</p>
-
-            <div style={{ marginBottom: '1.25rem' }}>
-              <label style={{ display: 'block', fontSize: '0.7rem', fontWeight: 700, color: C.textFaint, textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: '0.4rem' }}>Booking ID</label>
-              <input
-                type="number"
-                placeholder="e.g., 101"
-                value={bookingID}
-                onChange={e => setBookingID(e.target.value)}
-                className="field-input"
-                style={{ width: '100%' }}
-              />
-            </div>
+            
+            <p style={{ color: C.textMuted, fontSize: '0.95rem', marginBottom: '1.5rem' }}>
+              Request an admin top-up for your wallet. This is temporary funding that will be reviewed by the admin.
+            </p>
 
             <div style={{ marginBottom: '1.5rem' }}>
-              <label style={{ display: 'block', fontSize: '0.7rem', fontWeight: 700, color: C.textFaint, textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: '0.4rem' }}>Amount (Rs.)</label>
+              <label style={{ display: 'block', fontSize: '0.7rem', fontWeight: 700, color: C.textFaint, textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: '0.5rem' }}>Amount to Add (Rs.)</label>
               <input
                 type="number"
-                placeholder="0.00"
-                value={amount}
-                onChange={e => setAmount(e.target.value)}
-                className="field-input"
-                style={{ width: '100%' }}
+                placeholder="500"
+                value={topUpAmount}
+                onChange={e => setTopUpAmount(e.target.value)}
+                style={{ 
+                  width: '100%', 
+                  padding: '12px', 
+                  borderRadius: '12px', 
+                  border: `1.5px solid ${C.border}`, 
+                  fontSize: '1rem',
+                  fontFamily: "'Outfit', sans-serif"
+                }}
+                min="100"
               />
+              <p style={{ fontSize: '0.8rem', color: C.textFaint, marginTop: '0.5rem' }}>Minimum: Rs. 100</p>
             </div>
 
-            {bookingID && amount && balance && (
+            {topUpAmount && (
               <div style={{ background: C.cream, borderRadius: '12px', padding: '1rem', marginBottom: '1.5rem', border: `1px solid ${C.border}` }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', padding: '4px 0' }}>
-                  <span style={{ color: C.textMuted }}>Booking ID:</span>
-                  <strong style={{ color: C.textDark }}>#{bookingID}</strong>
-                </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', padding: '4px 0' }}>
-                  <span style={{ color: C.textMuted }}>Amount:</span>
-                  <strong style={{ color: C.maroon }}>Rs. {parseFloat(amount).toFixed(2)}</strong>
-                </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', padding: '4px 0', marginTop: '8px', paddingTop: '8px', borderTop: `1px solid ${C.border}` }}>
-                  <span style={{ color: C.textMuted }}>Balance After:</span>
-                  <strong style={{ color: '#059669' }}>Rs. {(balance - parseFloat(amount)).toFixed(2)}</strong>
-                </div>
+                <p style={{ margin: 0, fontSize: '0.85rem', color: C.textMuted, marginBottom: '0.5rem' }}>Request Summary</p>
+                <p style={{ margin: 0, fontSize: '1.2rem', fontWeight: 700, color: C.maroon }}>Rs. {parseFloat(topUpAmount).toFixed(2)}</p>
+                <p style={{ margin: '0.5rem 0 0', fontSize: '0.8rem', color: C.textFaint }}>Status: Pending Admin Approval</p>
               </div>
             )}
 
             <div style={{ display: 'flex', gap: '12px' }}>
-              <button onClick={() => setShowPayModal(false)} className="btn-outline" style={{ flex: 1, padding: '0.85rem' }}>
+              <button onClick={() => setShowTopUpModal(false)} className="btn-outline" style={{ flex: 1, padding: '0.85rem' }}>
                 Cancel
               </button>
               <button 
-                onClick={handlePay}
-                disabled={!bookingID || !amount || paying}
-                className="btn btn-primary"
-                style={{ flex: 1, padding: '0.85rem', opacity: (!bookingID || !amount || paying) ? 0.6 : 1 }}
+                onClick={handleTopUp}
+                disabled={!topUpAmount || parseFloat(topUpAmount) < 100 || topUpProcessing}
+                style={{ 
+                  flex: 1, 
+                  padding: '0.85rem', 
+                  background: 'linear-gradient(135deg, #8B1538 0%, #6B0F1A 100%)', 
+                  color: '#fff',
+                  border: 'none',
+                  borderRadius: '8px',
+                  fontWeight: 700,
+                  cursor: (!topUpAmount || parseFloat(topUpAmount) < 100 || topUpProcessing) ? 'not-allowed' : 'pointer',
+                  opacity: (!topUpAmount || parseFloat(topUpAmount) < 100 || topUpProcessing) ? 0.6 : 1
+                }}
               >
-                {paying ? 'Processing...' : 'Confirm Payment'}
+                {topUpProcessing ? 'Processing...' : 'Request Top-up'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Loan Request Modal */}
+      {showLoanModal && (
+        <div style={{
+          position: 'fixed',
+          top: 0, left: 0, right: 0, bottom: 0,
+          background: 'rgba(0,0,0,0.7)',
+          backdropFilter: 'blur(4px)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 1000,
+          padding: '20px',
+        }} onClick={() => setShowLoanModal(false)}>
+          <div style={{
+            background: C.warmWhite,
+            borderRadius: '24px',
+            maxWidth: '480px',
+            width: '100%',
+            padding: '2rem',
+            border: `1px solid ${C.border}`,
+            boxShadow: '0 20px 40px rgba(128,0,32,0.2)',
+            animation: 'scaleIn 0.3s ease',
+          }} onClick={e => e.stopPropagation()}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+              <h2 style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: '1.8rem', fontWeight: 700, color: C.textDark, margin: 0 }}>Request Loan</h2>
+              <button onClick={() => setShowLoanModal(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: C.textMuted, fontSize: '1.5rem' }}>✕</button>
+            </div>
+            
+            <p style={{ color: C.textMuted, fontSize: '0.95rem', marginBottom: '1.5rem' }}>
+              Request a temporary loan from the admin. This amount will be deducted from future bookings.
+            </p>
+
+            <div style={{ marginBottom: '1.5rem' }}>
+              <label style={{ display: 'block', fontSize: '0.7rem', fontWeight: 700, color: C.textFaint, textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: '0.5rem' }}>Loan Amount (Rs.) *</label>
+              <input
+                type="number"
+                placeholder="1000"
+                value={loanAmount}
+                onChange={e => setLoanAmount(e.target.value)}
+                style={{ 
+                  width: '100%', 
+                  padding: '12px', 
+                  borderRadius: '12px', 
+                  border: `1.5px solid ${C.border}`, 
+                  fontSize: '1rem',
+                  fontFamily: "'Outfit', sans-serif"
+                }}
+                min="100"
+              />
+              <p style={{ fontSize: '0.8rem', color: C.textFaint, marginTop: '0.5rem' }}>Minimum: Rs. 100 | Maximum: Rs. 10,000</p>
+            </div>
+
+            <div style={{ marginBottom: '1.5rem' }}>
+              <label style={{ display: 'block', fontSize: '0.7rem', fontWeight: 700, color: C.textFaint, textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: '0.5rem' }}>Reason (optional)</label>
+              <textarea
+                placeholder="Why do you need this loan? This helps the admin make a decision..."
+                value={loanDescription}
+                onChange={e => setLoanDescription(e.target.value)}
+                style={{ 
+                  width: '100%', 
+                  padding: '12px', 
+                  borderRadius: '12px', 
+                  border: `1.5px solid ${C.border}`, 
+                  fontSize: '0.95rem',
+                  fontFamily: "'Outfit', sans-serif",
+                  minHeight: '80px',
+                  resize: 'vertical'
+                }}
+                maxLength="300"
+              />
+              <p style={{ fontSize: '0.75rem', color: C.textFaint, marginTop: '0.25rem' }}>{loanDescription.length}/300</p>
+            </div>
+
+            {loanAmount && (
+              <div style={{ background: C.saffronPale, borderRadius: '12px', padding: '1rem', marginBottom: '1.5rem', border: `1px solid ${C.border}` }}>
+                <p style={{ margin: 0, fontSize: '0.85rem', color: C.textMuted, marginBottom: '0.5rem' }}>Loan Request Summary</p>
+                <p style={{ margin: 0, fontSize: '1.2rem', fontWeight: 700, color: C.saffronDark }}>Rs. {parseFloat(loanAmount).toFixed(2)}</p>
+                <p style={{ margin: '0.5rem 0 0', fontSize: '0.8rem', color: C.textFaint }}>Status: Awaiting Admin Review</p>
+              </div>
+            )}
+
+            <div style={{ display: 'flex', gap: '12px' }}>
+              <button onClick={() => setShowLoanModal(false)} className="btn-outline" style={{ flex: 1, padding: '0.85rem' }}>
+                Cancel
+              </button>
+              <button 
+                onClick={handleLoanRequest}
+                disabled={!loanAmount || parseFloat(loanAmount) < 100 || parseFloat(loanAmount) > 10000 || loanProcessing}
+                style={{ 
+                  flex: 1, 
+                  padding: '0.85rem', 
+                  background: 'linear-gradient(135deg, #f4a020 0%, #E08800 100%)', 
+                  color: '#fff',
+                  border: 'none',
+                  borderRadius: '8px',
+                  fontWeight: 700,
+                  cursor: (!loanAmount || parseFloat(loanAmount) < 100 || parseFloat(loanAmount) > 10000 || loanProcessing) ? 'not-allowed' : 'pointer',
+                  opacity: (!loanAmount || parseFloat(loanAmount) < 100 || parseFloat(loanAmount) > 10000 || loanProcessing) ? 0.6 : 1
+                }}
+              >
+                {loanProcessing ? 'Submitting...' : 'Submit Loan Request'}
               </button>
             </div>
           </div>

@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import API from "../api/axios";
 
 const RESOURCES = {
@@ -46,6 +47,14 @@ const RESOURCES = {
     fields: ["name", "description"],
     createFields: ["name", "description"],
   },
+  wallets: {
+    label: "Wallets",
+    endpoint: "/admin/wallets",
+    id: "UserID",
+    columns: ["UserID", "FullName", "Balance", "TotalTopUps", "TotalLoans", "PendingRequests"],
+    fields: [],
+    readOnly: true,
+  },
   reviews: {
     label: "Reviews",
     endpoint: "/admin/reviews",
@@ -64,11 +73,14 @@ const RESOURCES = {
 };
 
 export default function AdminDashboard() {
+  const navigate = useNavigate();
   const [active, setActive] = useState("users");
   const [summary, setSummary] = useState(null);
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
+  const [filter, setFilter] = useState("all");
+  const [actionLoading, setActionLoading] = useState(null);
   const [editor, setEditor] = useState(null);
   const [saving, setSaving] = useState(false);
 
@@ -103,11 +115,83 @@ export default function AdminDashboard() {
     }
   };
 
+  const toggleBan = async (user) => {
+    setActionLoading(user.UserID);
+    try {
+      await API.patch(`/admin/users/${user.UserID}/toggle-ban`);
+      await loadRows();
+    } catch (err) {
+      alert(err.response?.data?.error || "Action failed");
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const toggleVerify = async (user) => {
+    setActionLoading(user.UserID);
+    try {
+      await API.patch(`/admin/users/${user.UserID}/toggle-verify`);
+      await loadRows();
+    } catch (err) {
+      alert(err.response?.data?.error || "Action failed");
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const toggleAssetActive = async (asset) => {
+    setActionLoading(asset.AssetID);
+    try {
+      await API.patch(`/admin/assets/${asset.AssetID}/toggle-active`);
+      await loadRows();
+    } catch (err) {
+      alert(err.response?.data?.error || "Action failed");
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const getStatusColor = (status) => {
+    if (!status) return "#6b7280";
+    const str = String(status).toLowerCase();
+    if (str.includes("completed") || str.includes("verified")) return "#16a34a";
+    if (str.includes("pending") || str.includes("open")) return "#f59e0b";
+    if (str.includes("ongoing") || str.includes("confirmed")) return "#3b82f6";
+    if (str.includes("cancelled") || str.includes("banned") || str.includes("declined")) return "#ef4444";
+    return "#6b7280";
+  };
+
   const filteredRows = useMemo(() => {
-    if (!search.trim()) return rows;
-    const term = search.toLowerCase();
-    return rows.filter(row => Object.values(row).some(value => String(value ?? "").toLowerCase().includes(term)));
-  }, [rows, search]);
+    let result = rows;
+
+    // Apply status-based filter
+    if (filter !== "all") {
+      if (active === "users") {
+        result = result.filter(r => {
+          if (filter === "banned") return r.IsBanned;
+          if (filter === "verified") return r.IsVerified;
+          if (filter === "admin") return r.Role === "admin";
+          return true;
+        });
+      } else if (active === "assets") {
+        result = result.filter(r => {
+          if (filter === "active") return r.IsActive;
+          if (filter === "inactive") return !r.IsActive;
+          return true;
+        });
+      } else if (active === "bookings") {
+        result = result.filter(r => filter === "all" || r.Status === filter);
+      }
+    }
+
+    // Apply search filter
+    if (search.trim()) {
+      const term = search.toLowerCase();
+      result = result.filter(row => Object.values(row).some(value => String(value ?? "").toLowerCase().includes(term)));
+    }
+
+    return result;
+  }, [rows, search, filter, active]);
 
   const openEditor = (row = null) => {
     const fields = row ? config.fields : (config.createFields || config.fields);
@@ -191,12 +275,26 @@ export default function AdminDashboard() {
                 {item.label}
               </button>
             ))}
+            <div style={{ borderTop: "1px solid #e5e7eb", marginTop: "0.5rem", paddingTop: "0.5rem" }}>
+              <button
+                onClick={() => navigate("/admin/messages")}
+                style={{ ...styles.navButton, background: "transparent", color: "#94a3b8", display: "block", width: "100%" }}
+              >
+                💬 Messages
+              </button>
+              <button
+                onClick={() => navigate("/admin/disputes")}
+                style={{ ...styles.navButton, background: "transparent", color: "#94a3b8", display: "block", width: "100%" }}
+              >
+                ⚠️ Disputes
+              </button>
+            </div>
           </aside>
 
           <main style={styles.main}>
             <div style={styles.toolbar}>
               <div>
-                <h2 style={styles.sectionTitle}>{config.label}</h2>
+                <h2 style={styles.sectionTitle}>{config.label}{filter !== "all" && " (filtered)"}</h2>
                 <p style={styles.count}>{filteredRows.length} records</p>
               </div>
               <div style={styles.toolbarActions}>
@@ -206,6 +304,33 @@ export default function AdminDashboard() {
                   placeholder="Search records..."
                   style={styles.search}
                 />
+                {(active === "users" || active === "assets" || active === "bookings") && (
+                  <select value={filter} onChange={e => setFilter(e.target.value)} style={styles.select}>
+                    <option value="all">All</option>
+                    {active === "users" && (
+                      <>
+                        <option value="verified">Verified</option>
+                        <option value="banned">Banned</option>
+                        <option value="admin">Admins</option>
+                      </>
+                    )}
+                    {active === "assets" && (
+                      <>
+                        <option value="active">Active</option>
+                        <option value="inactive">Inactive</option>
+                      </>
+                    )}
+                    {active === "bookings" && (
+                      <>
+                        <option value="pending">Pending</option>
+                        <option value="confirmed">Confirmed</option>
+                        <option value="ongoing">Ongoing</option>
+                        <option value="completed">Completed</option>
+                        <option value="cancelled">Cancelled</option>
+                      </>
+                    )}
+                  </select>
+                )}
                 {config.createFields && <button onClick={() => openEditor()} style={styles.primary}>New</button>}
               </div>
             </div>
@@ -224,10 +349,27 @@ export default function AdminDashboard() {
                   <tbody>
                     {filteredRows.map(row => (
                       <tr key={row[config.id]} style={styles.tr}>
-                        {config.columns.map(column => <td key={column} style={styles.td}>{renderValue(row[column])}</td>)}
+                        {config.columns.map(column => (
+                          <td key={column} style={{...styles.td, color: getStatusColor(row[column])}}>{renderValue(row[column])}</td>
+                        ))}
                         {!config.readOnly && (
                           <td style={styles.td}>
                             <div style={styles.rowActions}>
+                              {active === "users" && (
+                                <>
+                                  <button onClick={() => toggleBan(row)} disabled={actionLoading === row.UserID} style={styles.smallDanger}>
+                                    {actionLoading === row.UserID ? "..." : (row.IsBanned ? "Unban" : "Ban")}
+                                  </button>
+                                  <button onClick={() => toggleVerify(row)} disabled={actionLoading === row.UserID} style={styles.small}>
+                                    {actionLoading === row.UserID ? "..." : (row.IsVerified ? "Unverify" : "Verify")}
+                                  </button>
+                                </>
+                              )}
+                              {active === "assets" && (
+                                <button onClick={() => toggleAssetActive(row)} disabled={actionLoading === row.AssetID} style={styles.smallSuccess}>
+                                  {actionLoading === row.AssetID ? "..." : (row.IsActive ? "Deactivate" : "Activate")}
+                                </button>
+                              )}
                               {config.fields.length > 0 && <button onClick={() => openEditor(row)} style={styles.small}>Edit</button>}
                               <button onClick={() => remove(row)} style={styles.smallDanger}>Delete</button>
                             </div>
@@ -299,13 +441,13 @@ export default function AdminDashboard() {
 }
 
 const styles = {
-  page: { minHeight: "100vh", background: "#0f172a", color: "#e5e7eb", padding: "2rem" },
+  page: { minHeight: "100vh", background: "linear-gradient(135deg, #0f172a 0%, #1a1f35 100%)", color: "#e5e7eb", padding: "2rem" },
   inner: { maxWidth: 1500, margin: "0 auto" },
   header: { display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "1.5rem", gap: "1rem" },
-  kicker: { margin: 0, color: "#34d399", fontSize: "0.75rem", fontWeight: 900, textTransform: "uppercase", letterSpacing: "0.12em" },
+  kicker: { margin: 0, color: "#f4a020", fontSize: "0.75rem", fontWeight: 900, textTransform: "uppercase", letterSpacing: "0.12em" },
   title: { margin: "0.25rem 0", color: "#fff", fontSize: "3rem", fontWeight: 950 },
   subtitle: { margin: 0, color: "#94a3b8" },
-  refresh: { padding: "0.75rem 1.25rem", background: "#1e293b", color: "#e5e7eb", border: "1px solid #334155", borderRadius: 10, cursor: "pointer", fontWeight: 800 },
+  refresh: { padding: "0.75rem 1.25rem", background: "linear-gradient(135deg, #8B1538 0%, #6B0F1A 100%)", color: "#e5e7eb", border: "none", borderRadius: 10, cursor: "pointer", fontWeight: 800 },
   summaryGrid: { display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: "1rem", marginBottom: "1.5rem" },
   summaryCard: { background: "#111827", border: "1px solid #253047", borderRadius: 14, padding: "1.25rem" },
   summaryLabel: { margin: 0, color: "#94a3b8", fontSize: "0.75rem", textTransform: "uppercase", letterSpacing: "0.08em", fontWeight: 900 },
@@ -313,14 +455,15 @@ const styles = {
   shell: { display: "grid", gridTemplateColumns: "220px 1fr", gap: "1rem", alignItems: "start" },
   sidebar: { background: "#111827", border: "1px solid #253047", borderRadius: 14, padding: "0.75rem", display: "grid", gap: "0.4rem", position: "sticky", top: 90 },
   navButton: { padding: "0.8rem 1rem", background: "transparent", color: "#94a3b8", border: "none", borderRadius: 10, textAlign: "left", cursor: "pointer", fontWeight: 800 },
-  navActive: { padding: "0.8rem 1rem", background: "#059669", color: "#fff", border: "none", borderRadius: 10, textAlign: "left", cursor: "pointer", fontWeight: 900 },
+  navActive: { padding: "0.8rem 1rem", background: "linear-gradient(135deg, #8B1538 0%, #6B0F1A 100%)", color: "#fff", border: "none", borderRadius: 10, textAlign: "left", cursor: "pointer", fontWeight: 900 },
   main: { background: "#fff", color: "#111827", borderRadius: 14, overflow: "hidden" },
-  toolbar: { padding: "1rem", borderBottom: "1px solid #e5e7eb", display: "flex", justifyContent: "space-between", gap: "1rem", alignItems: "center" },
+  toolbar: { padding: "1rem", borderBottom: "1px solid #e5e7eb", display: "flex", justifyContent: "space-between", gap: "1rem", alignItems: "center", flexWrap: "wrap" },
   sectionTitle: { margin: 0, fontSize: "1.4rem", fontWeight: 900 },
   count: { margin: "0.25rem 0 0", color: "#6b7280" },
   toolbarActions: { display: "flex", gap: "0.75rem", alignItems: "center", flexWrap: "wrap" },
   search: { padding: "0.75rem 1rem", border: "1px solid #d1d5db", borderRadius: 10, minWidth: 240 },
-  primary: { padding: "0.75rem 1rem", background: "#059669", color: "#fff", border: "none", borderRadius: 10, fontWeight: 900, cursor: "pointer" },
+  select: { padding: "0.75rem 1rem", border: "1px solid #d1d5db", borderRadius: 10, background: "#fff", color: "#111827" },
+  primary: { padding: "0.75rem 1rem", background: "linear-gradient(135deg, #8B1538 0%, #6B0F1A 100%)", color: "#fff", border: "none", borderRadius: 10, fontWeight: 900, cursor: "pointer" },
   loading: { padding: "3rem", textAlign: "center", color: "#6b7280" },
   tableWrap: { overflowX: "auto" },
   table: { width: "100%", borderCollapse: "collapse" },
@@ -330,6 +473,7 @@ const styles = {
   rowActions: { display: "flex", gap: "0.5rem" },
   small: { padding: "0.45rem 0.7rem", background: "#eff6ff", color: "#1e40af", border: "1px solid #93c5fd", borderRadius: 8, cursor: "pointer", fontWeight: 800 },
   smallDanger: { padding: "0.45rem 0.7rem", background: "#fef2f2", color: "#dc2626", border: "1px solid #fca5a5", borderRadius: 8, cursor: "pointer", fontWeight: 800 },
+  smallSuccess: { padding: "0.45rem 0.7rem", background: "#f0fdf4", color: "#16a34a", border: "1px solid #86efac", borderRadius: 8, cursor: "pointer", fontWeight: 800 },
   overlay: { position: "fixed", inset: 0, background: "rgba(15,23,42,0.55)", zIndex: 1000, display: "flex", alignItems: "center", justifyContent: "center", padding: "1rem" },
   modal: { width: "min(520px, 100%)", background: "#fff", color: "#111827", borderRadius: 16, padding: "2rem", position: "relative", boxShadow: "0 24px 60px rgba(0,0,0,0.25)" },
   close: { position: "absolute", top: 14, right: 14, width: 34, height: 34, border: "1px solid #e5e7eb", background: "#f9fafb", borderRadius: 8, fontSize: "1.3rem", cursor: "pointer" },
@@ -337,5 +481,5 @@ const styles = {
   field: { display: "block", marginBottom: "1rem" },
   fieldLabel: { display: "block", marginBottom: "0.4rem", color: "#6b7280", fontWeight: 800, fontSize: "0.8rem", textTransform: "uppercase", letterSpacing: "0.06em" },
   input: { width: "100%", padding: "0.75rem", border: "1px solid #d1d5db", borderRadius: 10 },
-  primaryWide: { width: "100%", padding: "0.9rem", background: "#059669", color: "#fff", border: "none", borderRadius: 10, fontWeight: 900, cursor: "pointer", marginTop: "0.5rem" },
+  primaryWide: { width: "100%", padding: "0.9rem", background: "linear-gradient(135deg, #8B1538 0%, #6B0F1A 100%)", color: "#fff", border: "none", borderRadius: 10, fontWeight: 900, cursor: "pointer", marginTop: "0.5rem" },
 };

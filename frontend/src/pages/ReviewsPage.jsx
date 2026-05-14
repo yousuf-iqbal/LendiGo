@@ -1,40 +1,47 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import API from '../api/axios';
-
-const C = {
-  saffron: "#F4A020", saffronDark: "#E08800", saffronPale: "#FFF0CC",
-  maroon: "#800020", maroonL: "#B00030", maroonDeep: "#5C0018",
-  cream: "#FDF6EC", warmWhite: "#FFF9F0",
-  textDark: "#2C1810", textMuted: "#6B4C3B", textFaint: "#A68070",
-  border: "rgba(128,0,32,0.12)", borderS: "rgba(128,0,32,0.25)",
-};
+import { auth } from '../config/firebase';
 
 export default function ReviewsPage() {
   const navigate = useNavigate();
-  const { userID } = useParams();
+  const { userID, assetID } = useParams();
   const [userData, setUserData] = useState(null);
   const [reviews, setReviews] = useState([]);
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [role, setRole] = useState('lender'); // 'lender' or 'borrower'
+  const [showForm, setShowForm] = useState(false);
+  const [rating, setRating] = useState(5);
+  const [comment, setComment] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+  const currentUser = auth.currentUser;
 
   useEffect(() => {
     fetchReviews();
-  }, [userID, role]);
+  }, [userID, assetID]);
 
   const fetchReviews = async () => {
     setLoading(true);
     setError('');
     try {
-      // Fetch user data
-      const userRes = await API.get(`/profile/${userID || 'me'}`);
-      setUserData(userRes.data?.data || userRes.data);
+      // Fetch user data if userID provided
+      if (userID) {
+        const userRes = await API.get(`/profile/${userID}`);
+        setUserData(userRes.data?.data || userRes.data);
+      }
 
-      // Fetch reviews for this user (as reviewee)
-      const reviewsRes = await API.get(`/review/user/${userID || 'me'}`);
-      const allReviews = reviewsRes.data?.data || [];
+      // Fetch reviews - either for user or asset
+      let reviewsRes;
+      if (userID) {
+        reviewsRes = await API.get(`/reviews/user/${userID}`);
+      } else if (assetID) {
+        reviewsRes = await API.get(`/reviews/asset/${assetID}`);
+      } else {
+        reviewsRes = await API.get(`/reviews`);
+      }
+      
+      const allReviews = reviewsRes.data?.data || reviewsRes.data || [];
       setReviews(allReviews);
 
       // Calculate stats

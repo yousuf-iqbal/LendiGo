@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import API from '../api/axios';
+import Calendar from '../components/Calendar';
 import '../theme.css';
 
 const C = {
@@ -170,22 +171,22 @@ export default function EditRequestPage() {
           </div>
 
           <div style={styles.row}>
-            <Field 
-              label="Start Date *"
-              type="date"
-              name="startDate"
-              value={formData.startDate}
-              onChange={handleChange}
-              required
-            />
-            <Field 
-              label="End Date *"
-              type="date"
-              name="endDate"
-              value={formData.endDate}
-              onChange={handleChange}
-              required
-            />
+            <div style={{ flex: 1 }}>
+              <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 600, fontSize: '0.9rem' }}>Start Date *</label>
+              <Calendar 
+                onDateSelect={(date) => setFormData({...formData, startDate: date.toISOString().split('T')[0]})}
+                selectedDate={formData.startDate}
+                minDate={new Date().toISOString().split('T')[0]}
+              />
+            </div>
+            <div style={{ flex: 1 }}>
+              <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 600, fontSize: '0.9rem' }}>End Date *</label>
+              <Calendar 
+                onDateSelect={(date) => setFormData({...formData, endDate: date.toISOString().split('T')[0]})}
+                selectedDate={formData.endDate}
+                minDate={formData.startDate || new Date().toISOString().split('T')[0]}
+              />
+            </div>
           </div>
 
           <Field 

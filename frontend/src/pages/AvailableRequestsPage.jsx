@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import API from '../api/axios';
+import ChatButton from '../components/ChatButton';
 
 // Lendigo Theme Colors
 const C = {
@@ -307,7 +308,7 @@ export default function AvailableRequestsPage() {
                               </div>
 
                               {offer.Status === 'pending' && req.status === 'open' && (
-                                <div style={{ display: 'flex', gap: '0.5rem' }}>
+                                <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
                                   <button 
                                     onClick={() => handleAcceptOffer(offer.OfferID, req.id)} 
                                     disabled={processingOffer === offer.OfferID}
@@ -322,6 +323,7 @@ export default function AvailableRequestsPage() {
                                   >
                                     ✗ Reject
                                   </button>
+                                  <ChatButton userId={offer.LenderID} style={{ padding: '0.5rem 1rem', fontSize: '0.875rem' }} />
                                 </div>
                               )}
 
@@ -444,29 +446,33 @@ export default function AvailableRequestsPage() {
                   </div>
                 </div>
 
-                {/* Button */}
-                <button
-                  style={{
-                    width: '100%',
-                    padding: '0.75rem',
-                    background: C.maroon,
-                    color: '#fff',
-                    border: 'none',
-                    borderRadius: '10px',
-                    fontWeight: 700,
-                    cursor: 'pointer',
-                    fontSize: '0.9rem',
-                    transition: 'all 0.2s',
-                  }}
-                  onClick={(e) => { 
-                    e.stopPropagation(); 
-                    navigate(`/requests/${requestId}`);
-                  }}
-                  onMouseEnter={(e) => { e.currentTarget.style.background = C.maroonL; }}
-                  onMouseLeave={(e) => { e.currentTarget.style.background = C.maroon; }}
-                >
-                  Make an Offer →
-                </button>
+                {/* Buttons */}
+                <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }} onClick={(e) => e.stopPropagation()}>
+                  <button
+                    style={{
+                      flex: 1,
+                      minWidth: '120px',
+                      padding: '0.75rem',
+                      background: C.maroon,
+                      color: '#fff',
+                      border: 'none',
+                      borderRadius: '10px',
+                      fontWeight: 700,
+                      cursor: 'pointer',
+                      fontSize: '0.9rem',
+                      transition: 'all 0.2s',
+                    }}
+                    onClick={(e) => { 
+                      e.stopPropagation(); 
+                      navigate(`/requests/${requestId}`);
+                    }}
+                    onMouseEnter={(e) => { e.currentTarget.style.background = C.maroonL; }}
+                    onMouseLeave={(e) => { e.currentTarget.style.background = C.maroon; }}
+                  >
+                    Make an Offer →
+                  </button>
+                  <ChatButton userId={req.requesterId} style={{ flex: 1, minWidth: '120px' }} />
+                </div>
               </div>
             );
           })}
