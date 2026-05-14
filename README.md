@@ -1,60 +1,32 @@
-Udhaari - Community Asset Lending Platform
-Overview
-Udhaari is a full-stack web application that enables community-based lending of assets. It connects individuals who need items with those who have them, facilitating borrowing and lending for a fee or for free.
+# Udhaari - An Asset Lending Platform
 
-Problem Statement: Forgot a calculator for an exam? Need a drill for the weekend? Short a textbook for one semester? Instead of buying expensive items for one-time use, borrow them from your community.
+A full stack web application built with React, Node.js, and SQL Server.
 
-Features
-For Borrowers
-Browse available assets with search and category filters
+## Tech Stack
 
-View detailed asset information including pricing and location
+- Frontend: React + Vite + Tailwind
+- Backend: Node.js + Express
+- Database: SQL Server (MSSQL)
 
-Submit booking requests with custom date ranges
+## Setup Instructions
 
-Track booking status (pending, approved, rejected, completed, cancelled)
+### 1. Clone the repo
 
-Cancel pending requests
+git clone https://github.com/yousuf-iqbal/Udhaari-An-Asset-Lending-Platform.git
 
-View borrowing history and completed transactions
+### 2. Setup Database
 
-For Lenders
-List assets with images, descriptions, pricing, and location
+Open SSMS and run the sql file inside the database folder
 
-Manage asset availability (available/unavailable)
+### 3. Setup Backend
 
-View and respond to booking requests (approve/decline)
+- cd backend
+- npm install
+- Add a .env file
+- node server.js
 
-Mark bookings as completed after return
+### 4. Setup Frontend
 
-Track lending history and earnings
-
-User Management
-Secure authentication via Firebase
-
-User profiles with name, phone, city, area, and CNIC
-
-Email verification for account security
-
-Password reset functionality
-
-Community Features
-Post requests for items you need
-
-Community members can respond with offers
-
-Location-based browsing to find nearby items
-
-Review system after completed transactions
-
-Tech Stack
-Layer	Technology
-Frontend	React 18 + Vite
-Styling	CSS3 with custom design system
-Backend	Node.js + Express
-Database	Microsoft SQL Server (MSSQL)
-Authentication	Firebase Authentication
-HTTP Client	Axios
-File Upload	Multer (with Cloudinary integration)
-Image Hosting	Cloudinary
-Environment	dotenv
+- cd frontend
+- npm install
+- npm run dev/start
