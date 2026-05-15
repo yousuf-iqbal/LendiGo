@@ -1,0 +1,170 @@
+body {
+  padding-top: 76px;
+}
+
+.navbar {
+  position: fixed;
+  top: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(420px, calc(100% - 32px));
+  z-index: 1100;
+  border: 1px solid rgba(128, 0, 32, 0.12);
+  border-radius: 999px;
+  background: rgba(255, 249, 240, 0.82);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+  box-shadow: 0 16px 44px rgba(128, 0, 32, 0.1);
+  transition: top 260ms ease, background 260ms ease, box-shadow 260ms ease, border-color 260ms ease, width 260ms ease;
+}
+
+.navbar--scrolled {
+  top: 10px;
+  width: min(380px, calc(100% - 28px));
+  background: rgba(255, 249, 240, 0.94);
+  border-color: rgba(128, 0, 32, 0.18);
+  box-shadow: 0 20px 54px rgba(128, 0, 32, 0.14);
+}
+
+.navbar__inner {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 10px;
+}
+
+.navbar-logo {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0;
+  padding: 7px 8px;
+  border-radius: 999px;
+  text-decoration: none;
+}
+
+.navbar-logo__letter {
+  display: inline-block;
+  font-family: var(--font-display);
+  font-size: 1.72rem;
+  font-weight: 900;
+  line-height: 1;
+  letter-spacing: 0;
+  transition: transform 240ms ease, color 240ms ease;
+}
+
+.navbar-logo:hover .navbar-logo__letter {
+  transform: translateY(-2px);
+}
+
+.navbar-logo__letter--0,
+.navbar-logo__letter--2,
+.navbar-logo__letter--5 {
+  color: var(--maroon);
+}
+
+.navbar-logo__letter--1,
+.navbar-logo__letter--4 {
+  color: var(--saffron);
+}
+
+.navbar-logo__letter--3,
+.navbar-logo__letter--6 {
+  color: var(--brown-light);
+}
+
+/* ============ MENU BUTTON - FIXED EXTREME LEFT OF SCREEN ============ */
+.staggered-menu__toggle,
+.menu-toggle-btn,
+[class*="menu-toggle"] {
+  position: fixed !important;
+  left: 20px !important;
+  top: 20px !important;
+  z-index: 9999 !important;
+  width: 65px !important;
+  height: 65px !important;
+  min-width: 65px !important;
+  min-height: 65px !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  font-size: 2.2rem !important;
+  background: #800020 !important;
+  color: #fff !important;
+  border: 3px solid rgba(255,255,255,0.3) !important;
+  border-radius: 18px !important;
+  box-shadow: 0 8px 32px rgba(128,0,32,0.5) !important;
+  cursor: pointer !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  transition: all 0.3s ease !important;
+}
+
+.staggered-menu__toggle:hover,
+.menu-toggle-btn:hover,
+[class*="menu-toggle"]:hover {
+  background: #B00030 !important;
+  transform: scale(1.1) !important;
+  box-shadow: 0 12px 40px rgba(128,0,32,0.7) !important;
+}
+
+/* "MENU" text below button */
+.staggered-menu__toggle::after,
+.menu-toggle-btn::after,
+[class*="menu-toggle"]::after {
+  content: 'MENU';
+  position: absolute;
+  bottom: -26px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 0.65rem;
+  font-weight: 800;
+  letter-spacing: 2px;
+  color: #fff;
+  text-shadow: 0 2px 8px rgba(0,0,0,0.6);
+  font-family: 'Outfit', sans-serif;
+}
+
+@media (max-width: 520px) {
+  body {
+    padding-top: 72px;
+  }
+
+  .navbar {
+    top: 12px;
+    width: calc(100% - 24px);
+  }
+
+  .navbar__inner {
+    min-height: 54px;
+    padding: 7px 8px;
+  }
+
+  .navbar-logo__letter {
+    font-size: 1.48rem;
+  }
+
+  .staggered-menu__toggle,
+  .menu-toggle-btn,
+  [class*="menu-toggle"] {
+    left: 12px !important;
+    top: 12px !important;
+    width: 55px !important;
+    height: 55px !important;
+    min-width: 55px !important;
+    min-height: 55px !important;
+    font-size: 1.8rem !important;
+  }
+}
+/* HIDE the old menu button inside navbar */
+.navbar .staggered-menu__toggle,
+.navbar .menu-toggle-btn,
+.navbar [class*="menu-toggle"],
+.navbar__inner .staggered-menu__toggle,
+.navbar__inner .menu-toggle-btn,
+.navbar__inner [class*="menu-toggle"] {
+  display: none !important;
+}
+/* Hide staggered menu inside navbar completely */
+.navbar__inner > *:not(.navbar-logo) {
+  display: none !important;
+}

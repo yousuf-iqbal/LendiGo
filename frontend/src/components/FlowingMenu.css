@@ -1,0 +1,126 @@
+.fm-menu-wrap {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  border-radius: 18px;
+  border: 1px solid rgba(253, 246, 236, 0.14);
+}
+
+.fm-menu {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+  margin: 0;
+  padding: 0;
+}
+
+.fm-menu__item {
+  flex: 1 1 0;
+  min-height: 0;
+  position: relative;
+  overflow: hidden;
+  border-top: 1px solid;
+}
+
+.fm-menu__item:first-child {
+  border-top: none;
+}
+
+.fm-menu__link {
+  position: relative;
+  z-index: 2;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 0 20px;
+  border: 0;
+  background: transparent;
+  text-align: left;
+  text-decoration: none;
+  text-transform: uppercase;
+  white-space: nowrap;
+  cursor: pointer;
+  font-family: var(--font-body);
+  font-weight: 900;
+  letter-spacing: 0.02em;
+  font-size: clamp(0.92rem, 1.25vw, 1.18rem);
+  transition: color 250ms ease;
+}
+
+.fm-menu__link small {
+  max-width: 150px;
+  white-space: normal;
+  text-align: right;
+  color: rgba(253, 246, 236, 0.58);
+  font-size: 0.64rem;
+  line-height: 1.25;
+  letter-spacing: 0.08em;
+}
+
+.fm-marquee {
+  position: absolute;
+  inset: 0;
+  z-index: 4;
+  overflow: hidden;
+  pointer-events: none;
+  transform: translate3d(0, 101%, 0);
+}
+
+.fm-marquee__inner-wrap {
+  height: 100%;
+  width: 100%;
+  overflow: hidden;
+}
+
+.fm-marquee__inner {
+  height: 100%;
+  width: fit-content;
+  display: flex;
+  align-items: center;
+  position: relative;
+  will-change: transform;
+}
+
+.fm-marquee__part {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.fm-marquee span {
+  white-space: nowrap;
+  text-transform: uppercase;
+  font-weight: 900;
+  font-size: clamp(1rem, 1.6vw, 1.45rem);
+  line-height: 1;
+  padding: 0 0.8vw;
+}
+
+.fm-marquee__img {
+  width: clamp(70px, 8vw, 104px);
+  height: clamp(26px, 4.3vh, 38px);
+  margin: 0.6em 1vw;
+  border-radius: 999px;
+  background-size: cover;
+  background-position: 50% 50%;
+  border: 1px solid rgba(92, 0, 24, 0.18);
+  box-shadow: inset 0 0 0 999px rgba(253, 246, 236, 0.18);
+}
+
+@media (max-width: 720px) {
+  .fm-menu__link {
+    padding: 0 16px;
+    gap: 10px;
+    font-size: 0.92rem;
+  }
+
+  .fm-menu__link small {
+    max-width: 126px;
+    font-size: 0.58rem;
+  }
+}
